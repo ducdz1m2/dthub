@@ -1,3 +1,6 @@
-from django.shortcuts import render
+from django.http import HttpResponse
+from django.contrib.auth.decorators import permission_required
 
-# Create your views here.
+@permission_required("orders.manage_order", raise_exception=True)
+def order_manage_view(request):
+    return HttpResponse("Staff product: quản lý đơn hàng")
