@@ -1,0 +1,18 @@
+.logo {
+  font-weight: bold;
+  font-size: 1.8rem;
+  background: linear-gradient(45deg, #006514, #7e017e, #18a6b0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+.logo-container {
+  display: inline-block; /* quan trọng để transform từ center */
+  transition: all 0.3s ease;
+}
+
+.logo-container:hover {
+  transform: scale(1.1); /* phóng to nhẹ */
+  filter: drop-shadow(2px 2px 5px #00000055);
+}
