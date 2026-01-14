@@ -12,18 +12,18 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
-
+from dotenv import load_dotenv
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
+load_dotenv()
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=pu&dcupl+xve95nf*1*m6_bfda+je0f)ob=@^oxkl-oaf8y*t'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG') == 'True'
 
 ALLOWED_HOSTS = []
 
@@ -44,6 +44,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'django.contrib.sites', # Bắt buộc cho allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google', # Provider Google
 ]
 
 MIDDLEWARE = [
@@ -54,6 +59,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'dthub.urls'
@@ -105,7 +112,21 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+# Cấu hình xác thực
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend', # Đăng nhập bằng user/pass mặc định
+    'allauth.account.auth_backends.AuthenticationBackend', # Đăng nhập bằng OAuth
+]
+# Tùy chỉnh allauth
+SOCIALACCOUNT_QUERY_EMAIL = True
+ACCOUNT_SESSION_REMEMBER = True
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+ACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_LOGIN_ON_GET = True
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -137,16 +158,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Cấu hình Backend sử dụng giao thức SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-# Thông số server Gmail
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
-EMAIL_USE_TLS = True  # Bắt buộc để bảo mật kết nối
+EMAIL_USE_TLS = True 
 
-# Thông tin tài khoản gửi
-EMAIL_HOST_USER = 'lengocduc051@gmail.com' 
+EMAIL_HOST_USER = os.getenv('EMAIL_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASS')
 
-# QUAN TRỌNG: Đây là mật khẩu ứng dụng (16 ký tự), không phải mật khẩu tài khoản
-EMAIL_HOST_PASSWORD = 'rzxv abpl rfbs egls' 
-
-# Tên hiển thị khi gửi mail đi
-DEFAULT_FROM_EMAIL = 'Hệ thống DTHub <lengocduc051@gmail.com>'
+DEFAULT_FROM_EMAIL = f'Hệ thống DTHub <{EMAIL_HOST_USER}>'

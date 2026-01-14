@@ -1,79 +1,81 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %} Đăng nhập hoặc Đăng ký {% endblock %}
+{% load socialaccount %}
+{% block title %}
+  Đăng nhập hoặc Đăng ký
+{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-  <div class="row justify-content-center">
-    <div class="col-md-5 col-lg-4">
-      <div class="card shadow-lg border-0 rounded-4">
-        <div class="card-body p-4">
-
-          <div class="text-center mb-4">
-            <img src="{% static 'images/brain.png' %}" width="50" class="mb-2" />
-            <h4 class="fw-bold mb-0 text-success">DTHub</h4>
-            <small class="text-muted">Hệ thống quản lý dịch vụ kỹ thuật</small>
-          </div>
-
-          <form method="post">
-            {% csrf_token %}
-
-            <div class="mb-3">
-              <label class="form-label fw-bold">Username</label>
-              <input class="form-control" type="text" name="username" placeholder="Nhập username" required />
+  <div class="container my-5">
+    <div class="row justify-content-center">
+      <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg border-0 rounded-4">
+          <div class="card-body p-4">
+            <div class="text-center mb-4">
+              <img src="{% static 'images/brain.png' %}" width="50" class="mb-2" />
+              <h4 class="fw-bold mb-0 text-success">DTHub</h4>
+              <small class="text-muted">Hệ thống quản lý dịch vụ kỹ thuật</small>
             </div>
 
-            <div id="email-field" class="mb-3" style="display: none;">
-              <label class="form-label fw-bold">Email</label>
-              <input class="form-control" type="email" name="email" id="email-input" placeholder="example@gmail.com" />
-              <div class="form-text small">Dùng để khôi phục mật khẩu khi bị quên.</div>
-            </div>
+            <form method="post">
+              {% csrf_token %}
 
-            <div class="mb-2">
-              <div class="d-flex justify-content-between">
-                <label class="form-label fw-bold">Password</label>
-                <a href="{% url 'password_reset' %}" class="text-decoration-none small text-success">Quên mật khẩu?</a>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Username</label>
+                <input class="form-control" type="text" name="username" placeholder="Nhập username" required />
               </div>
-              <input class="form-control" type="password" name="password" placeholder="Nhập mật khẩu" required />
-            </div>
 
-            <div class="d-grid gap-2 mt-4">
-              <button type="submit" name="action" value="login" class="btn btn-success py-2 fw-bold shadow-sm">
-                Đăng nhập
-              </button>
+              <div id="email-field" class="mb-3" style="display: none;">
+                <label class="form-label fw-bold">Email</label>
+                <input class="form-control" type="email" name="email" id="email-input" placeholder="example@gmail.com" />
+                <div class="form-text small">Dùng để khôi phục mật khẩu khi bị quên.</div>
+              </div>
 
-              <hr class="my-2">
+              <div class="mb-2">
+                <div class="d-flex justify-content-between">
+                  <label class="form-label fw-bold">Password</label>
+                  <a href="{% url 'password_reset' %}" class="text-decoration-none small text-success">Quên mật khẩu?</a>
+                </div>
+                <input class="form-control" type="password" name="password" placeholder="Nhập mật khẩu" required />
+              </div>
 
-              <button type="submit" name="action" value="register" id="btn-register" class="btn btn-outline-secondary py-2">
-                Tạo tài khoản mới
-              </button>
-            </div>
-          </form>
+              <div class="d-grid gap-2 mt-4">
+                <button type="submit" name="action" value="login" class="btn btn-success py-2 fw-bold shadow-sm">Đăng nhập</button>
 
+                <hr class="my-2" />
+                {% load socialaccount %}
+
+                <div class="d-grid gap-2 mt-3">
+                  <a href="{% provider_login_url 'google' %}" class="btn btn-outline-danger py-2 fw-bold"><i class="bi bi-google me-2"></i> Đăng nhập bằng Google</a>
+                </div>
+                <hr class="my-2" />
+                <button type="submit" name="action" value="register" id="btn-register" class="btn btn-outline-secondary py-2">Tạo tài khoản mới</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<script>
-  // Script nhỏ để hiện ô Email khi người dùng muốn Đăng ký
-  const btnRegister = document.getElementById('btn-register');
-  const emailField = document.getElementById('email-field');
-  const emailInput = document.getElementById('email-input');
-
-  btnRegister.addEventListener('click', function(e) {
-    // Nếu ô email chưa hiện, thì hiện nó ra và yêu cầu nhập (required)
-    if (emailField.style.display === 'none') {
-      e.preventDefault(); // Chặn submit lần đầu để user kịp nhập email
-      emailField.style.display = 'block';
-      emailInput.setAttribute('required', 'required');
-      emailInput.focus();
-      this.innerText = "Xác nhận Đăng ký";
-      this.classList.remove('btn-outline-secondary');
-      this.classList.add('btn-primary');
-    }
-    // Nếu ô email đã hiện rồi thì để form submit bình thường
-  });
-</script>
+  <script>
+    // Script nhỏ để hiện ô Email khi người dùng muốn Đăng ký
+    const btnRegister = document.getElementById('btn-register')
+    const emailField = document.getElementById('email-field')
+    const emailInput = document.getElementById('email-input')
+    
+    btnRegister.addEventListener('click', function (e) {
+      // Nếu ô email chưa hiện, thì hiện nó ra và yêu cầu nhập (required)
+      if (emailField.style.display === 'none') {
+        e.preventDefault() // Chặn submit lần đầu để user kịp nhập email
+        emailField.style.display = 'block'
+        emailInput.setAttribute('required', 'required')
+        emailInput.focus()
+        this.innerText = 'Xác nhận Đăng ký'
+        this.classList.remove('btn-outline-secondary')
+        this.classList.add('btn-primary')
+      }
+      // Nếu ô email đã hiện rồi thì để form submit bình thường
+    })
+  </script>
 {% endblock %}
