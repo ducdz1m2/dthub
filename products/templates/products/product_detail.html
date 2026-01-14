@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+  <div class="container my-5">
+    <nav aria-label="breadcrumb" class="mb-4">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'product_list' %}" class="text-success text-decoration-none">Sản phẩm</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ product.name }}</li>
+      </ol>
+    </nav>
+
+    <div class="row g-5">
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden position-sticky" style="top: 100px;">
+          {% if product.images.all %}
+            <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
+              <div class="carousel-indicators">
+                {% for img in product.images.all %}
+                  <button type="button" data-bs-target="#productCarousel" data-bs-slide-to="{{ forloop.counter0 }}" class="{% if forloop.first %}active{% endif %}"></button>
+                {% endfor %}
+              </div>
+              <div class="carousel-inner">
+                {% for img in product.images.all %}
+                  <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                    <img src="{{ img.image.url }}" class="d-block w-100 object-fit-cover" alt="{{ product.name }}" style="height: 500px;" />
+                  </div>
+                {% endfor %}
+              </div>
+              <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev"><span class="carousel-control-prev-icon bg-dark rounded-circle p-2"></span></button>
+              <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next"><span class="carousel-control-next-icon bg-dark rounded-circle p-2"></span></button>
+            </div>
+          {% else %}
+            <img src="{% static 'images/default-product.png' %}" class="img-fluid rounded-4" alt="{{ product.name }}" />
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="ps-md-4">
+          <span class="badge rounded-pill px-3 py-2 mb-3 
+              {% if product.product_type == 'iot' %}bg-success-subtle text-success
+              {% elif product.product_type == 'solution' %}bg-primary-subtle text-primary
+              {% elif product.product_type == 'sensor' %}bg-warning-subtle text-dark
+              {% else %}bg-secondary-subtle text-secondary{% endif %}">
+            <i class="bi bi-cpu-fill me-1"></i> {{ product.get_product_type_display }}
+          </span>
+
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <h1 class="fw-bold text-dark display-5 mb-0">{{ product.name }}</h1>
+            {% if request.user.is_staff %}
+              <a href="{% url 'product_edit' product.id %}" class="btn btn-outline-primary btn-sm rounded-pill shadow-sm px-3 border-2" style="white-space: nowrap;">
+                <i class="bi bi-pencil-fill me-1"></i> Chỉnh sửa
+              </a>
+            {% endif %}
+          </div>
+
+          <div class="price-box bg-light p-4 rounded-4 mb-4 border-start border-4 border-success">
+            {% if product.price %}
+              <span class="text-muted small d-block mb-1 text-uppercase fw-bold">Giá trọn gói dự kiến:</span>
+              <h2 class="text-success fw-bold mb-0">{{ product.price|intcomma }}<small class="fs-4">₫</small></h2>
+            {% else %}
+              <h3 class="text-primary fw-bold mb-0">Liên hệ báo giá</h3>
+            {% endif %}
+          </div>
+
+          <div class="product-description mb-4">
+            <h5 class="fw-bold text-success mb-3"><i class="bi bi-info-circle me-2"></i>Mô tả chi tiết</h5>
+            <div class="text-muted lh-lg">{{ product.description|linebreaks }}</div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-6">
+              <div class="d-flex align-items-center"><i class="bi bi-shield-check fs-3 text-success me-2"></i><span class="small fw-bold">Bảo hành 12 tháng</span></div>
+            </div>
+            <div class="col-6">
+              <div class="d-flex align-items-center"><i class="bi bi-truck fs-3 text-success me-2"></i><span class="small fw-bold">Lắp đặt tận nơi</span></div>
+            </div>
+          </div>
+
+          <div class="d-grid gap-3 d-md-flex mt-5">
+            <a href="{% url 'create_order_direct' product.id %}" class="btn btn-warning btn-lg rounded-pill px-5 py-3 fw-bold shadow">
+              <i class="bi bi-cart-plus-fill me-2"></i>ĐẶT MUA NGAY
+            </a>
+            <a href="/contact" class="btn btn-outline-dark btn-lg rounded-pill px-4 py-3">Liên hệ tư vấn</a>
+          </div>
+
+          {% if product.datasheet_url %}
+            <div class="mt-4 pt-4 border-top">
+              <a href="{{ product.datasheet_url }}" target="_blank" class="text-decoration-none fw-bold">
+                <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i> Tải tài liệu kỹ thuật (Datasheet)
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .bg-success-subtle { background-color: #e8f5e9; }
+    .bg-primary-subtle { background-color: #e3f2fd; }
+    .bg-warning-subtle { background-color: #fff8e1; }
+    .carousel-indicators [data-bs-target] { background-color: #198754; width: 10px; height: 10px; border-radius: 50%; }
+    .product-description { border-top: 1px solid #eee; padding-top: 20px; }
+    .btn-warning { background-color: #ffc107; border: none; transition: all 0.3s ease; }
+    .btn-warning:hover { background-color: #e0ac00; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(255, 193, 7, 0.4) !important; }
+  </style>
+{% endblock %}

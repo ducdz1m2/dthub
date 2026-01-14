@@ -6,13 +6,14 @@
     <title>DTHub</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
   </head>
   <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <div class="container-fluid">
         <div class="logo-container d-inline-block me-4">
           <img src="{% static 'images/brain.png' %}" alt="" width="50px" class="d-inline-block" />
-          <a class="logo d-inline-block" href="#">DTHub</a>
+          <a class="logo d-inline-block" href="/">DTHub</a>
         </div>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
@@ -21,7 +22,7 @@
           <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-4">
             <li class="nav-item d-flex align-items-center">
               <img src="{% static 'images/chip.png' %}" alt="" width="50" class="" />
-              <a class="nav-link" href="#">Giải pháp IoT</a>
+              <a class="nav-link" href="/products">Giải pháp IoT</a>
             </li>
             <li class="nav-item d-flex align-items-center">
               <img src="{% static 'images/forum.png' %}" alt="" width="40" class="me-1" />
@@ -49,10 +50,73 @@
               </ul>
             </li>
           </ul>
-          <form class="d-flex" role="search">
-            <input class="form-control me-2" type="search" placeholder="Tìm kiếm..." aria-label="Search" />
-            <button class="btn btn-outline-success" type="submit">Tìm</button>
-          </form>
+          <div class="border rounded-3 px-2 shadow-sm">
+            {% if request.user.is_authenticated %}
+              <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                  <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="position-relative">
+                      {% if request.user.profile.avatar and 'default.png' not in request.user.profile.avatar.url %}
+                        <img src="{{ request.user.profile.avatar.url }}" width="38" height="38" class="rounded-circle me-2 border border-2 border-success" alt="avatar" style="object-fit: cover;" />
+                      {% else %}
+                        <img src="{% static 'images/avatar-default.png' %}" width="38" height="38" class="rounded-circle me-2 border border-2 border-secondary" alt="default-avatar" style="object-fit: cover;" />
+                      {% endif %}
+                      <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-light rounded-circle"></span>
+                    </div>
+                    <span class="d-none d-lg-inline fw-bold text-dark">{{ request.user.username }}</span>
+                  </a>
+
+                  <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+                    <li class="px-3 py-2 border-bottom mb-1">
+                      <small class="text-muted d-block">Tài khoản cá nhân</small>
+                      <strong class="text-truncate d-block" style="max-width: 150px;">{{ request.user.email }}</strong>
+                    </li>
+
+                    <li>
+                      <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'profile' %}"><i class="bi bi-person-circle text-primary me-2 fs-5"></i> Hồ sơ của tôi</a>
+                    </li>
+
+                    {% if request.user.is_superuser %}
+                      <li class="bg-light">
+                        <a class="dropdown-item d-flex align-items-center py-2 fw-bold text-dark" href="{% url 'manage_staff_list' %}"><i class="bi bi-people-fill text-dark me-2 fs-5"></i> Quản lý nhân sự</a>
+                      </li>
+                      <li>
+                        <hr class="dropdown-divider" />
+                      </li>
+                    {% endif %}
+                    {% if perms.orders.manage_order %}
+                      <li>
+                        <a class="dropdown-item d-flex align-items-center py-2 fw-bold text-success" href="{% url 'tech_dashboard' %}"><i class="bi bi-clipboard-check-fill me-2 fs-5"></i> Nhiệm vụ lắp đặt</a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'order_manage_view' %}"><i class="bi bi-kanban me-2 fs-5"></i> Tổng đơn hàng</a>
+                      </li>
+                    {% elif request.user.is_staff %}
+                      <li>
+                        <a class="dropdown-item d-flex align-items-center py-2 fw-bold text-primary" href="{% url 'order_manage_view' %}"><i class="bi bi-kanban me-2 fs-5"></i> Quản lý hệ thống</a>
+                      </li>
+                    {% else %}
+                      <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'my_orders' %}"><i class="bi bi-box-seam text-success me-2 fs-5"></i> Đơn hàng của tôi</a>
+                      </li>
+                    {% endif %}
+
+                    <li>
+                      <hr class="dropdown-divider" />
+                    </li>
+                    <li>
+                      <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button class="dropdown-item d-flex align-items-center py-2 text-danger"><i class="bi bi-box-arrow-right me-2 fs-5"></i> Đăng xuất</button>
+                      </form>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            {% else %}
+              <a class="nav-link p-2 fw-bold text-success d-flex align-items-center" href="{% url 'auth' %}"><i class="bi bi-person-lock me-1 fs-5"></i> Đăng nhập / Đăng ký</a>
+            {% endif %}
+          </div>
         </div>
       </div>
     </nav>
@@ -105,7 +169,89 @@
         </div>
       </div>
     </footer>
+    {% if messages %}
+      <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+        {% for message in messages %}
+          <div class="toast align-items-center text-bg-{{ message.tags }} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+            <div class="d-flex">
+              <div class="toast-body">{{ message }}</div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+      document.querySelectorAll('.toast').forEach((toastEl) => {
+        new bootstrap.Toast(toastEl).show()
+      })
+    </script>
+
+    <script>
+      const filterButtons = document.querySelectorAll('[data-filter]')
+      const products = document.querySelectorAll('.product-item')
+      
+      filterButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          filterButtons.forEach((b) => b.classList.remove('active'))
+          btn.classList.add('active')
+      
+          const filter = btn.dataset.filter
+      
+          products.forEach((p) => {
+            const match = filter === 'all' || p.dataset.category === filter
+            p.classList.toggle('is-hidden', !match)
+          })
+        })
+      })
+    </script>
+    <script>
+      const postFilterButtons = document.querySelectorAll('[data-post-filter]')
+      const posts = document.querySelectorAll('.post-item')
+      
+      postFilterButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          postFilterButtons.forEach((b) => b.classList.remove('active'))
+          btn.classList.add('active')
+      
+          const filter = btn.dataset.postFilter
+      
+          posts.forEach((p) => {
+            const match = filter === 'all' || p.dataset.category === filter
+            p.classList.toggle('is-hidden', !match)
+          })
+        })
+      })
+    </script>
+
+    {% if request.user.is_authenticated and request.user.is_staff %}
+      <script>
+        function sendLocation() {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (position) {
+              const lat = position.coords.latitude
+              const lng = position.coords.longitude
+        
+              fetch('{% url "update_location" %}', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ lat: lat, lng: lng })
+              })
+                .then((response) => response.json())
+                .then((data) => console.log('Location updated:', data))
+                .catch((error) => console.error('Error:', error))
+            })
+          }
+        }
+        
+        setInterval(sendLocation, 30000)
+        sendLocation()
+      </script>
+    {% endif %}
   </body>
 </html>

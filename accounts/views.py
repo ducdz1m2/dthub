@@ -1,14 +1,184 @@
-from django.contrib.auth import authenticate, login
-from django.shortcuts import render, redirect
+from django.contrib.auth.models import Group
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.shortcuts import get_object_or_404, render, redirect
+from django.views.decorators.http import require_POST
+from django.contrib import messages
+from .forms import ProfileUpdateForm
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import permission_required
+from .forms import StaffCreationForm
+from django.contrib.auth import get_user_model
 
-def login_view(request):
+
+User = get_user_model()
+
+
+@csrf_exempt
+@login_required
+def update_location(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            profile = request.user.profile
+            profile.current_lat = data.get('lat')
+            profile.current_lng = data.get('lng')
+            profile.save()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'invalid method'}, status=405)
+
+@login_required
+def profile_view(request):
+    # Lấy profile của user hiện tại, nếu chưa có (do lỗi cũ) thì Signal đã tạo ở model rồi
+    profile = request.user.profile
+    
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Hồ sơ của bạn đã được cập nhật!")
+            return redirect('profile')
+    else:
+        form = ProfileUpdateForm(instance=profile)
+    
+    return render(request, 'accounts/profile.html', {'form': form})
+
+@require_POST
+def logout_view(request):
+    logout(request)
+    messages.success(request, "Bạn đã đăng xuất thành công.")
+    return redirect("/")
+
+def auth_view(request):
     if request.method == "POST":
-        user = authenticate(
-            request,
-            username=request.POST["username"],
-            password=request.POST["password"]
-        )
-        if user:
-            login(request, user)
-            return redirect("/")
-    return render(request, "accounts/login.html")
+        action = request.POST.get("action")
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "").strip()
+        email = request.POST.get("email", "").strip()  # Lấy thêm email từ POST data
+
+        # Kiểm tra chung cho cả Login và Register
+        if not username or not password:
+            messages.error(request, "Vui lòng nhập đầy đủ username và password.")
+            return redirect("auth")
+
+        if action == "login":
+            user = authenticate(request, username=username, password=password)
+            if user:
+                login(request, user)
+                messages.success(request, "Đăng nhập thành công.")
+                return redirect("/")
+            else:
+                messages.error(request, "Sai username hoặc mật khẩu.")
+                return redirect("auth")
+
+        elif action == "register":
+            # 1. Kiểm tra username tồn tại
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username này đã được sử dụng.")
+                return redirect("auth")
+            
+            # 2. Kiểm tra Email (Bắt buộc khi đăng ký để phục vụ Reset Password)
+            if not email:
+                messages.error(request, "Vui lòng cung cấp Email để có thể khôi phục mật khẩu sau này.")
+                return redirect("auth")
+            
+            if User.objects.filter(email=email).exists():
+                messages.error(request, "Email này đã được đăng ký cho một tài khoản khác.")
+                return redirect("auth")
+
+            # 3. Tạo User kèm theo Email
+            try:
+                user = User.objects.create_user(
+                    username=username,
+                    password=password,
+                    email=email  # Quan trọng: Lưu email vào database
+                )
+                login(request, user)
+                messages.success(request, "Đăng ký thành công và đã đăng nhập.")
+                return redirect("/")
+            except Exception as e:
+                messages.error(request, f"Có lỗi xảy ra trong quá trình đăng ký: {e}")
+                return redirect("auth")
+
+    return render(request, "accounts/auth.html")
+
+
+
+@permission_required('auth.add_user', raise_exception=True)
+def manage_staff_list(request):
+    # Lấy tất cả user là nhân viên (is_staff=True)
+    staffs = User.objects.filter(is_staff=True).prefetch_related('groups', 'profile')
+    return render(request, 'accounts/staff_list.html', {'staffs': staffs})
+@permission_required('auth.add_user', raise_exception=True)
+def create_staff_view(request):
+    if request.method == 'POST':
+        form = StaffCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            messages.success(request, f"Đã tạo thành công tài khoản cho {user.username} (Email: {user.email})")
+            return redirect('manage_staff_list')
+        else:
+            messages.error(request, "Vui lòng kiểm tra lại thông tin nhập vào.")
+    else:
+        form = StaffCreationForm()
+    
+    return render(request, 'accounts/create_staff.html', {'form': form})
+
+
+@permission_required('auth.change_user', raise_exception=True)
+def edit_staff(request, staff_id):
+    staff = get_object_or_404(User, id=staff_id, is_staff=True)
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        role_id = request.POST.get('role')
+        new_password = request.POST.get('new_password') # Lấy mật khẩu mới
+        
+        staff.username = username
+        staff.email = email
+        
+        # Xử lý đổi mật khẩu nếu có nhập
+        if new_password and len(new_password.strip()) > 0:
+            staff.set_password(new_password)
+            # Nếu admin tự đổi pass cho chính mình, cần update_session_auth_hash để không bị văng login
+            # Nhưng ở đây là admin đổi cho nhân viên nên không cần lo lắng.
+        
+        if role_id:
+            role = Group.objects.get(id=role_id)
+            staff.groups.clear()
+            staff.groups.add(role)
+            
+        staff.save()
+        messages.success(request, f"Cập nhật nhân viên {staff.username} thành công.")
+        return redirect('manage_staff_list')
+    
+    roles = Group.objects.all()
+    return render(request, 'accounts/edit_staff.html', {'staff': staff, 'roles': roles})
+@permission_required('auth.delete_user', raise_exception=True)
+@require_POST
+def delete_staff(request, staff_id):
+    staff = get_object_or_404(User, id=staff_id, is_staff=True)
+    
+    # Ngăn admin tự xóa chính mình
+    if staff == request.user:
+        messages.error(request, "Bạn không thể tự xóa tài khoản của chính mình!")
+        return redirect('manage_staff_list')
+        
+    username = staff.username
+    staff.delete()
+    messages.success(request, f"Đã xóa vĩnh viễn nhân viên {username}.")
+    return redirect('manage_staff_list')
+
+@permission_required('auth.change_user', raise_exception=True)
+def toggle_staff_status(request, staff_id):
+    if request.method == 'POST':
+        staff = get_object_or_404(User, id=staff_id)
+        staff.is_active = not staff.is_active # Đảo ngược trạng thái
+        staff.save()
+        status = "mở khóa" if staff.is_active else "khóa"
+        messages.warning(request, f"Đã {status} tài khoản {staff.username}.")
+    return redirect('manage_staff_list')

@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.urls import include, path
+from django.conf.urls.static import static
+from dthub import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -7,6 +9,9 @@ urlpatterns = [
     path("products/", include("products.urls")),
     path("orders/", include("orders.urls")),
     path("ai/", include("ai_hub.urls")),
-    path("account/", include("accounts.urls")),
-
+    path("accounts/", include("accounts.urls")),
+    path("", include("dashboard.urls")),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

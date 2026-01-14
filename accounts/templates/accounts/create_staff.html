@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="mb-3">
+                <a href="{% url 'manage_staff_list' %}" class="text-decoration-none text-muted small">
+                    <i class="bi bi-arrow-left"></i> Quay lại danh sách
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="card-header bg-primary text-white p-4 text-center border-0">
+                    <i class="bi bi-person-plus-fill fs-1"></i>
+                    <h4 class="fw-bold mt-2 mb-0">Thêm Nhân Viên Mới</h4>
+                </div>
+
+                <div class="card-body p-4 p-md-5">
+                    <form method="POST" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tên đăng nhập</label>
+                            <input type="text" name="username" required
+                                   class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                                   value="{{ form.username.value|default:'' }}">
+                            {% if form.username.errors %}<div class="invalid-feedback">{{ form.username.errors|striptags }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email (Bắt buộc)</label>
+                            <input type="email" name="email" required
+                                   class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                                   placeholder="email@congty.com"
+                                   value="{{ form.email.value|default:'' }}">
+                            {% if form.email.errors %}<div class="invalid-feedback">{{ form.email.errors|striptags }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Mật khẩu tạm thời</label>
+                            <input type="password" name="password" required
+                                   class="form-control {% if form.password.errors %}is-invalid{% endif %}">
+                            {% if form.password.errors %}<div class="invalid-feedback">{{ form.password.errors|striptags }}</div>{% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-primary">Vai trò (Role)</label>
+                            <select name="role" required class="form-select border-primary {% if form.role.errors %}is-invalid{% endif %}">
+                                <option value="" selected disabled>-- Chọn nhóm quyền --</option>
+                                {% for group in form.role.field.queryset %}
+                                    <option value="{{ group.id }}">{{ group.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.role.errors %}<div class="invalid-feedback">{{ form.role.errors|striptags }}</div>{% endif %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill shadow">
+                            Xác nhận tạo nhân viên
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="fw-bold">Quản lý Nhân sự</h2>
+      <a href="{% url 'create_staff_view' %}" class="btn btn-primary rounded-pill"><i class="bi bi-person-plus"></i> Thêm nhân viên</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Nhân viên</th>
+              <th>Số điện thoại</th>
+              <th>Vai trò (Role)</th>
+              <th>Trạng thái</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for staff in staffs %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <img src="{{ staff.profile.get_avatar_url }}" class="rounded-circle me-2" width="35" height="35" style="object-fit: cover;" />
+                    <div>
+                      <div class="fw-bold">{{ staff.username }}</div>
+                      <small class="text-muted">{{ staff.email }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ staff.profile.phone|default:'-' }}</td>
+                <td>
+                  {% for group in staff.groups.all %}
+                    <span class="badge bg-info-subtle text-info border border-info-subtle">{{ group.name }}</span>
+                  {% empty %}
+                    <span class="text-muted small">Chưa gán Role</span>
+                  {% endfor %}
+                </td>
+                <td>
+                  {% if staff.is_active %}
+                    <span class="badge bg-success">Đang hoạt động</span>
+                  {% else %}
+                    <span class="badge bg-danger">Khóa</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="btn-group">
+                    <a href="{% url 'edit_staff' staff.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+
+                    <form action="{% url 'toggle_staff_status' staff.id %}" method="POST" class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit"
+                        class="btn btn-sm {% if staff.is_active %}
+                          btn-outline-warning
+                        {% else %}
+                          btn-outline-success
+                        {% endif %}">
+                        <i class="bi {% if staff.is_active %}
+                            bi-lock
+                          {% else %}
+                            bi-unlock
+                          {% endif %}">
+
+                        </i>
+                      </button>
+                    </form>
+
+                    <form action="{% url 'delete_staff' staff.id %}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên {{ staff.username }}? Thao tác này không thể hoàn tác!');">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}

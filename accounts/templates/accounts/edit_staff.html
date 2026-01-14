@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5" style="max-width: 500px;">
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-dark text-white p-4">
+            <h4 class="mb-0">Chỉnh sửa nhân viên</h4>
+            <small class="opacity-75">Đang sửa: {{ staff.username }}</small>
+        </div>
+        <div class="card-body p-4">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tên đăng nhập</label>
+                    <input type="text" name="username" class="form-control" value="{{ staff.username }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ staff.email }}">
+                </div>
+                <div class="mb-4 pt-3 border-top">
+    <label class="form-label fw-bold text-danger">
+        <i class="bi bi-shield-lock-fill me-1"></i> Đổi mật khẩu mới
+    </label>
+    <input type="password" name="new_password" class="form-control border-danger-subtle" 
+           placeholder="Để trống nếu không muốn đổi">
+    <div class="form-text mt-1">
+        <i class="bi bi-info-circle"></i> Chỉ nhập nếu bạn muốn đặt lại mật khẩu cho nhân viên này.
+    </div>
+</div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-primary">Vai trò hiện tại</label>
+                    <select name="role" class="form-select border-primary">
+                        {% for role in roles %}
+                            <option value="{{ role.id }}" 
+                                {% if role in staff.groups.all %}selected{% endif %}>
+                                {{ role.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary rounded-pill">Lưu thay đổi</button>
+                    <a href="{% url 'manage_staff_list' %}" class="btn btn-light rounded-pill">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

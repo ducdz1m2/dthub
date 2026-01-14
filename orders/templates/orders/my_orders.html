@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="container my-5" style="max-width: 900px;">
+    <h2 class="fw-bold mb-4 text-success text-center text-md-start">
+        <i class="bi bi-box-seam"></i> Hành trình giải pháp của bạn
+    </h2>
+
+    {% for order in orders %}
+    <div class="card shadow-sm border-0 mb-5 overflow-hidden position-relative" style="border-radius: 15px;">
+        
+        {# --- 1. HIỆU ỨNG CON DẤU TRẠNG THÁI --- #}
+        {% if order.status == 'Completed' %}
+            <div class="order-stamp stamp-completed">ĐÃ HOÀN THÀNH</div>
+        {% elif order.status == 'Cancelled' %}
+            <div class="order-stamp stamp-cancelled">ĐÃ HỦY ĐƠN</div>
+        {% endif %}
+
+        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Mã đơn dự án: <strong>#{{ order.id }}</strong></span>
+            <span class="text-muted small">Ngày đặt: {{ order.created_at|date:'d/m/Y' }}</span>
+        </div>
+
+        <div class="card-body p-4 bg-light border-top border-bottom">
+            <div class="row">
+                <div class="col-md-7">
+                    <h4 class="fw-bold text-dark mb-1">{{ order.product.name }}</h4>
+                    <p class="text-muted mb-3 small">
+                        <i class="bi bi-geo-alt-fill text-danger"></i> {{ order.address|default:'Đang xác nhận địa chỉ...' }}
+                    </p>
+
+                    {# THÔNG TIN KỸ THUẬT VIÊN #}
+                    {% if order.assigned_to and order.status != 'Pending' %}
+                        <div class="card border-0 shadow-sm bg-white p-3 rounded-3 mt-2">
+                            <div class="d-flex align-items-center">
+                                <div class="position-relative">
+                                    {% if order.assigned_to.profile.avatar and 'default.png' not in order.assigned_to.profile.avatar.url %}
+                                        <img src="{{ order.assigned_to.profile.avatar.url }}" class="rounded-circle border border-2 border-success shadow-sm" width="60" height="60" style="object-fit: cover;" />
+                                    {% else %}
+                                        <img src="{% static 'images/avatar-default.png' %}" class="rounded-circle border border-2 border-secondary shadow-sm" width="60" height="60" style="object-fit: cover;" />
+                                    {% endif %}
+                                    <span class="position-absolute bottom-0 end-0 p-1 bg-success border border-light rounded-circle" style="width: 14px; height: 14px;"></span>
+                                </div>
+                                <div class="ms-3">
+                                    <small class="text-muted d-block small">Kỹ thuật viên:</small>
+                                    <strong class="text-dark">{{ order.assigned_to.get_full_name|default:order.assigned_to.username }}</strong>
+                                    <div class="mt-1">
+                                        {% if order.assigned_to.profile.phone %}
+                                            <a href="tel:{{ order.assigned_to.profile.phone }}" class="text-success text-decoration-none small">
+                                                <i class="bi bi-telephone-fill"></i> {{ order.assigned_to.profile.phone }}
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif order.status == 'Pending' %}
+                        <div class="alert alert-warning border-0 shadow-sm py-2">
+                            <small><i class="bi bi-info-circle-fill"></i> Đang chờ điều phối kỹ thuật viên...</small>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                    <h3 class="text-danger fw-bold">{{ order.total|intcomma }}₫</h3>
+                    <div class="p-3 bg-white rounded border border-light small shadow-sm text-start">
+                        <strong class="text-muted">Ghi chú vận hành:</strong><br />
+                        <span class="text-dark">{{ order.note|default:'Thông tin triển khai sẽ được cập nhật sớm nhất.' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {# MAP #}
+            {% if order.status == 'Deploying' and order.assigned_to.profile.current_lat %}
+                <div class="mt-4">
+                    <h6 class="fw-bold text-primary mb-2 small"><i class="bi bi-geo-fill"></i> Vị trí kỹ thuật viên</h6>
+                    <div class="rounded-4 shadow-sm border overflow-hidden" style="height: 200px;">
+                        <iframe width="100%" height="100%" frameborder="0" src="https://maps.google.com/maps?q={{ order.assigned_to.profile.current_lat }},{{ order.assigned_to.profile.current_lng }}&hl=vi&z=15&output=embed"></iframe>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer bg-white p-4">
+            <h6 class="fw-bold mb-3 small">Tiến độ: <span class="text-primary">{{ order.get_status_display }}</span></h6>
+            
+            <div class="progress mb-2" style="height: 8px; border-radius: 10px;">
+                {% if order.status == 'Pending' %}<div class="progress-bar bg-warning" style="width: 15%"></div>
+                {% elif order.status == 'Surveying' %}<div class="progress-bar bg-info" style="width: 35%"></div>
+                {% elif order.status == 'Designing' %}<div class="progress-bar bg-secondary" style="width: 55%"></div>
+                {% elif order.status == 'Deploying' %}<div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" style="width: 80%"></div>
+                {% elif order.status == 'Completed' %}<div class="progress-bar bg-success" style="width: 100%"></div>
+                {% elif order.status == 'Cancelled' %}<div class="progress-bar bg-danger" style="width: 100%"></div>
+                {% endif %}
+            </div>
+            <div class="d-flex justify-content-between text-muted mb-4" style="font-size: 0.7rem;">
+                <span>Yêu cầu</span><span>Khảo sát</span><span>Thiết kế</span><span>Thi công</span><span>Bàn giao</span>
+            </div>
+
+            {# KHU VỰC ĐÁNH GIÁ #}
+            {% if order.status == 'Completed' %}
+                <div class="border-top pt-3">
+                    {% if order.review %}
+                        {# HIỂN THỊ ĐÁNH GIÁ - Dùng IF tĩnh để tránh lỗi Token #}
+                        <div id="review-display-{{ order.id }}" class="bg-white p-3 rounded-3 shadow-sm border border-success-subtle position-relative">
+                            <h6 class="fw-bold text-success mb-2 small"><i class="bi bi-chat-heart"></i> Phản hồi của bạn</h6>
+                            
+                            <div class="position-absolute top-0 end-0 m-2">
+                                <button class="btn btn-sm btn-light text-primary border-0" onclick="toggleEditReview('{{ order.id }}')">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <a href="{% url 'delete_review' order.id %}" class="btn btn-sm btn-light text-danger border-0" onclick="return confirm('Xóa đánh giá này?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+
+                            <div class="text-warning mb-2">
+                                <i class="bi bi-star{% if order.review.rating >= 1 %}-fill{% endif %}"></i>
+                                <i class="bi bi-star{% if order.review.rating >= 2 %}-fill{% endif %}"></i>
+                                <i class="bi bi-star{% if order.review.rating >= 3 %}-fill{% endif %}"></i>
+                                <i class="bi bi-star{% if order.review.rating >= 4 %}-fill{% endif %}"></i>
+                                <i class="bi bi-star{% if order.review.rating >= 5 %}-fill{% endif %}"></i>
+                            </div>
+                            <p class="mb-2 text-dark small">{{ order.review.comment }}</p>
+                            {% if order.review.image %}
+                                <img src="{{ order.review.image.url }}" class="rounded shadow-sm" style="max-height: 80px;" />
+                            {% endif %}
+                        </div>
+
+                        {# FORM SỬA #}
+                        <div id="review-edit-{{ order.id }}" class="d-none mt-2 p-3 border rounded-3 bg-white shadow-sm">
+                            <form action="{% url 'submit_review' order.id %}" method="POST" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <select name="rating" class="form-select form-select-sm">
+                                            <option value="5" {% if order.review.rating == 5 %}selected{% endif %}>5 Sao</option>
+                                            <option value="4" {% if order.review.rating == 4 %}selected{% endif %}>4 Sao</option>
+                                            <option value="3" {% if order.review.rating == 3 %}selected{% endif %}>3 Sao</option>
+                                            <option value="2" {% if order.review.rating == 2 %}selected{% endif %}>2 Sao</option>
+                                            <option value="1" {% if order.review.rating == 1 %}selected{% endif %}>1 Sao</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8 text-end">
+                                        <button type="button" class="btn-close" onclick="toggleEditReview('{{ order.id }}')"></button>
+                                    </div>
+                                    <div class="col-12">
+                                        <textarea name="comment" class="form-control form-control-sm" rows="2" required>{{ order.review.comment }}</textarea>
+                                    </div>
+                                    <div class="col-12 d-flex justify-content-between">
+                                        <input type="file" name="image" class="form-control form-control-sm w-50" accept="image/*">
+                                        <button type="submit" class="btn btn-primary btn-sm px-4">Cập nhật</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    {% else %}
+                        {# FORM TẠO MỚI #}
+                        <div class="p-3 border rounded-3 bg-white shadow-sm">
+                            <h6 class="fw-bold text-primary mb-3 small">Đánh giá chất lượng dịch vụ</h6>
+                            <form action="{% url 'submit_review' order.id %}" method="POST" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <select name="rating" class="form-select border-warning shadow-sm">
+                                            <option value="5">⭐⭐⭐⭐⭐ Rất tốt</option>
+                                            <option value="4">⭐⭐⭐⭐ Tốt</option>
+                                            <option value="3">⭐⭐⭐ Bình thường</option>
+                                            <option value="2">⭐⭐ Tệ</option>
+                                            <option value="1">⭐ Rất tệ</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <textarea name="comment" class="form-control shadow-sm" rows="2" placeholder="Nhập cảm nhận của bạn..." required></textarea>
+                                    </div>
+                                    <div class="col-12 d-flex justify-content-between">
+                                        <input type="file" name="image" class="form-control form-control-sm w-50" accept="image/*">
+                                        <button type="submit" class="btn btn-success btn-sm px-4 rounded-pill shadow-sm">Gửi</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-5">
+        <i class="bi bi-emoji-smile text-muted" style="font-size: 4rem;"></i>
+        <h5 class="mt-3 text-muted">Bạn chưa có đơn hàng nào.</h5>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function toggleEditReview(orderId) {
+    const displayDiv = document.getElementById('review-display-' + orderId);
+    const editDiv = document.getElementById('review-edit-' + orderId);
+    if (displayDiv && editDiv) {
+        displayDiv.classList.toggle('d-none');
+        editDiv.classList.toggle('d-none');
+    }
+}
+</script>
+
+<style>
+    .order-stamp {
+        position: absolute;
+        top: 30px;
+        right: 8%;
+        width: 140px;
+        height: 140px;
+        border: 5px double;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-weight: 900;
+        transform: rotate(-15deg);
+        opacity: 0.15;
+        z-index: 5;
+        pointer-events: none;
+        font-family: 'Courier New', monospace;
+        padding: 10px;
+    }
+    .stamp-completed { color: #198754; border-color: #198754; box-shadow: 0 0 0 3px #198754 inset; }
+    .stamp-cancelled { color: #dc3545; border-color: #dc3545; box-shadow: 0 0 0 3px #dc3545 inset; }
+    .progress-bar-animated { animation: 1.5s linear infinite progress-bar-stripes; }
+    .card:hover { transform: translateY(-2px); transition: 0.3s; }
+</style>
+{% endblock %}
