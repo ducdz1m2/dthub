@@ -28,27 +28,44 @@
             <div class="row g-0">
               <div class="col-md-4 position-relative">
                 {% if product.images.all %}
-                  <img src="{{ product.images.all.0.image.url }}" class="product-img" alt="{{ product.name }}" />
+                  <img src="{{ product.images.all.0.image.url }}" data-zoom="{{ product.images.all.0.image.url }}" class="product-img drift-img" alt="{{ product.name }}" style="position: relative; z-index: 100;" />
                 {% else %}
                   <img src="{% static 'images/default-product.webp' %}" class="product-img" alt="default" />
                 {% endif %}
-                <a href="{% url 'product_detail' product.slug %}" class="stretched-link"></a>
+
+                <a href="{% url 'product_detail' product.slug %}" class="stretched-link" style="z-index: 1;"></a>
               </div>
 
               <div class="col-md-8 p-4 d-flex flex-column">
                 <div class="mb-2">
                   <span class="badge rounded-pill px-3 py-2 
                                 {% if product.product_type == 'iot' %}
+                      
+                      
                       bg-success-subtle text-success
 
+
+
                     {% elif product.product_type == 'solution' %}
+                      
+                      
                       bg-primary-subtle text-primary
 
+
+
                     {% elif product.product_type == 'sensor' %}
+                      
+                      
                       bg-warning-subtle text-dark
 
+
+
                     {% else %}
+                      
+                      
                       bg-secondary-subtle text-secondary
+
+
                     {% endif %}">
                     <i class="bi bi-tag-fill me-1"></i> {{ product.get_product_type_display }}
                   </span>
@@ -146,6 +163,22 @@
     .product-item {
       transition: all 0.4s ease-in-out;
     }
+    .hover-card:hover .product-img.drift-img {
+    transform: none !important;
+  }
+
+  /* Làm đẹp khung soi tròn/vuông trên danh sách */
+  .drift-zoom-pane.drift-inline {
+    border-radius: 10px; /* Bo góc khung zoom cho hiện đại */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border: 2px solid #198754; /* Màu xanh theme của bạn */
+  }
+
+  /* Đảm bảo ảnh nằm trên cái link stretched-link để nhận chuột */
+  .drift-img {
+    position: relative;
+    z-index: 10 !important;
+  }
   </style>
 
   <script>
@@ -179,4 +212,5 @@
       })
     })
   </script>
+ 
 {% endblock %}

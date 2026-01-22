@@ -10,6 +10,7 @@ urlpatterns = [
     path("orders/", include("orders.urls")),
     path("ai/", include("ai_hub.urls")),
     path("accounts/", include("accounts.urls")),
+    path("chat/", include("chat.urls")),
     path("", include("dashboard.urls")),
 ]
 
