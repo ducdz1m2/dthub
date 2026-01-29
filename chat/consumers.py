@@ -59,6 +59,16 @@ class GlobalPresenceConsumer(AsyncWebsocketConsumer):
             
             await self.channel_layer.group_discard("global_presence", self.channel_name)
 
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        
+        if data.get("type") == "get_online_users":
+            # Gửi danh sách online users hiện tại
+            await self.send(text_data=json.dumps({
+                "type": "online_users_list",
+                "online_users": list(online_users)
+            }))
+
     async def presence_update(self, event):
         await self.send(text_data=json.dumps(event))
         

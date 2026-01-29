@@ -13,6 +13,12 @@ ROLE_MAP = {
     "AIArchitect": [
         "manage_ai_architecture",
     ],
+    "HRManager": [
+        "add_user",
+        "change_user", 
+        "delete_user",
+        "view_user",
+    ],
 }
 
 class Command(BaseCommand):

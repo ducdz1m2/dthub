@@ -210,9 +210,9 @@ def order_manage_view(request):
                     'address': order.user.profile.address if hasattr(order.user, 'profile') and order.user.profile.address else None
                 },
                 'product': {
-                    'name': order.product.name,
-                    'total': order.total
+                    'name': order.product.name
                 },
+                'total': order.total,
                 'status': order.status,
                 'status_display': order.get_status_display(),
                 'note': order.note or '',

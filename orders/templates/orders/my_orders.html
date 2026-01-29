@@ -251,12 +251,21 @@ function loadMoreOrders() {
     .then(response => response.json())
     .then(data => {
         if (data.orders && data.orders.length > 0) {
-            // Append new orders to the container
+            // Append new orders to the container before the load more button
             data.orders.forEach(order => {
                 const orderHtml = createOrderCard(order);
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = orderHtml;
-                ordersContainer.insertBefore(tempDiv.firstElementChild, loadMoreBtn.parentElement);
+                const newOrderCard = tempDiv.firstElementChild;
+                
+                // Insert before the load more button container
+                const loadMoreContainer = document.querySelector('#load-more-btn').closest('.text-center');
+                if (loadMoreContainer) {
+                    ordersContainer.insertBefore(newOrderCard, loadMoreContainer);
+                } else {
+                    // If no load more button, append to container
+                    ordersContainer.appendChild(newOrderCard);
+                }
             });
             
             currentPage = data.current_page;

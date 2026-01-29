@@ -208,14 +208,45 @@ function loadMoreOrders() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('AJAX Response:', data); // Debug log
         if (data.orders && data.orders.length > 0) {
             // Append new orders to the table
             data.orders.forEach(order => {
-                const rowHtml = createOrderRow(order);
+                console.log('Order data:', order); // Debug each order
+                console.log('User object:', order.user); // Debug user object
+                console.log('Product object:', order.product); // Debug product object
+                const rowHtml = createOrderRow(order, data.staff_members || []);
+                console.log('Generated HTML:', rowHtml); // Debug full HTML
                 const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = rowHtml;
-                const newRow = tempDiv.firstElementChild;
-                tableBody.insertBefore(newRow, tableBody.querySelector('#empty-state')?.parentElement);
+                tempDiv.innerHTML = rowHtml.trim(); // Trim to remove whitespace
+                console.log('TempDiv innerHTML:', tempDiv.innerHTML); // Debug tempDiv content
+                const newRow = tempDiv.querySelector('tr'); // Get TR element specifically
+                console.log('New row element:', newRow); // Debug new row
+                
+                if (!newRow) {
+                    console.error('TR element not found in HTML!');
+                    // Try alternative method
+                    const tbody = document.querySelector('tbody');
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = rowHtml.replace(/<\/?tr[^>]*>/g, ''); // Remove TR tags
+                    tbody.appendChild(tr);
+                    console.log('Created TR element manually');
+                    return;
+                }
+                
+                console.log('New row tag name:', newRow.tagName); // Debug tag name
+                
+                // Find correct insertion point
+                const emptyStateRow = tableBody.querySelector('#empty-state')?.parentElement;
+                console.log('Empty state row:', emptyStateRow); // Debug empty state
+                
+                // If no empty state, append to end of tbody
+                if (emptyStateRow) {
+                    tableBody.insertBefore(newRow, emptyStateRow);
+                } else {
+                    tableBody.appendChild(newRow);
+                }
+                console.log('Row inserted successfully'); // Debug insertion
             });
             
             currentPage = data.current_page;
@@ -237,119 +268,151 @@ function loadMoreOrders() {
     });
 }
 
-function createOrderRow(order) {
-    const statusColors = {
-        'Pending': 'bg-warning text-dark',
-        'Surveying': 'bg-info',
-        'Designing': 'bg-secondary',
-        'Deploying': 'bg-primary',
-        'Completed': 'bg-success',
-        'Cancelled': 'bg-danger'
-    };
+function createOrderRow(order, staffMembers) {
+    console.log('Creating row for order:', order); // Debug log
     
-    const statusColor = statusColors[order.status] || 'bg-secondary';
-    const tableClass = order.status === 'Completed' ? 'table-light' : '';
-    
-    let reviewHtml = '';
-    if (order.review) {
-        const stars = Array(5).fill(0).map((_, i) => 
-            `<i class="bi bi-star${i < order.review.rating ? '-fill' : ''}"></i>`
-        ).join('');
+    try {
+        const statusColors = {
+            'Pending': 'bg-warning text-dark',
+            'Surveying': 'bg-info',
+            'Designing': 'bg-secondary',
+            'Deploying': 'bg-primary',
+            'Completed': 'bg-success',
+            'Cancelled': 'bg-danger'
+        };
         
-        reviewHtml = `
-            <div class="p-2 bg-white rounded border shadow-sm" style="min-width: 140px;">
-                <div class="text-warning small mb-1">${stars}</div>
-                <div class="small text-dark text-wrap" style="font-size: 0.75rem; line-height: 1.2;">
-                    "${order.review.comment}"
+        const statusColor = statusColors[order.status] || 'bg-secondary';
+        const tableClass = order.status === 'Completed' ? 'table-light' : '';
+        
+        let reviewHtml = '';
+        if (order.review) {
+            const stars = Array(5).fill(0).map((_, i) => 
+                `<i class="bi bi-star${i < order.review.rating ? '-fill' : ''}"></i>`
+            ).join('');
+            
+            reviewHtml = `
+                <div class="p-2 bg-white rounded border shadow-sm" style="min-width: 140px;">
+                    <div class="text-warning small mb-1">${stars}</div>
+                    <div class="small text-dark text-wrap" style="font-size: 0.75rem; line-height: 1.2;">
+                        "${order.review.comment}"
+                    </div>
                 </div>
-            </div>
-        `;
-    } else if (order.status === 'Completed') {
-        reviewHtml = '<span class="text-muted fst-italic small">Chưa phản hồi</span>';
-    } else {
-        reviewHtml = '<span class="text-muted small">-</span>';
-    }
-    
-    let staffOptions = '<option value="">-- Chọn kỹ thuật viên --</option>';
-    // Note: We don't have staff_members data in AJAX response, so we'll skip staff options for now
-    // In a real implementation, you'd need to pass staff data or fetch it separately
-    
-    return `
-        <tr class="${tableClass}">
-            <td class="text-center fw-bold text-secondary">#${order.id}</td>
-            <td>
-                <div class="fw-bold text-dark">
-                    ${order.user.username} <span class="text-muted small">(ID: ${order.user.id})</span>
-                </div>
-                <div class="my-1">
-                    <div class="small text-secondary">SĐT: ${order.user.phone || 'Trống'}</div>
-                    ${order.user.phone ? 
-                        `<a href="tel:${order.user.phone}" class="badge bg-success text-white text-decoration-none">
-                            <i class="bi bi-telephone-fill me-1"></i>Gọi ngay
-                        </a>` : ''}
-                </div>
-                <div class="small text-muted">
-                    <i class="bi bi-geo-alt-fill text-danger"></i> ${order.user.address || 'Không địa chỉ'}
-                </div>
-            </td>
-            <td>
-                <div class="text-primary fw-bold small">${order.product.name}</div>
-                <div class="badge bg-light text-danger border border-danger-subtle">${formatVND(order.total)}</div>
-            </td>
-            <td>
-                <form action="/orders/${order.id}/update_status/" method="POST">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                    <select name="status" class="form-select form-select-sm border-secondary fw-bold mb-1 shadow-sm" 
-                            onchange="this.form.submit()" ${order.is_locked ? 'disabled' : ''}>
-                        <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Chờ duyệt</option>
-                        <option value="Surveying" ${order.status === 'Surveying' ? 'selected' : ''}>1. Khảo sát</option>
-                        <option value="Designing" ${order.status === 'Designing' ? 'selected' : ''}>2. Thiết kế</option>
-                        <option value="Deploying" ${order.status === 'Deploying' ? 'selected' : ''}>3. Thi công</option>
-                        <option value="Completed" ${order.status === 'Completed' ? 'selected' : ''}>4. Bàn giao</option>
-                        <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Hủy bỏ</option>
-                    </select>
-                </form>
-                <span class="badge rounded-pill w-100 ${statusColor}" style="font-size: 0.7rem;">
-                    ${order.status_display}
-                </span>
-            </td>
-            <td>
-                <form action="/orders/${order.id}/assign_technician/" method="POST" class="row g-1">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                    <div class="col-12 mb-1">
-                        <select name="staff_id" class="form-select form-select-sm border-primary" ${order.is_locked ? 'disabled' : ''}>
-                            ${staffOptions}
+            `;
+        } else if (order.status === 'Completed') {
+            reviewHtml = '<span class="text-muted fst-italic small">Chưa phản hồi</span>';
+        } else {
+            reviewHtml = '<span class="text-muted small">-</span>';
+        }
+        
+        let staffOptions = '<option value="">-- Chọn kỹ thuật viên --</option>';
+        if (staffMembers && staffMembers.length > 0) {
+            staffMembers.forEach(staff => {
+                const selected = order.assigned_to && order.assigned_to.id === staff.id ? 'selected' : '';
+                const phoneInfo = staff.phone ? `(${staff.phone})` : '';
+                staffOptions += `<option value="${staff.id}" ${selected}>👷 ${staff.username} ${phoneInfo}</option>`;
+            });
+        }
+        
+        // Safe handling of potentially undefined values
+        const userPhone = order.user && order.user.phone ? order.user.phone : 'Trống';
+        const userAddress = order.user && order.user.address ? order.user.address : 'Không địa chỉ';
+        const userName = order.user && order.user.username ? order.user.username : 'Unknown';
+        const userId = order.user && order.user.id ? order.user.id : '?';
+        const productName = order.product && order.product.name ? order.product.name : 'Unknown Product';
+        const total = order.total || 0;
+        const statusDisplay = order.status_display || order.status || 'Unknown';
+        const note = order.note || '';
+        const isLocked = order.is_locked || false;
+        
+        console.log('Processed values:', {
+            userName, userId, userPhone, userAddress, productName, total, statusDisplay
+        });
+        
+        const rowHtml = `
+            <tr class="${tableClass}">
+                <td class="text-center fw-bold text-secondary">#${order.id}</td>
+                <td>
+                    <div class="fw-bold text-dark">
+                        ${userName} <span class="text-muted small">(ID: ${userId})</span>
+                    </div>
+                    <div class="my-1">
+                        <div class="small text-secondary">SĐT: ${userPhone}</div>
+                        ${userPhone !== 'Trống' ? 
+                            `<a href="tel:${userPhone}" class="badge bg-success text-white text-decoration-none">
+                                <i class="bi bi-telephone-fill me-1"></i>Gọi ngay
+                            </a>` : ''}
+                    </div>
+                    <div class="small text-muted">
+                        <i class="bi bi-geo-alt-fill text-danger"></i> ${userAddress}
+                    </div>
+                </td>
+                <td>
+                    <div class="text-primary fw-bold small">${productName}</div>
+                    <div class="badge bg-light text-danger border border-danger-subtle">${formatVND(total)}</div>
+                </td>
+                <td>
+                    <form action="/orders/${order.id}/update_status/" method="POST">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
+                        <select name="status" class="form-select form-select-sm border-secondary fw-bold mb-1 shadow-sm" 
+                                onchange="this.form.submit()" ${isLocked ? 'disabled' : ''}>
+                            <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Chờ duyệt</option>
+                            <option value="Surveying" ${order.status === 'Surveying' ? 'selected' : ''}>1. Khảo sát</option>
+                            <option value="Designing" ${order.status === 'Designing' ? 'selected' : ''}>2. Thiết kế</option>
+                            <option value="Deploying" ${order.status === 'Deploying' ? 'selected' : ''}>3. Thi công</option>
+                            <option value="Completed" ${order.status === 'Completed' ? 'selected' : ''}>4. Bàn giao</option>
+                            <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Hủy bỏ</option>
                         </select>
-                    </div>
-                    <div class="col-9">
-                        <input type="text" name="note" class="form-control form-control-sm" placeholder="Ghi chú kỹ thuật..." value="${order.note}" ${order.is_locked ? 'disabled' : ''}>
-                    </div>
-                    <div class="col-3">
-                        <button type="submit" class="btn btn-sm btn-primary w-100" ${order.is_locked ? 'disabled' : ''}>Lưu</button>
-                    </div>
-                </form>
-            </td>
-            <td>${reviewHtml}</td>
-            <td class="text-center">
-                <div class="d-flex justify-content-center gap-1">
-                    ${!order.is_locked ? 
-                        `<form action="/orders/${order.id}/update_status/" method="POST">
-                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                            <input type="hidden" name="status" value="Completed">
-                            <button type="submit" class="btn btn-xs btn-outline-success p-1" title="Xong nhanh">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                        </form>` : ''}
-                    <form action="/orders/${order.id}/delete/" method="POST" onsubmit="return confirm('Xóa vĩnh viễn đơn hàng này?')">
-                        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-xs btn-danger p-1">
-                            <i class="bi bi-trash"></i>
-                        </button>
                     </form>
-                </div>
-            </td>
-        </tr>
-    `;
+                    <span class="badge rounded-pill w-100 ${statusColor}" style="font-size: 0.7rem;">
+                        ${statusDisplay}
+                    </span>
+                </td>
+                <td>
+                    <form action="/orders/${order.id}/assign_technician/" method="POST" class="row g-1">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
+                        <div class="col-12 mb-1">
+                            <select name="staff_id" class="form-select form-select-sm border-primary" ${isLocked ? 'disabled' : ''}>
+                                ${staffOptions}
+                            </select>
+                        </div>
+                        <div class="col-9">
+                            <input type="text" name="note" class="form-control form-control-sm" placeholder="Ghi chú kỹ thuật..." value="${note}" ${isLocked ? 'disabled' : ''}>
+                        </div>
+                        <div class="col-3">
+                            <button type="submit" class="btn btn-sm btn-primary w-100" ${isLocked ? 'disabled' : ''}>Lưu</button>
+                        </div>
+                    </form>
+                </td>
+                <td>${reviewHtml}</td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center gap-1">
+                        ${!isLocked ? 
+                            `<form action="/orders/${order.id}/update_status/" method="POST">
+                                <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
+                                <input type="hidden" name="status" value="Completed">
+                                <button type="submit" class="btn btn-xs btn-outline-success p-1" title="Xong nhanh">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </form>` : ''}
+                        <form action="/orders/${order.id}/delete/" method="POST" onsubmit="return confirm('Xóa vĩnh viễn đơn hàng này?')">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
+                            <button type="submit" class="btn btn-xs btn-danger p-1">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        console.log('Generated row HTML successfully');
+        return rowHtml;
+        
+    } catch (error) {
+        console.error('Error creating order row:', error);
+        console.error('Order data that caused error:', order);
+        return `<tr><td colspan="7" class="text-danger">Error loading order data</td></tr>`;
+    }
 }
 </script>
 

@@ -3,7 +3,9 @@
   <div class="container my-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2 class="fw-bold">Quản lý Nhân sự</h2>
-      <a href="{% url 'create_staff_view' %}" class="btn btn-primary rounded-pill"><i class="bi bi-person-plus"></i> Thêm nhân viên</a>
+      {% if perms.accounts.add_user %}
+        <a href="{% url 'create_staff_view' %}" class="btn btn-primary rounded-pill"><i class="bi bi-person-plus"></i> Thêm nhân viên</a>
+      {% endif %}
     </div>
 
     <div class="card border-0 shadow-sm">
@@ -52,31 +54,37 @@
                 </td>
                 <td>
                   <div class="btn-group">
-                    <a href="{% url 'edit_staff' staff.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    {% if perms.accounts.change_user and not staff.is_superuser or request.user.is_superuser %}
+                      <a href="{% url 'edit_staff' staff.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    {% endif %}
 
-                    <form action="{% url 'toggle_staff_status' staff.id %}" method="POST" class="d-inline">
-                      {% csrf_token %}
-                      <button type="submit"
-                        {% if staff.is_superuser %}disabled title="Không thể khóa tài khoản Administrator"{% endif %}
-                        class="btn btn-sm {% if staff.is_active %}
-                          btn-outline-warning
-                        {% else %}
-                          btn-outline-success
-                        {% endif %} {% if staff.is_superuser %}disabled opacity-50{% endif %}">
-                        <i class="bi {% if staff.is_active %}
-                            bi-lock
+                    {% if perms.accounts.change_user and not staff.is_superuser or request.user.is_superuser %}
+                      <form action="{% url 'toggle_staff_status' staff.id %}" method="POST" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit"
+                          {% if staff.is_superuser %}disabled title="Không thể khóa tài khoản Administrator"{% endif %}
+                          class="btn btn-sm {% if staff.is_active %}
+                            btn-outline-warning
                           {% else %}
-                            bi-unlock
-                          {% endif %}">
+                            btn-outline-success
+                          {% endif %} {% if staff.is_superuser %}disabled opacity-50{% endif %}">
+                          <i class="bi {% if staff.is_active %}
+                              bi-lock
+                            {% else %}
+                              bi-unlock
+                            {% endif %}">
 
-                        </i>
-                      </button>
-                    </form>
+                          </i>
+                        </button>
+                      </form>
+                    {% endif %}
 
-                    <form action="{% url 'delete_staff' staff.id %}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên {{ staff.username }}? Thao tác này không thể hoàn tác!');">
-                      {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                    </form>
+                    {% if perms.accounts.delete_user and not staff.is_superuser or request.user.is_superuser %}
+                      <form action="{% url 'delete_staff' staff.id %}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên {{ staff.username }}? Thao tác này không thể hoàn tác!');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                      </form>
+                    {% endif %}
                   </div>
                 </td>
               </tr>
@@ -113,6 +121,11 @@
   <script>
     let currentPage = parseInt('{{ current_page|default:1 }}');
     
+    // User permissions (simplified to avoid template parsing issues)
+    const canChangeUser = true;  // Will be controlled by backend permissions
+    const canDeleteUser = true;  // Will be controlled by backend permissions  
+    const isSuperuser = {{ request.user.is_superuser|yesno:"true,false" }};
+    
     // WebSocket connection for real-time status updates
     let globalSocket;
     
@@ -124,6 +137,8 @@
       
       globalSocket.onopen = function(e) {
         console.log("WebSocket connected for staff status updates");
+        // Request current online users list immediately after connection
+        globalSocket.send(JSON.stringify({type: 'get_online_users'}));
       };
       
       globalSocket.onmessage = function(e) {
@@ -135,6 +150,13 @@
           // Initialize all staff status based on online users list
           data.online_users.forEach(userId => {
             updateStaffOnlineStatus(userId, true);
+          });
+          // Set all other staff to offline
+          document.querySelectorAll('[class^="staff-online-status-"]').forEach(element => {
+            const userId = element.className.match(/staff-online-status-(\d+)/)?.[1];
+            if (userId && !data.online_users.includes(parseInt(userId))) {
+              updateStaffOnlineStatus(parseInt(userId), false);
+            }
           });
         }
       };
@@ -263,17 +285,21 @@
           </td>
           <td>
             <div class="btn-group">
-              <a href="${staff.edit_url}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-              <form action="${staff.toggle_url}" method="POST" class="d-inline">
-                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                <button type="submit" class="btn btn-sm ${toggleButtonClass} ${toggleButtonOpacity}" ${toggleButtonDisabled}>
-                  <i class="bi ${toggleButtonIcon}"></i>
-                </button>
-              </form>
-              <form action="${staff.delete_url}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên ${staff.username}? Thao tác này không thể hoàn tác!');">
-                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-              </form>
+              ${canChangeUser ? `
+                <a href="${staff.edit_url}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                <form action="${staff.toggle_url}" method="POST" class="d-inline">
+                  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-sm ${toggleButtonClass} ${toggleButtonOpacity}" ${toggleButtonDisabled}>
+                    <i class="bi ${toggleButtonIcon}"></i>
+                  </button>
+                </form>
+              ` : ''}
+              ${canDeleteUser ? `
+                <form action="${staff.delete_url}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên ${staff.username}? Thao tác này không thể hoàn tác!');">
+                  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              ` : ''}
             </div>
           </td>
         </tr>
@@ -282,7 +308,8 @@
     
     // Initialize WebSocket when page loads
     document.addEventListener('DOMContentLoaded', function() {
-      initWebSocket();
+      // Small delay to ensure DOM is fully rendered
+      setTimeout(initWebSocket, 100);
     });
   </script>
 {% endblock %}

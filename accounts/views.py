@@ -117,7 +117,7 @@ def auth_view(request):
     return render(request, "accounts/auth.html")
 
 
-@permission_required('auth.add_user', raise_exception=True)
+@permission_required('accounts.view_user', raise_exception=True)
 def manage_staff_list(request):
     page = request.GET.get('page', 1)
     per_page = 10  # Show 10 staff members per page
@@ -167,7 +167,7 @@ def manage_staff_list(request):
     }
     return render(request, 'accounts/staff_list.html', context)
 
-@permission_required('auth.add_user', raise_exception=True)
+@permission_required('accounts.add_user', raise_exception=True)
 def create_staff_view(request):
     if request.method == 'POST':
         form = StaffCreationForm(request.POST)
@@ -183,9 +183,15 @@ def create_staff_view(request):
     return render(request, 'accounts/create_staff.html', {'form': form})
 
 
-@permission_required('auth.change_user', raise_exception=True)
+@permission_required('accounts.change_user', raise_exception=True)
 def edit_staff(request, staff_id):
     staff = get_object_or_404(User, id=staff_id, is_staff=True)
+    
+    # Ngăn sửa thông tin superuser (admin) - chỉ có superuser mới được sửa superuser khác
+    if staff.is_superuser and not request.user.is_superuser:
+        messages.error(request, "Bạn không thể chỉnh sửa thông tin Administrator!")
+        return redirect('manage_staff_list')
+    
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
@@ -212,10 +218,16 @@ def edit_staff(request, staff_id):
     
     roles = Group.objects.all()
     return render(request, 'accounts/edit_staff.html', {'staff': staff, 'roles': roles})
-@permission_required('auth.delete_user', raise_exception=True)
+
+@permission_required('accounts.delete_user', raise_exception=True)
 @require_POST
 def delete_staff(request, staff_id):
     staff = get_object_or_404(User, id=staff_id, is_staff=True)
+    
+    # Ngăn xóa superuser (admin) - chỉ có superuser mới được xóa superuser khác
+    if staff.is_superuser and not request.user.is_superuser:
+        messages.error(request, "Bạn không thể xóa tài khoản Administrator!")
+        return redirect('manage_staff_list')
     
     # Ngăn admin tự xóa chính mình
     if staff == request.user:
@@ -227,7 +239,7 @@ def delete_staff(request, staff_id):
     messages.success(request, f"Đã xóa vĩnh viễn nhân viên {username}.")
     return redirect('manage_staff_list')
 
-@permission_required('auth.change_user', raise_exception=True)
+@permission_required('accounts.change_user', raise_exception=True)
 def toggle_staff_status(request, staff_id):
     if request.method == 'POST':
         staff = get_object_or_404(User, id=staff_id)
