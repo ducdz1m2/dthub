@@ -39,11 +39,16 @@
                   {% endfor %}
                 </td>
                 <td>
-                  {% if staff.is_active %}
-                    <span class="badge bg-success">Đang hoạt động</span>
-                  {% else %}
-                    <span class="badge bg-danger">Khóa</span>
-                  {% endif %}
+                  <div class="d-flex align-items-center gap-2">
+                    {% if staff.is_active %}
+                      <span class="badge bg-success">Đang hoạt động</span>
+                      <span class="staff-online-status-{{ staff.id }} badge bg-secondary text-white rounded-pill px-2" style="font-size: 0.7rem;">
+                        <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline
+                      </span>
+                    {% else %}
+                      <span class="badge bg-danger">Khóa</span>
+                    {% endif %}
+                  </div>
                 </td>
                 <td>
                   <div class="btn-group">
@@ -52,11 +57,12 @@
                     <form action="{% url 'toggle_staff_status' staff.id %}" method="POST" class="d-inline">
                       {% csrf_token %}
                       <button type="submit"
+                        {% if staff.is_superuser %}disabled title="Không thể khóa tài khoản Administrator"{% endif %}
                         class="btn btn-sm {% if staff.is_active %}
                           btn-outline-warning
                         {% else %}
                           btn-outline-success
-                        {% endif %}">
+                        {% endif %} {% if staff.is_superuser %}disabled opacity-50{% endif %}">
                         <i class="bi {% if staff.is_active %}
                             bi-lock
                           {% else %}
@@ -107,6 +113,66 @@
   <script>
     let currentPage = parseInt('{{ current_page|default:1 }}');
     
+    // WebSocket connection for real-time status updates
+    let globalSocket;
+    
+    function initWebSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/global/`;
+      
+      globalSocket = new WebSocket(wsUrl);
+      
+      globalSocket.onopen = function(e) {
+        console.log("WebSocket connected for staff status updates");
+      };
+      
+      globalSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'presence_update') {
+          updateStaffOnlineStatus(data.user_id, data.status === 'online');
+        } else if (data.type === 'online_users_list') {
+          // Initialize all staff status based on online users list
+          data.online_users.forEach(userId => {
+            updateStaffOnlineStatus(userId, true);
+          });
+        }
+      };
+      
+      globalSocket.onclose = function(e) {
+        console.log("WebSocket disconnected, attempting to reconnect...");
+        setTimeout(initWebSocket, 3000);
+      };
+      
+      globalSocket.onerror = function(e) {
+        console.error("WebSocket error:", e);
+      };
+    }
+    
+    function updateStaffOnlineStatus(userId, isOnline) {
+      const statusElement = document.querySelector(`.staff-online-status-${userId}`);
+      if (statusElement) {
+        // Get the staff row to check if account is active
+        const staffRow = statusElement.closest('tr');
+        const isActiveBadge = staffRow.querySelector('.badge.bg-success');
+        
+        // Only show online/offline if account is active
+        if (isActiveBadge) {
+          if (isOnline) {
+            statusElement.className = `staff-online-status-${userId} badge bg-success text-white rounded-pill px-2`;
+            statusElement.innerHTML = '<i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Online';
+          } else {
+            statusElement.className = `staff-online-status-${userId} badge bg-secondary text-white rounded-pill px-2`;
+            statusElement.innerHTML = '<i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline';
+          }
+          statusElement.style.display = 'inline-block';
+        } else {
+          // Hide online status for inactive accounts
+          statusElement.style.display = 'none';
+        }
+      }
+    }
+    
     function loadMoreStaff() {
       const loadMoreBtn = document.getElementById('load-more-btn');
       const loadingSpinner = document.getElementById('loading-spinner');
@@ -131,6 +197,12 @@
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = staffRow;
             staffTbody.appendChild(tempDiv.firstElementChild);
+            
+            // Update online status for new staff if WebSocket is connected
+            if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
+              // Request current online users list to update new staff
+              globalSocket.send(JSON.stringify({type: 'get_online_users'}));
+            }
           });
           
           currentPage = data.current_page;
@@ -157,12 +229,14 @@
         `<span class="badge bg-info-subtle text-info border border-info-subtle">${group.name}</span>`
       ).join(' ') || '<span class="text-muted small">Chưa gán Role</span>';
       
-      const statusBadge = staff.is_active ? 
+      const activeStatusBadge = staff.is_active ? 
         '<span class="badge bg-success">Đang hoạt động</span>' :
         '<span class="badge bg-danger">Khóa</span>';
       
       const toggleButtonClass = staff.is_active ? 'btn-outline-warning' : 'btn-outline-success';
       const toggleButtonIcon = staff.is_active ? 'bi-lock' : 'bi-unlock';
+      const toggleButtonDisabled = staff.is_superuser ? 'disabled title="Không thể khóa tài khoản Administrator"' : '';
+      const toggleButtonOpacity = staff.is_superuser ? 'opacity-50' : '';
       
       return `
         <tr>
@@ -177,13 +251,22 @@
           </td>
           <td>${staff.phone}</td>
           <td>${groupsHtml}</td>
-          <td>${statusBadge}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              ${activeStatusBadge}
+              ${staff.is_active ? `
+                <span class="staff-online-status-${staff.id} badge bg-secondary text-white rounded-pill px-2" style="font-size: 0.7rem;">
+                  <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline
+                </span>
+              ` : ''}
+            </div>
+          </td>
           <td>
             <div class="btn-group">
               <a href="${staff.edit_url}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
               <form action="${staff.toggle_url}" method="POST" class="d-inline">
                 <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                <button type="submit" class="btn btn-sm ${toggleButtonClass}">
+                <button type="submit" class="btn btn-sm ${toggleButtonClass} ${toggleButtonOpacity}" ${toggleButtonDisabled}>
                   <i class="bi ${toggleButtonIcon}"></i>
                 </button>
               </form>
@@ -196,5 +279,10 @@
         </tr>
       `;
     }
+    
+    // Initialize WebSocket when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initWebSocket();
+    });
   </script>
 {% endblock %}

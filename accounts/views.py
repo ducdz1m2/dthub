@@ -143,6 +143,8 @@ def manage_staff_list(request):
                 'phone': staff.profile.phone if hasattr(staff, 'profile') and staff.profile.phone else '-',
                 'avatar_url': staff.profile.get_avatar_url() if hasattr(staff, 'profile') else '/static/images/avatar-default.png',
                 'is_active': staff.is_active,
+                'is_superuser': staff.is_superuser,
+                'is_online': False,  # Will be updated by WebSocket
                 'groups': [{'name': group.name} for group in staff.groups.all()],
                 'edit_url': f'/accounts/staff/edit/{staff.id}/',
                 'toggle_url': f'/accounts/staff/toggle/{staff.id}/',
@@ -229,6 +231,12 @@ def delete_staff(request, staff_id):
 def toggle_staff_status(request, staff_id):
     if request.method == 'POST':
         staff = get_object_or_404(User, id=staff_id)
+        
+        # Ngăn khóa tài khoản superuser (admin)
+        if staff.is_superuser:
+            messages.error(request, "Bạn không thể khóa tài khoản Administrator!")
+            return redirect('manage_staff_list')
+        
         staff.is_active = not staff.is_active # Đảo ngược trạng thái
         staff.save()
         status = "mở khóa" if staff.is_active else "khóa"
