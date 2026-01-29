@@ -216,65 +216,81 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/drift-zoom/1.5.0/Drift.min.js"></script>
+    
+    {% if user.is_authenticated %}
     <script>
-            {% if user.is_authenticated %}
-            const globalSocket = new WebSocket(
-                'ws://' + window.location.host + '/ws/global/'
-            );
+        // Global presence WebSocket
+        const globalSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/global/'
+        );
 
-            const globalSocketMessageHandlers = [];
+        globalSocket.onopen = function(e) {
+            console.log("Global presence connected");
+        };
 
-            globalSocket.onopen = function(e) {
-                console.log("Base: Global WebSocket connection opened.");
-                globalSocket.send(
-                    JSON.stringify({
-                        action: "request_online_users",
-                    }),
-                );
-            };
+        globalSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log("Global presence message:", data);
 
-            globalSocket.onmessage = function(e) {
-                const data = JSON.parse(e.data);
-                console.log("Base: Global WebSocket message received:", data);
-
-                function updateIndicatorStatus(indicatorElement, isOnline) {
-                    if (isOnline) {
-                        indicatorElement.classList.remove('bg-secondary');
-                        indicatorElement.classList.add('bg-success');
-                    } else {
-                        indicatorElement.classList.remove('bg-success');
-                        indicatorElement.classList.add('bg-secondary');
-                    }
+            if (data.type === 'presence_update') {
+                updateUserStatus(data.user_id, data.status);
+            }
+            else if (data.type === 'online_users_list') {
+                // Cập nhật status cho tất cả users
+                document.querySelectorAll('[data-user-id]').forEach(element => {
+                    const userId = parseInt(element.dataset.userId);
+                    const isOnline = data.online_users.includes(userId);
+                    updateUserStatus(userId, isOnline ? 'online' : 'offline');
+                });
+            }
+            else if (data.type === 'new_message') {
+                // Có tin nhắn mới, reload trang home để cập nhật badge
+                if (window.location.pathname.includes('/chat')) {
+                    setTimeout(() => location.reload(), 1000);
                 }
+            }
+        };
 
-                if (data.type === 'presence_update') {
-                    const indicators = document.querySelectorAll(`.online-status-${data.user_id}`);
-                    indicators.forEach(el => updateIndicatorStatus(el, data.status === 'online'));
+        globalSocket.onclose = function(e) {
+            console.error("Global presence closed");
+        };
+
+        globalSocket.onerror = function(e) {
+            console.error("Global presence error:", e);
+        };
+
+        function updateUserStatus(userId, status) {
+            // Tìm và cập nhật status indicators
+            const indicators = document.querySelectorAll(`[data-user-id="${userId}"] .status-indicator`);
+            indicators.forEach(indicator => {
+                if (status === 'online') {
+                    indicator.classList.remove('bg-secondary');
+                    indicator.classList.add('bg-success');
+                    indicator.textContent = 'Online';
+                } else {
+                    indicator.classList.remove('bg-success');
+                    indicator.classList.add('bg-secondary');
+                    indicator.textContent = 'Offline';
                 }
-
-                if (data.type === 'online_users_list') {
-                    document.querySelectorAll('[class*="online-status-"]').forEach(indicator => {
-                        const match = indicator.className.match(/online-status-(\d+)/);
-                        if (match) {
-                            const userId = parseInt(match[1]);
-                            const isOnline = data.online_users.includes(userId);
-                            updateIndicatorStatus(indicator, isOnline);
-                        }
-                    });
+            });
+            
+            // Cập nhật cả text trong room chat
+            const roomStatusText = document.querySelector(`#status-text[data-user-id="${userId}"]`);
+            if (roomStatusText) {
+                if (status === 'online') {
+                    roomStatusText.classList.remove('bg-secondary');
+                    roomStatusText.classList.add('bg-success');
+                    roomStatusText.textContent = 'Đang hoạt động';
+                } else {
+                    roomStatusText.classList.remove('bg-success');
+                    roomStatusText.classList.add('bg-secondary');
+                    roomStatusText.textContent = 'Đang ngoại tuyến';
                 }
-
-                globalSocketMessageHandlers.forEach(handler => handler(e));
-            };
-
-            globalSocket.onclose = function(e) {
-                console.error("Base: Global WebSocket closed unexpectedly");
-            };
-
-            globalSocket.onerror = function(e) {
-                console.error("Base: Global WebSocket error:", e);
-            };
-            {% endif %}
-        </script>
+            }
+        }
+    </script>
+    {% endif %}
+    
     <script>
             document.querySelectorAll(".toast").forEach((toastEl) => {
                 new bootstrap.Toast(toastEl).show();
