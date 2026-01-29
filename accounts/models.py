@@ -32,15 +32,8 @@ class Profile(models.Model):
 
 # --- SIGNALS: Tự động tạo Profile khi tạo User ---
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
+def user_profile_handler(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    # Sử dụng hasattr để kiểm tra xem profile có tồn tại không
-    if hasattr(instance, 'profile'):
-        instance.profile.save()
+        Profile.objects.get_or_create(user=instance)
     else:
-        # Nếu chưa có thì tạo luôn cho chắc
-        Profile.objects.create(user=instance)
+        Profile.objects.get_or_create(user=instance)

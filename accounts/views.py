@@ -6,27 +6,37 @@ from django.contrib import messages
 from .forms import ProfileUpdateForm
 import json
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import permission_required
 from .forms import StaffCreationForm
-from django.contrib.auth import get_user_model
 
 
 User = get_user_model()
 
 
-@csrf_exempt
 @login_required
 def update_location(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
+            lat = data.get('lat')
+            lng = data.get('lng')
+            
+            # Validate latitude (-90 to 90)
+            if lat is not None and (lat < -90 or lat > 90):
+                return JsonResponse({'status': 'error', 'message': 'Latitude phải nằm trong khoảng -90 đến 90'}, status=400)
+            
+            # Validate longitude (-180 to 180)
+            if lng is not None and (lng < -180 or lng > 180):
+                return JsonResponse({'status': 'error', 'message': 'Longitude phải nằm trong khoảng -180 đến 180'}, status=400)
+            
             profile = request.user.profile
-            profile.current_lat = data.get('lat')
-            profile.current_lng = data.get('lng')
+            profile.current_lat = lat
+            profile.current_lng = lng
             profile.save()
             return JsonResponse({'status': 'success'})
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Dữ liệu JSON không hợp lệ'}, status=400)
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     return JsonResponse({'status': 'invalid method'}, status=405)

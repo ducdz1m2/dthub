@@ -93,9 +93,15 @@
                         </a>
                       </li>
                       <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'order_manage_view' %}">
+                          <i class="bi bi-kanban me-2 fs-5"></i>
+                          Quản lý đơn hàng
+                        </a>
+                      </li>
+                      <li>
                         <hr class="dropdown-divider" />
                       </li>
-                    {% elif perms.orders.manage_order %}
+                    {% elif perms.orders.manage_order or request.user.is_staff %}
                       <li>
                         <a class="dropdown-item d-flex align-items-center py-2 fw-bold text-success" href="{% url 'tech_dashboard' %}">
                           <i class="bi bi-clipboard-check-fill me-2 fs-5"></i>
@@ -105,6 +111,12 @@
                       <li>
                         <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'order_manage_view' %}">
                           <i class="bi bi-kanban me-2 fs-5"></i>
+                          Quản lý đơn hàng
+                        </a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'order_manage_view' %}">
+                          <i class="bi bi-list-ul me-2 fs-5"></i>
                           Tổng đơn hàng
                         </a>
                       </li>
