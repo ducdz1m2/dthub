@@ -1,0 +1,160 @@
+{% extends 'forum/base.html' %}
+
+{% block forum_content %}
+<nav class="mb-4">
+    <ol class="breadcrumb shadow-sm bg-white p-3 rounded-4">
+        <li class="breadcrumb-item">
+            <a href="{% url 'forum:home' %}" class="text-decoration-none text-success">
+                <i class="fas fa-home"></i> Diễn đàn
+            </a>
+        </li>
+        <li class="breadcrumb-item active">{{ title }}</li>
+    </ol>
+</nav>
+
+<div class="post-card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+    <div class="card-body pt-4 px-4 px-md-5 pb-4 pb-md-5">
+        <div class="border-bottom pb-3 mb-4 d-flex align-items-center justify-content-between">
+            <h2 class="h4 mb-0 fw-bold">
+                {% if title == 'Edit Post' %}
+                    <i class="fas fa-edit me-2 text-primary"></i>
+                    Chỉnh sửa bài viết
+                {% else %}
+                    <i class="fas fa-plus-circle me-2 text-success"></i>
+                    Đăng bài mới
+                {% endif %}
+            </h2>
+            
+            <i class="fas fa-file-alt text-light fa-2x d-none d-sm-block"></i>
+        </div>
+        
+        <form method="post" class="needs-validation">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger rounded-3">
+                    {% for error in form.non_field_errors %}
+                        <i class="fas fa-exclamation-circle me-2"></i> {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <div class="mb-4">
+                <label for="{{ form.title.id_for_label }}" class="form-label fw-bold text-dark">
+                    <i class="fas fa-heading me-1 text-muted"></i> Tiêu đề bài viết
+                </label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <div class="text-danger small mt-1 animated fadeIn">
+                        <i class="fas fa-times-circle me-1"></i> {{ form.title.errors|striptags }}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="mb-4">
+                <label for="{{ form.category.id_for_label }}" class="form-label fw-bold text-dark">
+                    <i class="fas fa-tags me-1 text-muted"></i> Danh mục
+                </label>
+                {{ form.category }}
+                {% if form.category.errors %}
+                    <div class="text-danger small mt-1">
+                        <i class="fas fa-times-circle me-1"></i> {{ form.category.errors|striptags }}
+                    </div>
+                {% endif %}
+                <div class="form-text text-muted"><i class="fas fa-info-circle me-1"></i> Không bắt buộc - giúp phân loại bài viết dễ dàng hơn.</div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="{{ form.content.id_for_label }}" class="form-label fw-bold text-dark">
+                    <i class="fas fa-align-left me-1 text-muted"></i> Nội dung
+                </label>
+                {{ form.content }}
+                {% if form.content.errors %}
+                    <div class="text-danger small mt-1">
+                        <i class="fas fa-times-circle me-1"></i> {{ form.content.errors|striptags }}
+                    </div>
+                {% endif %}
+                <div class="form-text text-muted"><i class="fas fa-magic me-1"></i> Viết nội dung chi tiết. Sử dụng xuống dòng để tạo đoạn văn dễ đọc.</div>
+            </div>
+            
+            <div class="d-flex gap-2 pt-3 border-top mt-4">
+                <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                    <i class="fas fa-save me-1"></i>
+                    {% if title == 'Edit Post' %} Cập nhật {% else %} Đăng bài {% endif %}
+                </button>
+                <a href="{% if form.instance.slug %}{% url 'forum:post_detail' form.instance.slug %}{% else %}{% url 'forum:home' %}{% endif %}" class="btn btn-light border rounded-pill px-4">
+                    Hủy bỏ
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block forum_sidebar %}
+<div class="sidebar-card shadow-sm border-0 rounded-4 mb-4">
+    <div class="card-body p-4">
+        <h3 class="sidebar-title h6 fw-bold mb-3 d-flex align-items-center">
+            <i class="fas fa-lightbulb text-warning me-2"></i>
+            Mẹo viết bài hữu ích
+        </h3>
+        <ul class="list-unstyled small text-muted mb-0">
+            <li class="mb-3 d-flex align-items-start">
+                <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                <span>Tiêu đề ngắn gọn, bao hàm nội dung chính.</span>
+            </li>
+            <li class="mb-3 d-flex align-items-start">
+                <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                <span>Chọn đúng danh mục để tiếp cận đúng người đọc.</span>
+            </li>
+            <li class="mb-3 d-flex align-items-start">
+                <i class="fas fa-check-circle text-success me-2 mt-1"></i>
+                <span>Sử dụng xuống dòng để bài viết thoáng và dễ đọc.</span>
+            </li>
+            {% if title == 'Edit Post' %}
+                <li class="d-flex align-items-start text-primary">
+                    <i class="fas fa-history me-2 mt-1"></i>
+                    <span>Hệ thống sẽ ghi nhận thời gian chỉnh sửa cuối cùng.</span>
+                </li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+{% if title == 'Edit Post' %}
+    <div class="sidebar-card shadow-sm border-0 rounded-4 mb-4 bg-light">
+        <div class="card-body p-4">
+            <h3 class="sidebar-title h6 fw-bold mb-3">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                Thống kê bài viết
+            </h3>
+            <div class="small">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Ngày đăng:</span>
+                    <span class="fw-semibold">{{ form.instance.created_at|date:"d/m/Y" }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Lượt xem:</span>
+                    <span class="badge bg-white text-dark shadow-sm border">{{ form.instance.view_count }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Bình luận:</span>
+                    <span class="badge bg-white text-dark shadow-sm border">{{ form.instance.comments.count }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<div class="sidebar-card shadow-sm border-0 rounded-4">
+    <div class="card-body p-4">
+        <h3 class="sidebar-title h6 fw-bold mb-3">
+            <i class="fas fa-shield-alt text-danger me-2"></i>
+            Tiêu chuẩn cộng đồng
+        </h3>
+        <div class="bg-danger-subtle p-3 rounded-3 small text-danger-emphasis">
+            Luôn tôn trọng người khác, không spam quảng cáo và cùng nhau xây dựng cộng đồng hữu ích.
+        </div>
+    </div>
+</div>
+{% endblock %}

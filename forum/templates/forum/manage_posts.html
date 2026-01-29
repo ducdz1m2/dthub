@@ -1,0 +1,332 @@
+{% extends 'forum/base.html' %}
+
+{% block forum_content %}
+<div class="d-flex justify-content-between align-items-center mb-4 mt-n2">
+    <h3 class="fw-bold mb-0">
+        <i class="fas fa-tasks me-2 text-primary"></i>
+        Quản lý bài viết
+    </h3>
+    <a href="{% url 'forum:home' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 shadow-sm">
+        <i class="fas fa-arrow-left me-1"></i> Quay lại diễn đàn
+    </a>
+</div>
+
+<div class="post-card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
+    <div class="card-body pt-4 px-4 pb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="fw-bold mb-0 text-secondary">
+                Danh sách bài viết <span class="badge bg-light text-primary ms-2 border">{{ posts.count }}</span>
+            </h5>
+            <a href="{% url 'forum:post_create' %}" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm">
+                <i class="fas fa-plus me-1"></i> Đăng bài mới
+            </a>
+        </div>
+        
+        {% if posts %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="bg-light text-muted small">
+                        <tr>
+                            <th class="border-0 ps-3 py-3" style="width: 45%;">TIÊU ĐỀ</th>
+                            <th class="border-0 text-center py-3">TRẠNG THÁI</th>
+                            <th class="border-0 text-center py-3">TƯƠNG TÁC</th>
+                            <th class="border-0 text-end pe-3 py-3">THAO TÁC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for post in posts %}
+                            <tr>
+                                <td class="ps-3 py-3">
+                                    <div class="fw-bold mb-0">
+                                        <a href="{{ post.get_absolute_url }}" class="text-decoration-none text-dark hover-primary">
+                                            {{ post.title|truncatechars:50 }}
+                                        </a>
+                                    </div>
+                                    <div class="small text-muted mt-1">
+                                        <i class="far fa-clock me-1"></i> {{ post.created_at|date:"d/m/Y" }}
+                                        <span class="mx-2 text-light">|</span>
+                                        <i class="far fa-user me-1"></i> {{ post.author.username }}
+                                    </div>
+                                </td>
+                                <td class="text-center py-3">
+                                    {% if post.is_pinned %}
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill">Ghim</span>
+                                    {% endif %}
+                                    {% if post.is_locked %}
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill">Khóa</span>
+                                    {% endif %}
+                                    {% if not post.is_pinned and not post.is_locked %}
+                                        <span class="badge bg-light text-muted border rounded-pill">Thường</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center py-3">
+                                    <div class="small text-muted d-flex justify-content-center gap-3">
+                                        <span title="Bình luận"><i class="far fa-comment-dots me-1"></i>{{ post.comments.count }}</span>
+                                        <span title="Lượt xem"><i class="far fa-eye me-1"></i>{{ post.view_count }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-end pe-3 py-3">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="{% url 'forum:post_update' post.slug %}" class="btn btn-sm btn-outline-primary action-btn" title="Sửa bài">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm {% if post.is_pinned %}btn-warning text-white{% else %}btn-outline-warning{% endif %} action-btn pin-btn" 
+                                                title="Ghim bài" data-slug="{{ post.slug }}" data-pinned="{% if post.is_pinned %}true{% else %}false{% endif %}">
+                                            <i class="fas fa-thumbtack"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm {% if post.is_locked %}btn-secondary text-white{% else %}btn-outline-secondary{% endif %} action-btn lock-btn" 
+                                                title="Khóa bài" data-slug="{{ post.slug }}" data-locked="{% if post.is_locked %}true{% else %}false{% endif %}">
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger action-btn delete-btn" 
+                                                title="Xóa bài" data-slug="{{ post.slug }}">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-light mb-3"></i>
+                <p class="text-muted mb-0">Chưa có bài viết nào trong danh sách.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .hover-primary:hover { color: #0d6efd !important; }
+    .action-btn { 
+        width: 32px; 
+        height: 32px; 
+        display: inline-flex; 
+        align-items: center; 
+        justify-content: center;
+        border-radius: 8px !important;
+        transition: all 0.2s ease;
+    }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .table thead th { font-weight: 700; font-size: 0.7rem; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // Show message function - now uses global showToast
+    function showMessage(message, type = 'success') {
+        if (typeof showToast === 'function') {
+            showToast(message, type);
+        } else {
+            console.error('showToast function not available');
+            alert(message); // Fallback
+        }
+    }
+
+    function createMessagesContainer() {
+        // No longer needed since we use toast notifications
+        return null;
+    }
+
+    // Debug: Check if showToast is available
+    console.log('showToast available:', typeof showToast);
+    
+    // Test toast functionality
+    window.testToast = function() {
+        console.log('Testing toast...');
+        if (typeof showToast === 'function') {
+            showToast('Đây là thông báo test!', 'success');
+        } else {
+            console.error('showToast not available');
+            alert('showToast not available');
+        }
+    };
+
+    // Pin post functionality
+    document.querySelectorAll('.pin-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const slug = this.dataset.slug;
+            const isPinned = this.dataset.pinned === 'true';
+            
+            fetch(`/forum/post/${slug}/pin/`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Update button state
+                    this.dataset.pinned = (!isPinned).toString();
+                    if (isPinned) {
+                        this.classList.remove('btn-warning', 'text-white');
+                        this.classList.add('btn-outline-warning');
+                    } else {
+                        this.classList.remove('btn-outline-warning');
+                        this.classList.add('btn-warning', 'text-white');
+                    }
+                    // Reload page to update status badges
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showMessage(data.message || 'Đã xảy ra lỗi', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Đã xảy ra lỗi. Vui lòng thử lại.', 'danger');
+            });
+        });
+    });
+
+    // Lock post functionality
+    document.querySelectorAll('.lock-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const slug = this.dataset.slug;
+            const isLocked = this.dataset.locked === 'true';
+            
+            fetch(`/forum/post/${slug}/lock/`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Update button state
+                    this.dataset.locked = (!isLocked).toString();
+                    if (isLocked) {
+                        this.classList.remove('btn-secondary', 'text-white');
+                        this.classList.add('btn-outline-secondary');
+                    } else {
+                        this.classList.remove('btn-outline-secondary');
+                        this.classList.add('btn-secondary', 'text-white');
+                    }
+                    // Reload page to update status badges
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showMessage(data.message || 'Đã xảy ra lỗi', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Đã xảy ra lỗi. Vui lòng thử lại.', 'danger');
+            });
+        });
+    });
+
+    // Delete post functionality
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const slug = this.dataset.slug;
+            
+            if (confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+                fetch(`/forum/delete/${slug}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Delete response:', data);
+                    if (data.success) {
+                        console.log('About to show message:', data.message);
+                        showMessage(data.message, 'success');
+                        // Remove the row from table
+                        const row = this.closest('tr');
+                        row.remove();
+                        
+                        // Update count badge
+                        const countBadge = document.querySelector('.badge.bg-light.text-primary');
+                        if (countBadge) {
+                            const currentCount = parseInt(countBadge.textContent);
+                            countBadge.textContent = Math.max(0, currentCount - 1);
+                        }
+                    } else {
+                        console.log('Error response:', data.message);
+                        showMessage(data.message || 'Đã xảy ra lỗi', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('Đã xảy ra lỗi. Vui lòng thử lại.', 'danger');
+                });
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+
+{% block forum_sidebar %}
+<div class="sidebar-card shadow-sm border-0 rounded-4 mb-4 bg-white">
+    <div class="card-body p-4">
+        <h3 class="sidebar-title h6 fw-bold mb-4 d-flex align-items-center">
+            <i class="fas fa-chart-bar text-primary me-2"></i>
+            Tóm tắt bài viết
+        </h3>
+        <div class="stats-list">
+            <div class="d-flex justify-content-between mb-3">
+                <span class="text-muted small">Đang được ghim</span>
+                <span class="badge bg-warning-subtle text-warning px-2 rounded-pill">{{ posts_pinned_count|default:"0" }}</span>
+            </div>
+            <div class="d-flex justify-content-between mb-3">
+                <span class="text-muted small">Đã khóa thảo luận</span>
+                <span class="badge bg-danger-subtle text-danger px-2 rounded-pill">{{ posts_locked_count|default:"0" }}</span>
+            </div>
+            <hr class="opacity-10">
+            <div class="d-flex justify-content-between pt-1">
+                <span class="fw-bold small">Tổng cộng</span>
+                <span class="fw-bold text-primary">{{ posts.count }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

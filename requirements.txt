@@ -14,12 +14,14 @@ daphne==4.2.1
 defusedxml==0.7.1
 Django==6.0
 django-allauth==65.13.1
+markdown==3.7
+pygments==2.18.0
+Pillow==12.1.0
 hyperlink==21.0.0
 idna==3.11
 Incremental==24.11.0
 msgpack==1.1.2
 packaging==25.0
-pillow==12.1.0
 py-ubjson==0.16.1
 pyasn1==0.6.2
 pyasn1_modules==0.4.2

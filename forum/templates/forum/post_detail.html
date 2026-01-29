@@ -1,0 +1,131 @@
+{% extends 'forum/base.html' %}
+
+{% block forum_content %}
+{# Sử dụng CSS để ép cột cha ở base.html rộng ra 100% nếu cần #}
+<style>
+    /* Reset lại độ rộng để tránh bị dồn ép bởi sidebar của base.html */
+    @media (min-width: 992px) {
+        .col-lg-8 { width: 100% !important; flex: 0 0 100% !important; }
+        .col-lg-4 { display: none !important; } /* Ẩn sidebar mặc định của base ở trang detail */
+    }
+    
+    .post-avatar {
+        width: 50px; height: 50px;
+        background: var(--primary-gradient, #6366f1);
+        color: white; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: bold; font-size: 1.2rem;
+    }
+
+    .custom-scroll { max-height: 75vh; overflow-y: auto; padding-right: 8px; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+</style>
+
+<div class="container-fluid px-0">
+    <div class="row g-4">
+        <div class="col-xl-8 col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4 p-md-5">
+                    <nav aria-label="breadcrumb" class="mb-4">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'forum:home' %}" class="text-decoration-none text-primary">Diễn đàn</a></li>
+                            <li class="breadcrumb-item active">{{ post.category.name }}</li>
+                        </ol>
+                    </nav>
+
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <div class="post-avatar shadow-sm">
+                            {{ post.author.username|slice:":2"|upper }}
+                        </div>
+                        <div>
+                            <h1 class="fw-bold h2 mb-1">{{ post.title }}</h1>
+                            <div class="text-muted small">
+                                <i class="bi bi-person"></i> {{ post.author.username }} 
+                                <span class="mx-2">|</span>
+                                <i class="bi bi-clock"></i> {{ post.created_at|date:"d/m/Y" }}
+                                <span class="mx-2">|</span>
+                                <i class="bi bi-eye"></i> {{ post.view_count }} lượt xem
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="opacity-10">
+
+                    <div class="post-detail-content fs-5 leading-relaxed py-3">
+                        {{ post.content|linebreaks }}
+                    </div>
+
+                    {% if user == post.author or perms.forum.manage_post %}
+                    <div class="mt-4 pt-4 border-top d-flex gap-2">
+                        <a href="{% url 'forum:post_update' post.slug %}" class="btn btn-outline-primary btn-sm rounded-pill px-3">Sửa</a>
+                        <a href="{% url 'forum:post_delete' post.slug %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">Xóa</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-5">
+            <div class="sticky-lg-top" style="top: 20px;">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-4 d-flex align-items-center">
+                            <i class="bi bi-chat-left-dots-fill text-primary me-2"></i>
+                            Thảo luận ({{ comments.count }})
+                        </h4>
+
+                        {% if user.is_authenticated and not post.is_locked %}
+                        <form method="post" action="{% url 'forum:add_comment' post.slug %}" class="mb-4">
+                            {% csrf_token %}
+                            <textarea name="content" class="form-control rounded-4 bg-light border-0 mb-2" rows="3" placeholder="Viết bình luận của bạn..." required></textarea>
+                            <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold shadow-sm">Gửi bình luận</button>
+                        </form>
+                        {% endif %}
+
+                        <div class="custom-scroll">
+                            {% for comment in comments %}
+                            <div class="comment-card p-3 rounded-4 bg-light mb-3" id="comment-{{ comment.id }}">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="fw-bold small text-primary">{{ comment.author.username }}</span>
+                                    <span class="text-muted" style="font-size: 0.7rem;">{{ comment.created_at|timesince }} trước</span>
+                                </div>
+                                <p class="small mb-2 text-dark">{{ comment.content }}</p>
+                                
+                                <button class="btn btn-link p-0 text-decoration-none small text-muted" onclick="replyToComment({{ comment.id }})">
+                                    <i class="bi bi-reply"></i> Trả lời
+                                </button>
+
+                                <div id="reply-form-{{ comment.id }}" class="mt-2" style="display: none;">
+                                    <form method="post" action="{% url 'forum:add_comment' post.slug %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                                        <input type="text" name="content" class="form-control form-control-sm rounded-pill mb-1" placeholder="Phản hồi...">
+                                        <button type="submit" class="btn btn-primary btn-sm rounded-pill">Gửi</button>
+                                    </form>
+                                </div>
+
+                                {% for reply in comment.replies.all %}
+                                <div class="ms-3 mt-2 ps-2 border-start border-2 border-white small text-muted">
+                                    <strong class="text-dark">{{ reply.author.username }}:</strong> {{ reply.content }}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% empty %}
+                            <p class="text-center text-muted py-4">Chưa có thảo luận nào.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function replyToComment(id) {
+        let form = document.getElementById('reply-form-' + id);
+        form.style.display = (form.style.display === 'none') ? 'block' : 'none';
+    }
+</script>
+{% endblock %}
