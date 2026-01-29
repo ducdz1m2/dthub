@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load currency_filters %}
 {% load humanize %}
 
 {% block content %}
@@ -55,7 +56,7 @@
           <div class="price-box bg-white p-4 rounded-4 mb-4 shadow-sm border-start border-4 border-success">
             {% if product.price %}
               <span class="text-muted small d-block mb-1 text-uppercase fw-bold ls-1">Giá dự án dự kiến</span>
-              <h2 class="text-success fw-bold mb-0">{{ product.price|intcomma }}<span class="fs-4 ms-1">₫</span></h2>
+              <h2 class="text-success fw-bold mb-0">{{ product.price|vnd_currency }}<span class="fs-4 ms-1">₫</span></h2>
             {% else %}
               <h3 class="text-primary fw-bold mb-0">Liên hệ báo giá</h3>
             {% endif %}
@@ -88,7 +89,7 @@
 
           <div class="d-grid gap-3 d-md-flex">
             <a href="{% url 'create_order_direct' product.id %}" class="btn btn-warning btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm flex-grow-1"><i class="bi bi-cart-plus-fill me-2"></i>MUA NGAY</a>
-            <a href="mailto:support@dthub.vn" class="btn btn-outline-dark btn-lg rounded-pill px-4 py-3"><i class="bi bi-chat-dots me-1"></i> Tư vấn</a>
+            <a href="{% url 'product_consultation' product.id %}" class="btn btn-info btn-lg rounded-pill px-4 py-3"><i class="bi bi-chat-dots-fill me-1"></i> Tư vấn</a>
           </div>
         </div>
       </div>

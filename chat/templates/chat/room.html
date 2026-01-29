@@ -164,8 +164,55 @@ let currentOffset = 50; // Bắt đầu từ 50 vì đã load 50 tin nhắn đ�
 let isLoading = false;
 let hasMoreMessages = true;
 
-// Scroll to bottom on load
-chatLog.scrollTop = chatLog.scrollHeight;
+// Scroll to bottom after all images are loaded
+function scrollToBottomAfterImagesLoad() {
+    const images = chatLog.querySelectorAll('img');
+    const totalImages = images.length;
+    let loadedImages = 0;
+    
+    if (totalImages === 0) {
+        // No images, scroll immediately
+        chatLog.scrollTop = chatLog.scrollHeight;
+        return;
+    }
+    
+    // Check if all images are already loaded
+    const alreadyLoaded = Array.from(images).filter(img => img.complete).length;
+    if (alreadyLoaded === totalImages) {
+        // All images already loaded, scroll immediately
+        chatLog.scrollTop = chatLog.scrollHeight;
+        return;
+    }
+    
+    // Wait for remaining images to load
+    images.forEach(img => {
+        if (img.complete) {
+            loadedImages++;
+        } else {
+            img.addEventListener('load', () => {
+                loadedImages++;
+                if (loadedImages === totalImages) {
+                    chatLog.scrollTop = chatLog.scrollHeight;
+                }
+            });
+            
+            img.addEventListener('error', () => {
+                loadedImages++;
+                if (loadedImages === totalImages) {
+                    chatLog.scrollTop = chatLog.scrollHeight;
+                }
+            });
+        }
+    });
+    
+    // Fallback: scroll anyway after 3 seconds in case images take too long
+    setTimeout(() => {
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }, 3000);
+}
+
+// Scroll to bottom on load (wait for images)
+scrollToBottomAfterImagesLoad();
 
 // Emoji picker functionality
 emojiBtn.addEventListener('click', () => {
@@ -233,11 +280,8 @@ function uploadImageToServer(file) {
     .then(data => {
         console.log("Upload response:", data);
         if (data.success) {
-            // Display image immediately
-            displaySentImage(data.image_url);
-            
-            // Send image URL via WebSocket
-            sendImageMessage(data.image_url, data.image_url);
+            // Send image URL via WebSocket (will be displayed when received back)
+            sendImageMessage(data.image_url);
         } else {
             console.error("Upload failed:", data.error);
             alert('Lỗi khi tải ảnh: ' + data.error);
@@ -250,7 +294,7 @@ function uploadImageToServer(file) {
 }
 
 // Send image message
-function sendImageMessage(imageData, blobUrl) {
+function sendImageMessage(imageData) {
     console.log("Sending image message, data length:", imageData.length);
     const message = `[IMAGE:${imageData}]`;
     console.log("Message format:", message.substring(0, 50) + "...");
@@ -266,31 +310,7 @@ function sendImageMessage(imageData, blobUrl) {
         return;
     }
     
-    // Display image immediately using blob URL
-    displaySentImage(blobUrl);
-    
     imageInput.value = '';
-}
-
-// Display sent image immediately
-function displaySentImage(blobUrl) {
-    const isMe = true;
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    
-    const messageContent = `<img src="${blobUrl}" alt="Image" style="max-width: 100%; border-radius: 8px;">`;
-    
-    const msgHtml = `
-        <div class="d-flex ${isMe ? "justify-content-end" : "justify-content-start"} mb-3">
-            <div class="max-w-75">
-                <div class="px-3 py-2 rounded-4 shadow-sm ${isMe ? "bg-success text-white rounded-bottom-end-0" : "bg-white text-dark rounded-bottom-start-0"}">
-                    <div class="message-content">${messageContent}</div>
-                </div>
-                <small class="text-muted d-block mt-1 ${isMe ? "text-end" : ""}" style="font-size: 0.65rem;">${now}</small>
-            </div>
-        </div>`;
-    
-    messagesContainer.insertAdjacentHTML('beforeend', msgHtml);
-    chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 // Helper function to get CSRF token
@@ -478,7 +498,9 @@ chatSocket.onmessage = function(e) {
             </div>`;
         
         messagesContainer.insertAdjacentHTML('beforeend', msgHtml);
-        chatLog.scrollTop = chatLog.scrollHeight;
+        
+        // Wait for images to load before scrolling
+        setTimeout(() => scrollToBottomAfterImagesLoad(), 50);
         
         // Only update badge when user is inactive and message is from others
         if (!isMe && !isUserActive) {

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load humanize %}
+{% load currency_filters %}
 
 {% block content %}
   <div class="container my-5">
@@ -24,13 +25,21 @@
     <div class="row g-4 product-list">
       {% for product in products %}
         <div class="col-12 product-item" data-category="{{ product.product_type }}">
-          <div class="card h-100 border-0 shadow-sm hover-card rounded-4 overflow-hidden">
+          <div class="card h-100 border-0 shadow-sm hover-card rounded-4 overflow-hidden {% if not product.is_active %}border-warning border-2{% endif %}">
             <div class="row g-0">
               <div class="col-md-4 position-relative">
                 {% if product.images.all %}
                   <img src="{{ product.images.all.0.image.url }}" data-zoom="{{ product.images.all.0.image.url }}" class="product-img drift-img" alt="{{ product.name }}" style="position: relative; z-index: 100;" />
                 {% else %}
                   <img src="{% static 'images/default-product.webp' %}" class="product-img" alt="default" />
+                {% endif %}
+
+                {% if not product.is_active %}
+                <div class="position-absolute top-0 start-0 m-2">
+                  <span class="badge bg-warning text-dark">
+                    <i class="bi bi-eye-slash me-1"></i>Không hoạt động
+                  </span>
+                </div>
                 {% endif %}
 
                 <a href="{% url 'product_detail' product.slug %}" class="stretched-link" style="z-index: 1;"></a>
@@ -80,7 +89,7 @@
                   <div class="price-tag">
                     {% if product.price %}
                       <span class="text-muted small d-block">Giá giải pháp:</span>
-                      <span class="fs-4 fw-bold text-danger">{{ product.price|intcomma }}₫</span>
+                      <span class="fs-4 fw-bold text-danger">{{ product.price|vnd_price }}</span>
                     {% else %}
                       <span class="text-muted fst-italic">Liên hệ báo giá</span>
                     {% endif %}
@@ -88,8 +97,17 @@
 
                   <div class="actions d-flex gap-2">
                     <a href="{% url 'product_detail' product.slug %}" class="btn btn-light rounded-pill px-3"><i class="bi bi-eye"></i></a>
-                    <a href="{% url 'create_order_direct' product.id %}" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="bi bi-cart-plus-fill"></i> Mua ngay</a>
-                    <a href="{% url 'product_consultation' product.id %}" class="btn btn-info rounded-pill px-4 fw-bold"><i class="bi bi-chat-dots-fill"></i> Tư vấn</a>
+                    {% if product.is_active %}
+                      <a href="{% url 'create_order_direct' product.id %}" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="bi bi-cart-plus-fill"></i> Mua ngay</a>
+                      <a href="{% url 'product_consultation' product.id %}" class="btn btn-info rounded-pill px-4 fw-bold"><i class="bi bi-chat-dots-fill"></i> Tư vấn</a>
+                    {% else %}
+                      <button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
+                        <i class="bi bi-cart-plus-fill"></i> Mua ngay
+                      </button>
+                      <button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
+                        <i class="bi bi-chat-dots-fill"></i> Tư vấn
+                      </button>
+                    {% endif %}
                     {% if request.user.is_staff %}
                       <a href="{% url 'product_edit' product.id %}" class="btn btn-outline-dark rounded-pill"><i class="bi bi-pencil"></i></a>
                     {% endif %}
@@ -100,7 +118,7 @@
           </div>
         </div>
       {% empty %}
-        <div class="col-12 text-center py-5 animate-fade-in">
+        <div class="col-12 text-center py-5 animate-fade-in" id="empty-state">
           <div class="display-1 text-secondary opacity-25 mb-3">
             <i class="bi bi-box2"></i>
           </div>
@@ -110,6 +128,20 @@
         </div>
       {% endfor %}
     </div>
+    
+    <!-- Load More Button -->
+    {% if has_next %}
+    <div class="text-center mt-5">
+        <button id="load-more-btn" class="btn btn-outline-success rounded-pill px-4" onclick="loadMoreProducts()">
+            <i class="bi bi-arrow-down-circle me-2"></i>Xem thêm sản phẩm
+        </button>
+        <div id="loading-spinner" class="d-none">
+            <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
   </div>
 
   <style>
@@ -183,6 +215,20 @@
   </style>
 
   <script>
+    let currentPage = parseInt('{{ current_page|default:1 }}');
+    let currentFilter = '{{ current_type|default:"all" }}';
+    
+    // Function to format Vietnamese currency
+    function formatVND(value) {
+      try {
+        if (value === null || value === undefined) return '';
+        const num = parseInt(value);
+        return num.toLocaleString('vi-VN').replace(/\./g, '.') + '₫';
+      } catch (e) {
+        return value;
+      }
+    }
+    
     const filterButtons = document.querySelectorAll('[data-filter]')
     const productItems = document.querySelectorAll('.product-item')
     
@@ -192,26 +238,185 @@
         btn.classList.add('active')
     
         const filter = btn.getAttribute('data-filter')
-    
-        productItems.forEach((item) => {
-          // Hiệu ứng Fade out
-          item.style.opacity = '0'
-          item.style.transform = 'scale(0.95)'
-    
-          setTimeout(() => {
-            if (filter === 'all' || item.dataset.category === filter) {
-              item.classList.remove('d-none')
-              setTimeout(() => {
-                item.style.opacity = '1'
-                item.style.transform = 'scale(1)'
-              }, 50)
-            } else {
-              item.classList.add('d-none')
-            }
-          }, 300)
-        })
+        currentFilter = filter;
+        currentPage = 1; // Reset page when filter changes
+        
+        // Reload products with new filter
+        loadProductsWithFilter(filter);
       })
     })
+    
+    function loadProductsWithFilter(filter) {
+      const productList = document.querySelector('.product-list');
+      const emptyState = document.getElementById('empty-state');
+      const loadMoreBtn = document.getElementById('load-more-btn');
+      
+      // Show loading state
+      if (productList) productList.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Đang tải...</span></div></div>';
+      
+      // Fetch filtered products
+      fetch(`?type=${filter}&page=1`, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.products && data.products.length > 0) {
+          productList.innerHTML = '';
+          data.products.forEach(product => {
+            const productHtml = createProductCard(product);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = productHtml;
+            productList.appendChild(tempDiv.firstElementChild);
+          });
+          
+          currentPage = data.current_page;
+          
+          // Update load more button
+          if (data.has_next) {
+            if (loadMoreBtn) loadMoreBtn.classList.remove('d-none');
+          } else {
+            if (loadMoreBtn) loadMoreBtn.classList.add('d-none');
+          }
+        } else {
+          productList.innerHTML = `
+            <div class="col-12 text-center py-5 animate-fade-in" id="empty-state">
+              <div class="display-1 text-secondary opacity-25 mb-3">
+                <i class="bi bi-box2"></i>
+              </div>
+              <h4 class="text-muted">Chưa có sản phẩm nào</h4>
+              <p class="text-secondary small">Chúng tôi đang cập nhật thêm giải pháp mới cho danh mục này.</p>
+              <button class="btn btn-outline-success rounded-pill px-4 mt-2" onclick="document.querySelector('[data-filter=\'all\']').click()">Quay lại tất cả</button>
+            </div>
+          `;
+          if (loadMoreBtn) loadMoreBtn.classList.add('d-none');
+        }
+      })
+      .catch(error => {
+        console.error('Error loading products:', error);
+        productList.innerHTML = '<div class="col-12 text-center py-5 text-danger">Lỗi tải sản phẩm. Vui lòng thử lại.</div>';
+      });
+    }
+    
+    function loadMoreProducts() {
+      const loadMoreBtn = document.getElementById('load-more-btn');
+      const loadingSpinner = document.getElementById('loading-spinner');
+      const productList = document.querySelector('.product-list');
+      
+      // Show loading spinner and hide button
+      loadMoreBtn.classList.add('d-none');
+      loadingSpinner.classList.remove('d-none');
+      
+      // Fetch next page
+      fetch(`?type=${currentFilter}&page=${currentPage + 1}`, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.products && data.products.length > 0) {
+          // Append new products to the list
+          data.products.forEach(product => {
+            const productHtml = createProductCard(product);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = productHtml;
+            productList.appendChild(tempDiv.firstElementChild);
+          });
+          
+          currentPage = data.current_page;
+          
+          // Update button visibility
+          if (data.has_next) {
+            loadMoreBtn.classList.remove('d-none');
+          } else {
+            loadMoreBtn.remove();
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error loading more products:', error);
+        loadMoreBtn.classList.remove('d-none');
+      })
+      .finally(() => {
+        loadingSpinner.classList.add('d-none');
+      });
+    }
+    
+    function createProductCard(product) {
+      const badgeColors = {
+        'iot': 'bg-success-subtle text-success',
+        'solution': 'bg-primary-subtle text-primary',
+        'sensor': 'bg-warning-subtle text-dark',
+        'default': 'bg-secondary-subtle text-secondary'
+      };
+      
+      const badgeColor = badgeColors[product.product_type] || badgeColors['default'];
+      const priceDisplay = product.price ? 
+        `<span class="text-muted small d-block">Giá giải pháp:</span>
+         <span class="fs-4 fw-bold text-danger">${formatVND(product.price)}</span>` :
+        `<span class="text-muted fst-italic">Liên hệ báo giá</span>`;
+      
+      const staffActions = '{{ request.user.is_staff }}' === 'True' ? 
+        `<a href="/products/${product.id}/edit/" class="btn btn-outline-dark rounded-pill"><i class="bi bi-pencil"></i></a>` : '';
+      
+      const inactiveBadge = !product.is_active ? 
+        `<div class="position-absolute top-0 start-0 m-2">
+          <span class="badge bg-warning text-dark">
+            <i class="bi bi-eye-slash me-1"></i>Không hoạt động
+          </span>
+        </div>` : '';
+      
+      const actionButtons = product.is_active ? 
+        `<a href="${product.order_url}" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="bi bi-cart-plus-fill"></i> Mua ngay</a>
+         <a href="${product.consultation_url}" class="btn btn-info rounded-pill px-4 fw-bold"><i class="bi bi-chat-dots-fill"></i> Tư vấn</a>` :
+        `<button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
+          <i class="bi bi-cart-plus-fill"></i> Mua ngay
+        </button>
+        <button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
+          <i class="bi bi-chat-dots-fill"></i> Tư vấn
+        </button>`;
+      
+      return `
+        <div class="col-12 product-item" data-category="${product.product_type}">
+          <div class="card h-100 border-0 shadow-sm hover-card rounded-4 overflow-hidden ${!product.is_active ? 'border-warning border-2' : ''}">
+            <div class="row g-0">
+              <div class="col-md-4 position-relative">
+                <img src="${product.image_url}" class="product-img" alt="${product.name}" />
+                ${inactiveBadge}
+                <a href="${product.detail_url}" class="stretched-link" style="z-index: 1;"></a>
+              </div>
+
+              <div class="col-md-8 p-4 d-flex flex-column">
+                <div class="mb-2">
+                  <span class="badge rounded-pill px-3 py-2 ${badgeColor}">
+                    <i class="bi bi-tag-fill me-1"></i> ${product.product_type_display}
+                  </span>
+                </div>
+
+                <h4 class="fw-bold mb-2">${product.name}</h4>
+                <p class="text-muted small mb-4 flex-grow-1">
+                  ${product.description || ''}
+                </p>
+
+                <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
+                  <div class="price-tag">
+                    ${priceDisplay}
+                  </div>
+
+                  <div class="actions d-flex gap-2">
+                    <a href="${product.detail_url}" class="btn btn-light rounded-pill px-3"><i class="bi bi-eye"></i></a>
+                    ${actionButtons}
+                    ${staffActions}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
   </script>
  
 {% endblock %}

@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import permission_required
 from .forms import StaffCreationForm
-
+from django.core.paginator import Paginator
 
 User = get_user_model()
 
@@ -117,12 +117,54 @@ def auth_view(request):
     return render(request, "accounts/auth.html")
 
 
-
 @permission_required('auth.add_user', raise_exception=True)
 def manage_staff_list(request):
+    page = request.GET.get('page', 1)
+    per_page = 10  # Show 10 staff members per page
+    
     # Lấy tất cả user là nhân viên (is_staff=True)
     staffs = User.objects.filter(is_staff=True).prefetch_related('groups', 'profile')
-    return render(request, 'accounts/staff_list.html', {'staffs': staffs})
+    
+    paginator = Paginator(staffs, per_page)
+    
+    try:
+        staffs_page = paginator.page(page)
+    except:
+        staffs_page = paginator.page(1)
+    
+    # Handle AJAX request for load more
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        staffs_data = []
+        for staff in staffs_page:
+            staff_data = {
+                'id': staff.id,
+                'username': staff.username,
+                'email': staff.email,
+                'phone': staff.profile.phone if hasattr(staff, 'profile') and staff.profile.phone else '-',
+                'avatar_url': staff.profile.get_avatar_url() if hasattr(staff, 'profile') else '/static/images/avatar-default.png',
+                'is_active': staff.is_active,
+                'groups': [{'name': group.name} for group in staff.groups.all()],
+                'edit_url': f'/accounts/staff/edit/{staff.id}/',
+                'toggle_url': f'/accounts/staff/toggle/{staff.id}/',
+                'delete_url': f'/accounts/staff/delete/{staff.id}/'
+            }
+            staffs_data.append(staff_data)
+        
+        return JsonResponse({
+            'staffs': staffs_data,
+            'has_next': staffs_page.has_next(),
+            'current_page': staffs_page.number,
+            'total_pages': paginator.num_pages
+        })
+    
+    context = {
+        'staffs': staffs_page,
+        'has_next': staffs_page.has_next(),
+        'current_page': staffs_page.number,
+        'total_pages': paginator.num_pages
+    }
+    return render(request, 'accounts/staff_list.html', context)
+
 @permission_required('auth.add_user', raise_exception=True)
 def create_staff_view(request):
     if request.method == 'POST':

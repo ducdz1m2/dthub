@@ -4,6 +4,8 @@ from django.contrib import messages  # Import framework thông báo
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.core.paginator import Paginator
+from django.http import JsonResponse
 from products.forms import ProductForm, ProductImageFormSet
 from .models import Product
 
@@ -12,8 +14,75 @@ User = get_user_model()
 # --- VIEW CÔNG KHAI ---
 
 def product_list(request):
-    products = Product.objects.filter(is_active=True)
-    return render(request, "products/product_list.html", {"products": products})
+    page = request.GET.get('page', 1)
+    per_page = 5  # Show 5 products per page
+    product_type = request.GET.get('type', 'all')
+    
+    # Check if user can manage products
+    can_manage = request.user.has_perm('products.manage_product')
+    
+    # Show all products for managers, only active products for regular users
+    if can_manage:
+        products = Product.objects.all()
+    else:
+        products = Product.objects.filter(is_active=True)
+    
+    # Filter by product type if specified
+    if product_type != 'all':
+        products = products.filter(product_type=product_type)
+    
+    paginator = Paginator(products, per_page)
+    
+    try:
+        products_page = paginator.page(page)
+    except:
+        products_page = paginator.page(1)
+    
+    # Handle AJAX request for load more
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        products_data = []
+        for product in products_page:
+            product_data = {
+                'id': product.id,
+                'name': product.name,
+                'slug': product.slug,
+                'description': product.description[:100] + '...' if product.description and len(product.description) > 100 else product.description,
+                'price': product.price,
+                'product_type': product.product_type,
+                'product_type_display': product.get_product_type_display(),
+                'is_active': product.is_active,
+                'image_url': None,
+                'detail_url': reverse('product_detail', args=[product.slug]),
+                'order_url': reverse('create_order_direct', args=[product.id]),
+                'consultation_url': reverse('product_consultation', args=[product.id])
+            }
+            
+            # Add image if exists
+            if product.images.exists():
+                product_data['image_url'] = product.images.first().image.url
+            else:
+                product_data['image_url'] = '/static/images/default-product.webp'
+            
+            products_data.append(product_data)
+        
+        return JsonResponse({
+            'products': products_data,
+            'has_next': products_page.has_next(),
+            'current_page': products_page.number,
+            'total_pages': paginator.num_pages,
+            'product_type': product_type,
+            'can_manage': can_manage
+        })
+    
+    context = {
+        "products": products_page,
+        "has_next": products_page.has_next(),
+        "current_page": products_page.number,
+        "total_pages": paginator.num_pages,
+        "current_type": product_type,
+        "can_manage": can_manage
+    }
+    return render(request, "products/product_list.html", context)
 
 def product_detail(request, slug):
     product = get_object_or_404(Product, slug=slug, is_active=True)
@@ -94,12 +163,18 @@ def product_consultation(request, pk):
         Q(groups__name__in=admin_groups) | Q(is_superuser=True)
     ).distinct().exclude(id=request.user.id)
     
+    # Nếu không tìm được staff khả dụng, gán cho admin (superuser đầu tiên)
     if not staff_users.exists():
-        messages.error(request, "Hiện không có nhân viên nào trực để tư vấn. Vui lòng thử lại sau.")
-        return redirect('product_detail', product.slug)
-    
-    # Lấy staff đầu tiên có sẵn (có thể nâng cấp để chọn staff online)
-    staff_user = staff_users.first()
+        admin_user = User.objects.filter(is_superuser=True).exclude(id=request.user.id).first()
+        if admin_user:
+            staff_user = admin_user
+            messages.info(request, f"Đang chuyển đến admin để tư vấn sản phẩm.")
+        else:
+            messages.error(request, "Hiện không có nhân viên nào trực để tư vấn. Vui lòng thử lại sau.")
+            return redirect('product_detail', product.slug)
+    else:
+        # Lấy staff đầu tiên có sẵn (có thể nâng cấp để chọn staff online)
+        staff_user = staff_users.first()
     
     # Tạo thông điệp tư vấn với thông tin sản phẩm
     price_text = f"{product.price:,}₫" if product.price else "Liên hệ báo giá"

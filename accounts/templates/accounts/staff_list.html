@@ -18,7 +18,7 @@
               <th>Thao tác</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="staff-tbody">
             {% for staff in staffs %}
               <tr>
                 <td>
@@ -74,10 +74,127 @@
                   </div>
                 </td>
               </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center py-5">
+                  <div class="text-muted">
+                    <i class="bi bi-people display-4 d-block mb-2"></i>
+                    Chưa có nhân viên nào
+                  </div>
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
+    
+    <!-- Load More Button -->
+    {% if has_next %}
+    <div class="text-center mt-4">
+        <button id="load-more-btn" class="btn btn-outline-primary rounded-pill px-4" onclick="loadMoreStaff()">
+            <i class="bi bi-arrow-down-circle me-2"></i>Xem thêm nhân viên
+        </button>
+        <div id="loading-spinner" class="d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Đang tải...</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
   </div>
+
+  <script>
+    let currentPage = parseInt('{{ current_page|default:1 }}');
+    
+    function loadMoreStaff() {
+      const loadMoreBtn = document.getElementById('load-more-btn');
+      const loadingSpinner = document.getElementById('loading-spinner');
+      const staffTbody = document.getElementById('staff-tbody');
+      
+      // Show loading spinner and hide button
+      loadMoreBtn.classList.add('d-none');
+      loadingSpinner.classList.remove('d-none');
+      
+      // Fetch next page
+      fetch(`?page=${currentPage + 1}`, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.staffs && data.staffs.length > 0) {
+          // Append new staff to the table
+          data.staffs.forEach(staff => {
+            const staffRow = createStaffRow(staff);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = staffRow;
+            staffTbody.appendChild(tempDiv.firstElementChild);
+          });
+          
+          currentPage = data.current_page;
+          
+          // Update button visibility
+          if (data.has_next) {
+            loadMoreBtn.classList.remove('d-none');
+          } else {
+            loadMoreBtn.remove();
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error loading more staff:', error);
+        loadMoreBtn.classList.remove('d-none');
+      })
+      .finally(() => {
+        loadingSpinner.classList.add('d-none');
+      });
+    }
+    
+    function createStaffRow(staff) {
+      const groupsHtml = staff.groups.map(group => 
+        `<span class="badge bg-info-subtle text-info border border-info-subtle">${group.name}</span>`
+      ).join(' ') || '<span class="text-muted small">Chưa gán Role</span>';
+      
+      const statusBadge = staff.is_active ? 
+        '<span class="badge bg-success">Đang hoạt động</span>' :
+        '<span class="badge bg-danger">Khóa</span>';
+      
+      const toggleButtonClass = staff.is_active ? 'btn-outline-warning' : 'btn-outline-success';
+      const toggleButtonIcon = staff.is_active ? 'bi-lock' : 'bi-unlock';
+      
+      return `
+        <tr>
+          <td>
+            <div class="d-flex align-items-center">
+              <img src="${staff.avatar_url}" class="rounded-circle me-2" width="35" height="35" style="object-fit: cover;" />
+              <div>
+                <div class="fw-bold">${staff.username}</div>
+                <small class="text-muted">${staff.email}</small>
+              </div>
+            </div>
+          </td>
+          <td>${staff.phone}</td>
+          <td>${groupsHtml}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <div class="btn-group">
+              <a href="${staff.edit_url}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+              <form action="${staff.toggle_url}" method="POST" class="d-inline">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-sm ${toggleButtonClass}">
+                  <i class="bi ${toggleButtonIcon}"></i>
+                </button>
+              </form>
+              <form action="${staff.delete_url}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên ${staff.username}? Thao tác này không thể hoàn tác!');">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+  </script>
 {% endblock %}
