@@ -1,9 +1,10 @@
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 from .models import Conversation, Message
 from django.db.models import Q
-from django.http import JsonResponse
 
 User = get_user_model()
 
@@ -69,11 +70,15 @@ def chat_room(request, other_id):
         is_read=False
     ).exclude(sender=request.user).update(is_read=True)
 
+    consultation_info = request.session.get('consultation_product_info', '')
+    print(f"DEBUG: Retrieved consultation info: {consultation_info}")  # Debug print
+
     return render(request, 'chat/room.html', {
         'other_user': other_user,
         'chat_messages': messages,
         'conversation_id': conversation.id,
-        'new_message_start_index': new_message_start_index
+        'new_message_start_index': new_message_start_index,
+        'consultation_product_info': consultation_info
     })
 
 
@@ -109,3 +114,83 @@ def load_more_messages(request, conversation_id):
         return JsonResponse({'error': 'Invalid offset parameter'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@login_required
+def upload_chat_image(request):
+    """Upload ảnh chat và trả về URL"""
+    if request.method == 'POST':
+        try:
+            image_file = request.FILES.get('image')
+            if not image_file:
+                return JsonResponse({'error': 'No image file'}, status=400)
+            
+            # Validate file size (2MB max)
+            if image_file.size > 2 * 1024 * 1024:
+                return JsonResponse({'error': 'File too large. Maximum size is 2MB.'}, status=400)
+            
+            # Validate file type
+            if not image_file.content_type.startswith('image/'):
+                return JsonResponse({'error': 'Invalid file type. Please upload an image.'}, status=400)
+            
+            # Generate unique filename
+            import uuid
+            from django.utils import timezone
+            ext = image_file.name.split('.')[-1]
+            filename = f"chat_{timezone.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.{ext}"
+            
+            # Save to media/chat_images/
+            import os
+            from django.conf import settings
+            chat_images_dir = os.path.join(settings.MEDIA_ROOT, 'chat_images')
+            os.makedirs(chat_images_dir, exist_ok=True)
+            
+            filepath = os.path.join(chat_images_dir, filename)
+            with open(filepath, 'wb') as f:
+                for chunk in image_file.chunks():
+                    f.write(chunk)
+            
+            # Return URL
+            image_url = f"/media/chat_images/{filename}"
+            return JsonResponse({'success': True, 'image_url': image_url})
+            
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def mark_read(request, other_id):
+    """Mark all messages as read when leaving chat room"""
+    if request.method == 'POST':
+        try:
+            other_user = get_object_or_404(User, id=other_id)
+            user1, user2 = sorted([request.user.id, other_user.id])
+            conversation = get_object_or_404(Conversation, user1_id=user1, user2_id=user2)
+            
+            # Mark all unread messages from other user as read
+            Message.objects.filter(
+                conversation=conversation,
+                sender=other_user,
+                is_read=False
+            ).update(is_read=True)
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+@login_required
+def clear_consultation_session(request):
+    """Xóa thông tin tư vấn sản phẩm khỏi session"""
+    if request.method == 'POST':
+        if 'consultation_product_info' in request.session:
+            del request.session['consultation_product_info']
+        return JsonResponse({'success': True})
+    return JsonResponse({'error': 'Method not allowed'}, status=405)

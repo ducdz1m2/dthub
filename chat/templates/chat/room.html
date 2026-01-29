@@ -53,7 +53,15 @@
                         <div class="d-flex {% if msg.sender == request.user %}justify-content-end{% else %}justify-content-start{% endif %} mb-3">
                             <div class="max-w-75">
                                 <div class="px-3 py-2 rounded-4 shadow-sm {% if msg.sender == request.user %} bg-success text-white rounded-bottom-end-0 {% else %} bg-white text-dark rounded-bottom-start-0 {% endif %}">
-                                    {{ msg.text }}
+                                    {% if msg.is_image %}
+                                        {% if msg.text|slice:"7" == "[IMAGE:" %}
+                                            <img src="{{ msg.text|slice:"7:-1" }}" alt="Image" style="max-width: 100%; border-radius: 8px;">
+                                        {% else %}
+                                            <div class="message-content">{{ msg.text|safe }}</div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="message-content">{{ msg.text|safe }}</div>
+                                    {% endif %}
                                 </div>
                                 <small class="text-muted d-block mt-1 {% if msg.sender == request.user %}text-end{% endif %}" style="font-size: 0.65rem;">
                                     {{ msg.timestamp|date:"H:i - d/m/Y" }}
@@ -66,11 +74,45 @@
 
                 <!-- Input -->
                 <div class="card-footer bg-white p-3 border-top-0">
+                    <div class="d-flex gap-2 mb-2">
+                        <button id="emoji-btn" class="btn btn-outline-secondary rounded-circle p-2" type="button">
+                            <i class="bi bi-emoji-smile"></i>
+                        </button>
+                        <button id="image-btn" class="btn btn-outline-secondary rounded-circle p-2" type="button">
+                            <i class="bi bi-image"></i>
+                        </button>
+                        <input type="file" id="image-input" accept="image/*" style="display: none;">
+                    </div>
                     <div class="input-group shadow-sm rounded-pill overflow-hidden border border-success-subtle">
                         <input id="chat-input" type="text" class="form-control border-0 ps-4 py-2" placeholder="Nhập tin nhắn tại đây..." style="box-shadow: none" />
                         <button id="send-btn" class="btn btn-success px-4">
                             <i class="bi bi-send-fill"></i>
                         </button>
+                    </div>
+                    <!-- Emoji picker -->
+                    <div id="emoji-picker" class="position-absolute bg-white border rounded-3 shadow-lg p-3" style="display: none; bottom: 100px; right: 20px; z-index: 1000;">
+                        <div class="d-flex flex-wrap gap-2" style="max-width: 300px;">
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😀">😀</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😂">😂</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="❤️">❤️</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="👍">👍</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="👎">👎</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😍">😍</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🎉">🎉</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🔥">🔥</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="💯">💯</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😊">😊</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😎">😎</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🤔">🤔</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😢">😢</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😡">😡</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🙏">🙏</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="💪">💪</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🚀">🚀</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="✨">✨</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🌟">🌟</button>
+                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="💎">💎</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -104,10 +146,15 @@
 const otherId = "{{ other_user.id }}";
 const currentUserId = "{{ request.user.id }}";
 const conversationId = "{{ conversation_id }}";
+const consultationProductInfo = "{{ consultation_product_info|safe }}";
 
 const chatLog = document.querySelector("#chat-log");
 const inputField = document.querySelector("#chat-input");
 const sendBtn = document.querySelector("#send-btn");
+const emojiBtn = document.querySelector("#emoji-btn");
+const imageBtn = document.querySelector("#image-btn");
+const imageInput = document.querySelector("#image-input");
+const emojiPicker = document.querySelector("#emoji-picker");
 const loadMoreBtn = document.querySelector("#load-more-btn");
 const loadMoreContainer = document.querySelector("#load-more-container");
 const loadingSpinner = document.querySelector("#loading-spinner");
@@ -119,6 +166,148 @@ let hasMoreMessages = true;
 
 // Scroll to bottom on load
 chatLog.scrollTop = chatLog.scrollHeight;
+
+// Emoji picker functionality
+emojiBtn.addEventListener('click', () => {
+    emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
+});
+
+// Close emoji picker when clicking outside
+document.addEventListener('click', (e) => {
+    if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+        emojiPicker.style.display = 'none';
+    }
+});
+
+// Add emoji to input
+document.querySelectorAll('.emoji-btn-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const emoji = btn.getAttribute('data-emoji');
+        inputField.value += emoji;
+        inputField.focus();
+        emojiPicker.style.display = 'none';
+    });
+});
+
+// Image upload functionality
+imageBtn.addEventListener('click', () => {
+    imageInput.click();
+});
+
+imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+            alert('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.');
+            return;
+        }
+        
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            alert('Vui lòng chọn file ảnh!');
+            return;
+        }
+        
+        console.log("File size:", file.size, "bytes");
+        
+        // Upload image to server
+        uploadImageToServer(file);
+    }
+});
+
+// Upload image to server
+function uploadImageToServer(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    console.log("Uploading image to server...");
+    
+    fetch('/chat/upload-image/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("Upload response:", data);
+        if (data.success) {
+            // Display image immediately
+            displaySentImage(data.image_url);
+            
+            // Send image URL via WebSocket
+            sendImageMessage(data.image_url, data.image_url);
+        } else {
+            console.error("Upload failed:", data.error);
+            alert('Lỗi khi tải ảnh: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error("Upload error:", error);
+        alert('Lỗi khi tải ảnh lên server!');
+    });
+}
+
+// Send image message
+function sendImageMessage(imageData, blobUrl) {
+    console.log("Sending image message, data length:", imageData.length);
+    const message = `[IMAGE:${imageData}]`;
+    console.log("Message format:", message.substring(0, 50) + "...");
+    
+    // Check WebSocket connection
+    if (chatSocket.readyState === WebSocket.OPEN) {
+        console.log("WebSocket is OPEN, sending message...");
+        chatSocket.send(JSON.stringify({ message: message }));
+        console.log("Message sent successfully");
+    } else {
+        console.error("WebSocket is not open. ReadyState:", chatSocket.readyState);
+        alert('Kết nối WebSocket không ổn định. Vui lòng thử lại!');
+        return;
+    }
+    
+    // Display image immediately using blob URL
+    displaySentImage(blobUrl);
+    
+    imageInput.value = '';
+}
+
+// Display sent image immediately
+function displaySentImage(blobUrl) {
+    const isMe = true;
+    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    
+    const messageContent = `<img src="${blobUrl}" alt="Image" style="max-width: 100%; border-radius: 8px;">`;
+    
+    const msgHtml = `
+        <div class="d-flex ${isMe ? "justify-content-end" : "justify-content-start"} mb-3">
+            <div class="max-w-75">
+                <div class="px-3 py-2 rounded-4 shadow-sm ${isMe ? "bg-success text-white rounded-bottom-end-0" : "bg-white text-dark rounded-bottom-start-0"}">
+                    <div class="message-content">${messageContent}</div>
+                </div>
+                <small class="text-muted d-block mt-1 ${isMe ? "text-end" : ""}" style="font-size: 0.65rem;">${now}</small>
+            </div>
+        </div>`;
+    
+    messagesContainer.insertAdjacentHTML('beforeend', msgHtml);
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 
 // Kiểm tra xem có tin nhắn cũ hơn không và hiển thị nút tải thêm
 async function checkHasMoreMessages() {
@@ -168,11 +357,21 @@ async function loadMoreMessages() {
             // Thêm tin nhắn mới vào đầu container
             const messagesHtml = data.messages.map(msg => {
                 const isMe = msg.sender_id == currentUserId;
+                let messageContent;
+                
+                // Check if message is an image (from database)
+                if (msg.text && msg.text.startsWith("[IMAGE:") && msg.text.endsWith("]")) {
+                    const imageUrl = msg.text.substring(7, msg.text.length - 1);
+                    messageContent = `<img src="${imageUrl}" alt="Image" style="max-width: 100%; border-radius: 8px;">`;
+                } else {
+                    messageContent = msg.text;
+                }
+                
                 return `
                     <div class="d-flex ${isMe ? "justify-content-end" : "justify-content-start"} mb-3">
                         <div class="max-w-75">
                             <div class="px-3 py-2 rounded-4 shadow-sm ${isMe ? "bg-success text-white rounded-bottom-end-0" : "bg-white text-dark rounded-bottom-start-0"}">
-                                ${msg.text}
+                                <div class="message-content">${messageContent}</div>
                             </div>
                             <small class="text-muted d-block mt-1 ${isMe ? "text-end" : ""}" style="font-size: 0.65rem;">${msg.timestamp}</small>
                         </div>
@@ -226,22 +425,53 @@ const chatSocket = new WebSocket(
     "ws://" + window.location.host + "/ws/chat/" + otherId + "/"
 );
 
+let socketReady = false;
+
 chatSocket.onopen = function(e) {
     console.log("Chat WebSocket connected");
+    socketReady = true;
+    
+    // Gửi tin nhắn tư vấn sản phẩm tự động nếu có và WebSocket đã sẵn sàng
+    if (consultationProductInfo && consultationProductInfo !== '') {
+        console.log("Sending consultation message:", consultationProductInfo);
+        setTimeout(() => {
+            inputField.value = consultationProductInfo;
+            sendMessage();
+            // Xóa session sau khi đã gửi
+            fetch('/chat/clear-consultation-session/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                }
+            });
+        }, 500);
+    }
 };
 
 chatSocket.onmessage = function(e) {
     const data = JSON.parse(e.data);
+    console.log("Received WebSocket message:", data);
     
     if (data.type === "chat_message") {
         const isMe = data.sender_id == currentUserId;
         const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+        let messageContent;
+        if (data.is_image && data.image_url) {
+            console.log("Displaying image from URL:", data.image_url);
+            // Use image URL from WebSocket
+            messageContent = `<img src="${data.image_url}" alt="Image" style="max-width: 100%; border-radius: 8px;">`;
+        } else {
+            console.log("Displaying text message");
+            messageContent = data.message;
+        }
+
         const msgHtml = `
             <div class="d-flex ${isMe ? "justify-content-end" : "justify-content-start"} mb-3">
                 <div class="max-w-75">
                     <div class="px-3 py-2 rounded-4 shadow-sm ${isMe ? "bg-success text-white rounded-bottom-end-0" : "bg-white text-dark rounded-bottom-start-0"}">
-                        ${data.message}
+                        <div class="message-content">${messageContent}</div>
                     </div>
                     <small class="text-muted d-block mt-1 ${isMe ? "text-end" : ""}" style="font-size: 0.65rem;">${now}</small>
                 </div>
@@ -250,20 +480,135 @@ chatSocket.onmessage = function(e) {
         messagesContainer.insertAdjacentHTML('beforeend', msgHtml);
         chatLog.scrollTop = chatLog.scrollHeight;
         
-        // Reload page sau 1 giây để cập nhật badge
-        if (!isMe) {
-            setTimeout(() => location.reload(), 1000);
+        // Only update badge when user is inactive and message is from others
+        if (!isMe && !isUserActive) {
+            console.log("Triggering badge update for message from:", data.sender_id);
+            updateUnreadBadge();
+        } else {
+            console.log("Skipping badge update - isMe:", !isMe, "isUserActive:", !isUserActive);
         }
     }
 };
 
 chatSocket.onclose = function(e) {
-    console.error("Chat WebSocket closed");
+    console.error("Chat WebSocket closed", e);
+    socketReady = false;
 };
 
 chatSocket.onerror = function(e) {
     console.error("Chat WebSocket error:", e);
+    socketReady = false;
 };
+
+// Track if user is active in chat
+let isUserActive = true;
+let inactiveTimer = null;
+
+// Mark messages as read when leaving the page
+window.addEventListener('beforeunload', (e) => {
+    console.log("User is leaving page, marking messages as read");
+    markMessagesAsRead();
+});
+
+// Also mark as read when navigating away
+window.addEventListener('pagehide', (e) => {
+    console.log("Page hidden, marking messages as read");
+    markMessagesAsRead();
+});
+
+// Mark messages as read function
+function markMessagesAsRead() {
+    fetch(`/chat/mark-read/${otherId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        }
+    }).then(response => {
+        if (response.ok) {
+            console.log("Messages marked as read successfully");
+        } else {
+            console.error("Failed to mark messages as read");
+        }
+    }).catch(error => {
+        console.error("Error marking messages as read:", error);
+    });
+}
+
+// Mark user as inactive when they leave the page
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        isUserActive = false;
+        console.log("User is inactive (page hidden)");
+        // Mark messages as read when page becomes hidden
+        markMessagesAsRead();
+    } else {
+        isUserActive = true;
+        console.log("User is active (page visible)");
+        // Clear inactive timer when user returns
+        if (inactiveTimer) {
+            clearTimeout(inactiveTimer);
+            inactiveTimer = null;
+        }
+    }
+});
+
+// Mark user as inactive after 5 minutes of no activity
+let activityTimer = null;
+function resetActivityTimer() {
+    if (activityTimer) {
+        clearTimeout(activityTimer);
+    }
+    activityTimer = setTimeout(() => {
+        isUserActive = false;
+        console.log("User is inactive (timeout)");
+    }, 5 * 60 * 1000); // 5 minutes
+}
+
+// Track user activity
+document.addEventListener('mousemove', resetActivityTimer);
+document.addEventListener('keypress', resetActivityTimer);
+document.addEventListener('click', resetActivityTimer);
+document.addEventListener('scroll', resetActivityTimer);
+
+// Initialize activity tracking
+resetActivityTimer();
+
+// Update unread badge only when user is inactive
+let badgeUpdateTimeout = null;
+function updateUnreadBadge() {
+    // Only update badge if user is not actively chatting
+    if (!isUserActive) {
+        console.log("Updating unread badge (user inactive)");
+        
+        // Debounce to prevent multiple updates
+        if (badgeUpdateTimeout) {
+            clearTimeout(badgeUpdateTimeout);
+        }
+        
+        badgeUpdateTimeout = setTimeout(() => {
+            // Find the main unread badge (usually the first one)
+            const mainBadge = document.querySelector('.unread-badge') || 
+                             document.querySelector('.badge[data-unread-count]') ||
+                             document.querySelector('.badge');
+            
+            if (mainBadge) {
+                const currentCount = parseInt(mainBadge.textContent) || 0;
+                mainBadge.textContent = currentCount + 1;
+                mainBadge.style.display = 'inline-block';
+                console.log(`Updated badge from ${currentCount} to ${currentCount + 1}`);
+            }
+            
+            // Update notification dot if exists
+            const notificationDots = document.querySelectorAll('.notification-dot, .status-indicator');
+            notificationDots.forEach(dot => {
+                dot.classList.add('has-unread');
+            });
+        }, 100); // 100ms debouncing
+    } else {
+        console.log("Not updating badge (user active)");
+    }
+}
 
 // Send message
 function sendMessage() {

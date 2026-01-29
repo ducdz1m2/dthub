@@ -26,6 +26,12 @@ class OrderForm(forms.ModelForm):
         }
 
 class ReviewForm(forms.ModelForm):
+    def clean_rating(self):
+        rating = self.cleaned_data.get('rating')
+        if rating and (rating < 1 or rating > 5):
+            raise forms.ValidationError('Rating phải nằm trong khoảng từ 1 đến 5.')
+        return rating
+    
     class Meta:
         model = Review
         fields = ['rating', 'comment', 'image']

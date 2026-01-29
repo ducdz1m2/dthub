@@ -89,6 +89,7 @@
                   <div class="actions d-flex gap-2">
                     <a href="{% url 'product_detail' product.slug %}" class="btn btn-light rounded-pill px-3"><i class="bi bi-eye"></i></a>
                     <a href="{% url 'create_order_direct' product.id %}" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="bi bi-cart-plus-fill"></i> Mua ngay</a>
+                    <a href="{% url 'product_consultation' product.id %}" class="btn btn-info rounded-pill px-4 fw-bold"><i class="bi bi-chat-dots-fill"></i> Tư vấn</a>
                     {% if request.user.is_staff %}
                       <a href="{% url 'product_edit' product.id %}" class="btn btn-outline-dark rounded-pill"><i class="bi bi-pencil"></i></a>
                     {% endif %}

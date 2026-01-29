@@ -256,8 +256,9 @@
                 });
             }
             else if (data.type === 'new_message') {
-                // Có tin nhắn mới, reload trang home để cập nhật badge
-                if (window.location.pathname.includes('/chat')) {
+                // Có tin nhắn mới, chỉ reload trang home để cập nhật badge
+                // Không reload khi đang trong phòng chat để tránh làm hỏng layout
+                if (window.location.pathname === '/chat/' || window.location.pathname === '/chat') {
                     setTimeout(() => location.reload(), 1000);
                 }
             }

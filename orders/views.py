@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages  # Đã import sẵn
 from .models import Order
 from orders.forms import OrderForm, ReviewForm  
-from .models import Product
+from products.models import Product
 
 User = get_user_model()
 

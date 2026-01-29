@@ -89,19 +89,47 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         message = data.get("message")
         
+        print(f"DEBUG: Received message length: {len(message) if message else 0}")
+        print(f"DEBUG: Message prefix: {message[:50] if message else 'None'}...")
+        
         if message:
-            # Lưu tin nhắn vào database
-            await self.save_message(self.my_id, self.other_user_id, message)
+            # Check if message contains image
+            is_image = message.startswith("[IMAGE:") and message.endswith("]")
+            print(f"DEBUG: Is image: {is_image}")
             
-            # Gửi tin nhắn đến room
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    "type": "chat_message",
-                    "message": message,
-                    "sender_id": self.my_id,
-                }
-            )
+            if is_image:
+                # Extract image URL
+                image_url = message[7:-1]  # Remove [IMAGE: and ]
+                print(f"DEBUG: Extracted image URL: {image_url}")
+                
+                # Save image message
+                await self.save_message(self.my_id, self.other_user_id, message, is_image=True)
+                
+                # Gửi tin nhắn đến room với image URL
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        "type": "chat_message",
+                        "message": message,
+                        "image_url": image_url,
+                        "sender_id": self.my_id,
+                        "is_image": True
+                    }
+                )
+            else:
+                # Save text message
+                await self.save_message(self.my_id, self.other_user_id, message, is_image=False)
+                
+                # Gửi tin nhắn đến room
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        "type": "chat_message",
+                        "message": message,
+                        "sender_id": self.my_id,
+                        "is_image": False
+                    }
+                )
             
             # Gửi notification global về tin nhắn mới
             await self.channel_layer.group_send(
@@ -118,7 +146,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event))
 
     @database_sync_to_async
-    def save_message(self, sender_id, receiver_id, text):
+    def save_message(self, sender_id, receiver_id, text, is_image=False):
         u1_id, u2_id = sorted([sender_id, receiver_id])
         conv, _ = Conversation.objects.get_or_create(user1_id=u1_id, user2_id=u2_id)
-        return Message.objects.create(conversation=conv, sender_id=sender_id, text=text)
+        return Message.objects.create(conversation=conv, sender_id=sender_id, text=text, is_image=is_image)
