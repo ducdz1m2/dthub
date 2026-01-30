@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>
+            <i class="bi bi-graph-up me-2"></i>
+            Thống kê Firmware
+        </h3>
+        <a href="{% url 'firmware_manage' %}" class="btn btn-primary">
+            <i class="bi bi-arrow-left me-1"></i> Quay lại quản lý
+        </a>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_firmwares }}</h4>
+                            <small>Tổng số firmware</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-cpu display-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ active_firmwares }}</h4>
+                            <small>Đang kích hoạt</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-check-circle display-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_flashes }}</h4>
+                            <small>Tổng lần nạp</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-download display-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ success_rate|floatformat:1 }}%</h4>
+                            <small>Tỷ lệ thành công</small>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-graph-up-arrow display-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Firmware by Device Type -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>
+                        Firmware theo loại thiết bị
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for device in firmware_by_device %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ device.name }}</span>
+                        <div class="d-flex align-items-center">
+                            <div class="progress me-2" style="width: 100px; height: 20px;">
+                                <div class="progress-bar" data-percentage="{{ device.percentage|floatformat:0 }}"></div>
+                            </div>
+                            <span class="badge bg-primary">{{ device.count }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Flashing Sessions -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>
+                        Các phiên nạp gần đây
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Firmware</th>
+                                    <th>IP</th>
+                                    <th>Kết quả</th>
+                                    <th>Thời gian</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in recent_sessions %}
+                                <tr>
+                                    <td>
+                                        <small>{{ session.firmware.name }}</small>
+                                    </td>
+                                    <td>
+                                        <small>{{ session.user_ip }}</small>
+                                    </td>
+                                    <td>
+                                        {% if session.success %}
+                                            <span class="badge bg-success">Thành công</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Thất bại</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ session.flashed_at|date:"d/m H:i" }}</small>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">
+                                        Chưa có phiên nạp nào
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set progress bar widths from data attributes
+    const progressBars = document.querySelectorAll('.progress-bar[data-percentage]');
+    progressBars.forEach(function(bar) {
+        const percentage = bar.getAttribute('data-percentage');
+        bar.style.width = percentage + '%';
+    });
+});
+</script>
+{% endblock %}

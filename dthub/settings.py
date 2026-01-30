@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'ai_hub',
     'orders',
     'products',
+    'support',
+    'firmware',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

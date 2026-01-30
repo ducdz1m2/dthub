@@ -41,14 +41,14 @@
                 </li>
                 <li class="d-flex flex-row mx-1 my-2">
                   <img src="{% static 'images/firmware.png' %}" alt="" width="40" class="ms-1" />
-                  <a class="dropdown-item" href="#">Nạp firmware</a>
+                  <a class="dropdown-item" href="{% url 'firmware_home' %}">Nạp firmware</a>
                 </li>
                 <li>
                   <hr class="dropdown-divider" />
                 </li>
                 <li class="d-flex flex-row mx-1 my-2">
                   <img src="{% static 'images/help.png' %}" alt="" width="40" class="ms-2" />
-                  <a class="dropdown-item" href="#">Yêu cầu hỗ trợ</a>
+                  <a class="dropdown-item" href="{% url 'create_support_request' %}">Yêu cầu hỗ trợ</a>
                 </li>
               </ul>
             </li>
@@ -101,6 +101,18 @@
                         </a>
                       </li>
                       <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'support_manage_view' %}">
+                          <i class="bi bi-headset me-2 fs-5"></i>
+                          Quản lý hỗ trợ
+                        </a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'firmware_manage' %}">
+                          <i class="bi bi-cpu me-2 fs-5"></i>
+                          Quản lý Firmware
+                        </a>
+                      </li>
+                      <li>
                         <a class="dropdown-item d-flex align-items-center py-2" href="/products/">
                           <i class="bi bi-box-seam me-2 fs-5"></i>
                           Quản lý sản phẩm
@@ -135,6 +147,12 @@
                           <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'order_manage_view' %}">
                             <i class="bi bi-kanban me-2 fs-5"></i>
                             Quản lý đơn hàng
+                          </a>
+                        </li>
+                        <li>
+                          <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'support_manage_view' %}">
+                            <i class="bi bi-headset me-2 fs-5"></i>
+                            Quản lý hỗ trợ
                           </a>
                         </li>
                         <li>

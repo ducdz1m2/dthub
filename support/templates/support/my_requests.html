@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>
+            <i class="bi bi-headset me-2"></i>
+            {{ title }}
+        </h3>
+        <a href="{% url 'create_support_request' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Tạo yêu cầu mới
+        </a>
+    </div>
+
+    <div id="requests-container">
+        {% for request in requests %}
+        <div class="card mb-3 request-item" data-request-id="{{ request.id }}">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5 class="card-title">
+                            <a href="{% url 'support_request_detail' request.id %}" class="text-decoration-none">
+                                {{ request.title }}
+                            </a>
+                        </h5>
+                        <p class="card-text text-muted">{{ request.description|truncatewords:20 }}</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-info">{{ request.get_category_display }}</span>
+                            <span class="badge 
+                                {% if request.priority == 'Urgent' %}bg-danger
+                                {% elif request.priority == 'High' %}bg-warning
+                                {% elif request.priority == 'Medium' %}bg-secondary
+                                {% else %}bg-light text-dark{% endif %}">
+                                {{ request.get_priority_display }}
+                            </span>
+                            <span class="badge 
+                                {% if request.status == 'Resolved' %}bg-success
+                                {% elif request.status == 'In_Progress' %}bg-primary
+                                {% elif request.status == 'Pending' %}bg-warning
+                                {% else %}bg-secondary{% endif %}">
+                                {{ request.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted d-block">
+                            <i class="bi bi-clock me-1"></i>
+                            {{ request.created_at|date:"d/m/Y H:i" }}
+                        </small>
+                        {% if request.assigned_to %}
+                        <div class="mt-2">
+                            {% if request.assigned_to.profile.avatar %}
+                                <img src="{{ request.assigned_to.profile.avatar.url }}" 
+                                     width="30" height="30" class="rounded-circle me-1" alt="avatar">
+                            {% else %}
+                                <img src="{% static 'images/avatar-default.png' %}" 
+                                     width="30" height="30" class="rounded-circle me-1" alt="avatar">
+                            {% endif %}
+                            <small>{{ request.assigned_to.username }}</small>
+                        </div>
+                        {% endif %}
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="bi bi-chat-dots me-1"></i>
+                                {{ request.response_count }} phản hồi
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center py-5">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <h4 class="mt-3 text-muted">Chưa có yêu cầu hỗ trợ nào</h4>
+            <p class="text-muted">Hãy tạo yêu cầu đầu tiên để nhận được sự hỗ trợ từ chúng tôi.</p>
+            <a href="{% url 'create_support_request' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Tạo yêu cầu mới
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if requests.has_next %}
+    <div class="text-center mt-4">
+        <button class="btn btn-outline-primary" id="load-more-btn">
+            <i class="bi bi-arrow-down-circle me-1"></i> Tải thêm
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const requestsContainer = document.getElementById('requests-container');
+    let currentPage = {{ current_page }};
+    const totalPages = {{ total_pages }};
+    
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+            if (currentPage >= totalPages) {
+                loadMoreBtn.style.display = 'none';
+                return;
+            }
+            
+            currentPage++;
+            
+            fetch(`?page=${currentPage}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                data.requests.forEach(request => {
+                    const requestCard = document.createElement('div');
+                    requestCard.className = 'card mb-3 request-item';
+                    requestCard.dataset.requestId = request.id;
+                    
+                    const priorityClass = request.priority === 'Urgent' ? 'bg-danger' :
+                                        request.priority === 'High' ? 'bg-warning' :
+                                        request.priority === 'Medium' ? 'bg-secondary' : 'bg-light text-dark';
+                    
+                    const statusClass = request.status === 'Resolved' ? 'bg-success' :
+                                       request.status === 'In_Progress' ? 'bg-primary' :
+                                       request.status === 'Pending' ? 'bg-warning' : 'bg-secondary';
+                    
+                    const assignedToHtml = request.assigned_to ? 
+                        '<div class="mt-2">' +
+                            '<img src="' + (request.assigned_to.avatar || '/static/images/avatar-default.png') + '" ' +
+                                 'width="30" height="30" class="rounded-circle me-1" alt="avatar">' +
+                            '<small>' + request.assigned_to.username + '</small>' +
+                        '</div>' : '';
+                    
+                    requestCard.innerHTML = 
+                        '<div class="card-body">' +
+                            '<div class="row">' +
+                                '<div class="col-md-8">' +
+                                    '<h5 class="card-title">' +
+                                        '<a href="/support/detail/' + request.id + '/" class="text-decoration-none">' +
+                                            request.title +
+                                        '</a>' +
+                                    '</h5>' +
+                                    '<p class="card-text text-muted">Yêu cầu hỗ trợ...</p>' +
+                                    '<div class="d-flex flex-wrap gap-2">' +
+                                        '<span class="badge bg-info">' + request.category + '</span>' +
+                                        '<span class="badge ' + priorityClass + '">' + request.priority + '</span>' +
+                                        '<span class="badge ' + statusClass + '">' + request.status + '</span>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-4 text-end">' +
+                                    '<small class="text-muted d-block">' +
+                                        '<i class="bi bi-clock me-1"></i>' +
+                                        request.created_at +
+                                    '</small>' +
+                                    assignedToHtml +
+                                    '<div class="mt-2">' +
+                                        '<small class="text-muted">' +
+                                            '<i class="bi bi-chat-dots me-1"></i>' +
+                                            request.response_count + ' phản hồi' +
+                                        '</small>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                    
+                    requestsContainer.appendChild(requestCard);
+                });
+                
+                if (!data.has_next) {
+                    loadMoreBtn.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <!-- Request Details -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="bi bi-headset me-2"></i>
+                            {{ support_request.title }}
+                        </h4>
+                        <div>
+                            <span class="badge bg-info">{{ support_request.get_category_display }}</span>
+                            <span class="badge 
+                                {% if support_request.priority == 'Urgent' %}bg-danger
+                                {% elif support_request.priority == 'High' %}bg-warning
+                                {% elif support_request.priority == 'Medium' %}bg-secondary
+                                {% else %}bg-light text-dark{% endif %}">
+                                {{ support_request.get_priority_display }}
+                            </span>
+                            <span class="badge 
+                                {% if support_request.status == 'Resolved' %}bg-success
+                                {% elif support_request.status == 'In_Progress' %}bg-primary
+                                {% elif support_request.status == 'Pending' %}bg-warning
+                                {% else %}bg-secondary{% endif %}">
+                                {{ support_request.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Người tạo:</strong> {{ support_request.user.username }}
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <strong>Ngày tạo:</strong> {{ support_request.created_at|date:"d/m/Y H:i" }}
+                        </div>
+                    </div>
+                    
+                    {% if support_request.assigned_to %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Nhân viên phụ trách:</strong> 
+                            {% if support_request.assigned_to.profile.avatar %}
+                                <img src="{{ support_request.assigned_to.profile.avatar.url }}" 
+                                     width="25" height="25" class="rounded-circle me-1" alt="avatar">
+                            {% else %}
+                                <img src="{% static 'images/avatar-default.png' %}" 
+                                     width="25" height="25" class="rounded-circle me-1" alt="avatar">
+                            {% endif %}
+                            {{ support_request.assigned_to.username }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <strong>Mô tả chi tiết:</strong>
+                        <div class="mt-2 p-3 bg-light rounded">
+                            {{ support_request.description|linebreaks }}
+                        </div>
+                    </div>
+                    
+                    {% if attachments %}
+                    <div class="mb-3">
+                        <strong>File đính kèm:</strong>
+                        <div class="mt-2">
+                            {% for attachment in attachments %}
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-file-earmark me-2"></i>
+                                <a href="{{ attachment.file.url }}" target="_blank" class="text-decoration-none">
+                                    {{ attachment.filename }}
+                                </a>
+                                <small class="text-muted ms-2">({{ attachment.uploaded_at|date:"d/m/Y H:i" }})</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Responses -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-chat-dots me-2"></i>
+                        Phản hồi ({{ responses.count }})
+                    </h5>
+                    <!-- Debug info -->
+                    <small class="text-muted">Trạng thái: {{ support_request.get_status_display }}</small>
+                </div>
+                <div class="card-body">
+                    {% for response in responses %}
+                    <div class="border-bottom pb-3 mb-3 {% if forloop.last %}border-bottom-0{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center">
+                                {% if response.author.profile.avatar %}
+                                    <img src="{{ response.author.profile.avatar.url }}" 
+                                         width="35" height="35" class="rounded-circle me-2" alt="avatar">
+                                {% else %}
+                                    <img src="{% static 'images/avatar-default.png' %}" 
+                                         width="35" height="35" class="rounded-circle me-2" alt="avatar">
+                                {% endif %}
+                                <div>
+                                    <strong>{{ response.author.username }}</strong>
+                                    {% if response.author.is_staff %}
+                                    <span class="badge bg-primary ms-1">Staff</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <small class="text-muted">{{ response.created_at|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        <div class="ms-5">
+                            {{ response.content|linebreaks }}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted text-center">Chưa có phản hồi nào.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Add Response Form -->
+            {% if support_request.status != 'Closed' %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-reply me-2"></i>
+                        Thêm phản hồi
+                        <small class="text-muted">(Trạng thái: {{ support_request.get_status_display }})</small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Debug: Form exists check -->
+                    {% if form %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.content.id_for_label }}" class="form-label fw-bold">
+                                {{ form.content.label }}
+                            </label>
+                            {{ form.content }}
+                            {% if form.content.errors %}
+                                <div class="text-danger small">{{ form.content.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'my_support_requests' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Quay lại
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send me-1"></i> Gửi phản hồi
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Form không được tải đúng. Vui lòng refresh trang.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="bi bi-lock me-2"></i>
+                <strong>Yêu cầu này đã được đóng ({{ support_request.get_status_display }})</strong><br>
+                Không thể thêm phản hồi mới. Nếu cần hỗ trợ thêm, vui lòng tạo yêu cầu mới.
+            </div>
+            <div class="mt-3">
+                <a href="{% url 'my_support_requests' %}" class="btn btn-secondary me-2">
+                    <i class="bi bi-arrow-left me-1"></i> Quay lại
+                </a>
+                <a href="{% url 'create_support_request' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Tạo yêu cầu mới
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

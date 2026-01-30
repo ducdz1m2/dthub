@@ -5,6 +5,7 @@ ROLE_MAP = {
     "ProductOrderManager": [
         "manage_product",
         "manage_order",
+        "manage_support_request",
     ],
      "ContentFeedbackManager": [
         "manage_post",

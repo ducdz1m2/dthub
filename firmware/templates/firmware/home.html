@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">
+            <i class="bi bi-cpu me-3"></i>
+            Trung tâm Nạp Firmware
+        </h1>
+        <p class="lead text-muted">
+            Nạp firmware cho thiết bị IoT của bạn một cách dễ dàng và an toàn
+        </p>
+    </div>
+
+    <!-- Device Type Filter -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="text-center">
+                        <button class="btn btn-outline-primary device-filter active" data-device="all">
+                            <i class="bi bi-grid-3x3-gap me-2"></i>Tất cả
+                        </button>
+                        {% for device_type, device_label in FirmwareFile.DEVICE_CHOICES %}
+                        <button class="btn btn-outline-primary device-filter" data-device="{{ device_type }}">
+                            <i class="bi bi-cpu me-2"></i>{{ device_label }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firmware List -->
+    <div class="row" id="firmware-container">
+        {% for firmware in firmwares %}
+        <div class="col-md-6 col-lg-4 mb-4 firmware-item" data-device="{{ firmware.device_type }}">
+            <div class="card h-100 shadow-sm hover-card">
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="device-icon">
+                            {% if firmware.device_type == 'ESP32' %}
+                                <i class="bi bi-cpu display-4 text-primary"></i>
+                            {% elif firmware.device_type == 'ESP8266' %}
+                                <i class="bi bi-cpu display-4 text-success"></i>
+                            {% elif firmware.device_type == 'Arduino' %}
+                                <i class="bi bi-cpu display-4 text-info"></i>
+                            {% elif firmware.device_type == 'Raspberry_Pi' %}
+                                <i class="bi bi-cpu display-4 text-danger"></i>
+                            {% else %}
+                                <i class="bi bi-cpu display-4 text-secondary"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <h5 class="card-title text-center">{{ firmware.name }}</h5>
+                    <p class="text-center">
+                        <span class="badge bg-primary">{{ firmware.get_device_type_display }}</span>
+                        <span class="badge bg-secondary">v{{ firmware.version }}</span>
+                    </p>
+                    
+                    <p class="card-text text-muted small">{{ firmware.description|truncatewords:15 }}</p>
+                    
+                    <div class="text-center">
+                        <a href="{% url 'firmware_detail' firmware.id %}" class="btn btn-primary">
+                            <i class="bi bi-download me-2"></i>Nạp Firmware
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>
+                        {{ firmware.created_at|date:"d/m/Y" }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <h4 class="mt-3 text-muted">Chưa có firmware nào</h4>
+                <p class="text-muted">Vui lòng quay lại sau hoặc liên hệ quản trị viên.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.hover-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+}
+.device-filter.active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+.firmware-item.hidden {
+    display: none;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('.device-filter');
+    const firmwareItems = document.querySelectorAll('.firmware-item');
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            const deviceType = this.dataset.device;
+            
+            firmwareItems.forEach(item => {
+                if (deviceType === 'all' || item.dataset.device === deviceType) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

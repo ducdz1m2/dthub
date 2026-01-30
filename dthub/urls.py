@@ -11,6 +11,8 @@ urlpatterns = [
     path("ai/", include("ai_hub.urls")),
     path("accounts/", include("accounts.urls")),
     path("chat/", include("chat.urls")),
+    path("support/", include("support.urls")),
+    path("firmware/", include("firmware.urls")),
     path("", include("dashboard.urls")),
     path('mdeditor/', include('mdeditor.urls')),
 ]

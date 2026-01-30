@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>
+            <i class="bi bi-cpu me-2"></i>
+            Quản lý Firmware
+        </h3>
+        <div class="d-flex gap-2">
+            <a href="{% url 'firmware_stats' %}" class="btn btn-info">
+                <i class="bi bi-graph-up me-1"></i> Thống kê
+            </a>
+            <a href="{% url 'firmware_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Thêm Firmware
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tên Firmware</th>
+                            <th>Loại thiết bị</th>
+                            <th>Phiên bản</th>
+                            <th>Trạng thái</th>
+                            <th>Số lần nạp</th>
+                            <th>Ngày tạo</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for firmware in firmwares %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="device-icon me-2">
+                                        {% if firmware.device_type == 'ESP32' %}
+                                            <i class="bi bi-cpu text-primary"></i>
+                                        {% elif firmware.device_type == 'ESP8266' %}
+                                            <i class="bi bi-cpu text-success"></i>
+                                        {% elif firmware.device_type == 'Arduino' %}
+                                            <i class="bi bi-cpu text-info"></i>
+                                        {% elif firmware.device_type == 'Raspberry_Pi' %}
+                                            <i class="bi bi-cpu text-danger"></i>
+                                        {% else %}
+                                            <i class="bi bi-cpu text-secondary"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>{{ firmware.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ firmware.description|truncatewords:10 }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ firmware.get_device_type_display }}</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">v{{ firmware.version }}</span>
+                            </td>
+                            <td>
+                                {% if firmware.is_active %}
+                                    <span class="badge bg-success">Kích hoạt</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Vô hiệu</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ firmware.flashing_sessions.count }}</span>
+                            </td>
+                            <td>{{ firmware.created_at|date:"d/m/Y" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'firmware_detail' firmware.id %}" 
+                                       class="btn btn-outline-primary" 
+                                       title="Xem chi tiết">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'firmware_edit' firmware.id %}" 
+                                       class="btn btn-outline-warning" 
+                                       title="Chỉnh sửa">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'firmware_delete' firmware.id %}" 
+                                       class="btn btn-outline-danger" 
+                                       title="Xóa">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="bi bi-inbox display-4 text-muted"></i>
+                                <p class="text-muted mt-2">Chưa có firmware nào</p>
+                                <a href="{% url 'firmware_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> Thêm Firmware đầu tiên
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

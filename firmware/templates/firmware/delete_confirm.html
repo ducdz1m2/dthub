@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Xác nhận xóa Firmware
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h5><i class="bi bi-warning me-2"></i>Bạn có chắc chắn muốn xóa firmware này?</h5>
+                        <p class="mb-0">Hành động này không thể hoàn tác và sẽ xóa vĩnh viển:</p>
+                        <ul class="mb-0 mt-2">
+                            <li>Firmware: <strong>{{ firmware.name }}</strong></li>
+                            <li>Phiên bản: <strong>{{ firmware.version }}</strong></li>
+                            <li>Loại thiết bị: <strong>{{ firmware.get_device_type_display }}</strong></li>
+                            <li>Số lần nạp: <strong>{{ firmware.flashing_sessions.count }}</strong></li>
+                        </ul>
+                    </div>
+
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6>Thông tin chi tiết:</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Tên:</strong></td>
+                                    <td>{{ firmware.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phiên bản:</strong></td>
+                                    <td>{{ firmware.version }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Loại thiết bị:</strong></td>
+                                    <td>{{ firmware.get_device_type_display }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Trạng thái:</strong></td>
+                                    <td>
+                                        {% if firmware.is_active %}
+                                            <span class="badge bg-success">Kích hoạt</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Vô hiệu</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ngày tạo:</strong></td>
+                                    <td>{{ firmware.created_at|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>File .bin:</strong></td>
+                                    <td>
+                                        {% if firmware.bin_file %}
+                                            <a href="{{ firmware.bin_file.url }}" target="_blank" class="text-decoration-none">
+                                                {{ firmware.bin_file.name }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">Không có</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'firmware_manage' %}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Hủy bỏ
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-1"></i> Xóa Firmware Vĩnh viễn
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
