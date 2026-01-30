@@ -158,6 +158,28 @@
     margin: 8px 0;
 }
 
+/* Forum post content image styling */
+.post-detail-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 12px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Ensure all images in markdown content fit their containers */
+.markdown-content img,
+.card-body img,
+[class*="content"] img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 6px;
+    margin: 8px 0;
+}
+
 .markdown-preview a {
     color: #0969da;
     text-decoration: none;
@@ -596,5 +618,13 @@
     
     .highlight {
         font-size: 12px;
+    }
+    
+    /* Responsive images for mobile */
+    .post-detail-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        margin: 8px 0;
+        border-radius: 6px;
     }
 }

@@ -1,3 +1,32 @@
 __pycache__
 db.sqlite3
 .env
+
+# Django-MDEditor static files
+staticfiles/mdeditor/
+static/mdeditor/
+
+# Django-MDEditor media files
+media/mdeditor/
+
+# Django static files (generated)
+staticfiles/
+
+# Django logs
+*.log
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
