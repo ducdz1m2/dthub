@@ -31,7 +31,7 @@
                     <span><i class="fas fa-calendar-alt me-1 text-primary"></i> {{ object.created_at|date:"d/m/Y" }}</span>
                 </div>
                 <div class="text-muted small border-start border-3 ps-3">
-                    {{ object.content|truncatewords:40 }}
+                    {{ object.content|markdownify|truncatewords_html:40|safe }}
                 </div>
             </div>
         </div>

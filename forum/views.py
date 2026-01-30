@@ -42,6 +42,34 @@ class ForumHomeView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['categories'] = Category.objects.all()
+        
+        # Process post content to anonymize images
+        from .utils import process_markdown_with_anonymous_images
+        import re
+        
+        for post in context['posts']:
+            # Process content and store both raw and processed versions
+            processed_html = process_markdown_with_anonymous_images(post.content)
+            post.processed_content = processed_html
+            
+            # Create a text preview that preserves image count but limits text
+            # Extract text content (excluding HTML tags) for preview length calculation
+            text_content = re.sub(r'<[^>]+>', '', processed_html)
+            if len(text_content) > 200:
+                # Find a good cutoff point that doesn't break HTML
+                preview_text = text_content[:200] + '...'
+                # Count images in the full content
+                image_count = len(re.findall(r'<img[^>]+>', processed_html))
+                if image_count > 0:
+                    if image_count > 1:
+                        preview_text += f' ({image_count} images)'
+                    else:
+                        preview_text += f' ({image_count} image)'
+                post.content_preview = preview_text
+            else:
+                # For short content, show text only (no HTML)
+                post.content_preview = text_content
+        
         return context
 
 class PostDetailView(DetailView):

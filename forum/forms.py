@@ -1,5 +1,6 @@
 from django import forms
 from .models import Post, Comment, Category
+from mdeditor.widgets import MDEditorWidget
 
 class PostForm(forms.ModelForm):
     category = forms.ModelChoiceField(
@@ -16,11 +17,7 @@ class PostForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'Nhập tiêu đề bài viết...'
             }),
-            'content': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 15,
-                'placeholder': 'Viết nội dung bài viết tại đây...'
-            }),
+            'content': MDEditorWidget(),
             'category': forms.Select(attrs={'class': 'form-control'}),
         }
 

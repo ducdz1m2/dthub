@@ -1,4 +1,6 @@
 {% extends 'forum/base.html' %}
+{% load static %}
+{% load markdownify %}
 
 {% block forum_content %}
 {# Sử dụng CSS để ép cột cha ở base.html rộng ra 100% nếu cần #}
@@ -53,7 +55,7 @@
                     <hr class="opacity-10">
 
                     <div class="post-detail-content fs-5 leading-relaxed py-3">
-                        {{ post.content|linebreaks }}
+                        {{ post.content|markdownify }}
                     </div>
 
                     {% if user == post.author or perms.forum.manage_post %}

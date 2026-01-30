@@ -12,6 +12,7 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("chat/", include("chat.urls")),
     path("", include("dashboard.urls")),
+    path('mdeditor/', include('mdeditor.urls')),
 ]
 
 if settings.DEBUG:

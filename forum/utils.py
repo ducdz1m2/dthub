@@ -1,10 +1,12 @@
 import markdown
+import re
+import uuid
+import os
 from pygments import highlight
 from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter
 from django.utils.safestring import mark_safe
 from django.utils.html import escape
-import re
 
 class CodeHighlightExtension(markdown.extensions.Extension):
     def extendMarkdown(self, md):
@@ -115,3 +117,45 @@ def get_markdown_preview_css():
     """
     formatter = HtmlFormatter(style='github-dark')
     return formatter.get_style_defs('.highlight')
+
+def process_markdown_with_anonymous_images(text):
+    """
+    Process markdown content and anonymize image paths
+    """
+    if not text:
+        return text
+    
+    # Simple image path replacement
+    def replace_img(match):
+        alt = match.group(1)
+        path = match.group(2)
+        title = match.group(3) if match.group(3) else ""
+        
+        # Convert backslashes to forward slashes
+        path = path.replace('\\', '/')
+        
+        # Generate anonymous path for mdeditor images
+        if '/media/mdeditor/' in path:
+            try:
+                # Try to use mapping
+                from forum.models_image_mapping import ImageMapping
+                clean_filename = ImageMapping.get_or_create_mapping(path)
+                path = f"/forum/image/{clean_filename}"
+            except:
+                # Fallback to simple UUID
+                filename = os.path.basename(path)
+                ext = os.path.splitext(filename)[1]
+                clean_name = f"img_{uuid.uuid4().hex[:8]}{ext}"
+                path = f"/forum/image/{clean_name}"
+        
+        if title:
+            return f'![{alt}]({path} "{title}")'
+        else:
+            return f'![{alt}]({path})'
+    
+    # Apply image replacement
+    text = re.sub(r'!\[([^\]]*)\]\(([^)]+?)(?:\s+"([^"]*)")?\)', replace_img, text)
+    
+    # Convert to HTML
+    html = markdown.markdown(text, extensions=['extra', 'codehilite', 'toc'])
+    return mark_safe(html)

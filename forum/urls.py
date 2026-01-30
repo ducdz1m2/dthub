@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_image
 
 app_name = 'forum'
 
@@ -22,4 +23,7 @@ urlpatterns = [
     path('post/<slug:slug>/lock/', views.lock_post, name='lock_post'),
     path('manage/posts/', views.manage_posts, name='manage_posts'),
     path('manage/comments/', views.manage_comments, name='manage_comments'),
+    
+    # Anonymous Image Serving
+    path('image/<str:clean_filename>/', views_image.serve_anonymous_image, name='serve_anonymous_image'),
 ]

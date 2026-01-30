@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google', 
     'chat',
     'channels',
+    'mdeditor',
 ]
 SITE_ID = 2
 MIDDLEWARE = [
@@ -149,6 +150,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 LOGIN_URL = "/accounts/auth/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
@@ -182,3 +184,24 @@ CHANNEL_LAYERS = {
         },
     },
 }
+MDEDITOR_CONFIGS = {
+    'default': {
+        'width': '100%',
+        'height': 500,
+        'language': 'en',
+        'toolbar_autofixed': True,
+        'search_replace': True,
+        'emoji': True,
+        'tex': True,
+        'flow_chart': True,
+        'sequence_diagram': True,
+        'watch': True,
+        'lineNumbers': True,
+        'lineWrapping': True,
+        'enable_upload_image': True,
+        # Chỉnh lại 2 dòng này:
+        'image_folder': 'mdeditor', # Thư mục con trong MEDIA_ROOT
+        'upload_image_formats': ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'],
+    }
+}
+X_FRAME_OPTIONS = 'SAMEORIGIN'
