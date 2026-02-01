@@ -85,83 +85,49 @@
     <div class="d-flex justify-content-center gap-2 mb-4">
       <button class="btn btn-outline-success active" data-filter="all">Tất cả</button>
       <button class="btn btn-outline-success" data-filter="iot">Thiết bị IoT</button>
-      <button class="btn btn-outline-success" data-filter="solution">Giải pháp</button>
-      <button class="btn btn-outline-success" data-filter="sensor">Cảm biến</button>
+      <button class="btn btn-outline-success" data-filter="mcu">Vi điều khiển</button>
     </div>
 
     <!-- PRODUCT LIST -->
     <div class="d-flex flex-column align-items-center product-list">
-      <!-- PRODUCT 1 -->
-      <div class="card mx-5 mb-4 w-75 product-item position-relative" data-category="iot">
+      {% for product in products %}
+      <div class="card mx-5 mb-4 w-75 product-item position-relative" data-category="{{ product.product_type }}">
         <a href="#" class="stretched-link"></a>
         <div class="row g-0 h-100">
           <div class="col-md-5">
-            <img src="{% static 'images/carousel1.webp' %}" class="img-fluid h-100 w-100 object-fit-cover" alt="" />
+            {% if product.images.first %}
+              <img src="{{ product.images.first.image.url }}" class="img-fluid h-100 w-100 object-fit-cover" alt="{{ product.images.first.alt_text|default:product.name }}" />
+            {% else %}
+              <img src="{% static 'images/carousel1.webp' %}" class="img-fluid h-100 w-100 object-fit-cover" alt="{{ product.name }}" />
+            {% endif %}
           </div>
           <div class="col-md-7">
             <div class="card-body d-flex flex-column h-100">
-              <span class="badge bg-success mb-2 align-self-start">Thiết bị IoT</span>
+              {% if product.product_type == 'iot' %}
+                <span class="badge bg-success mb-2 align-self-start">Thiết bị IoT</span>
+              {% elif product.product_type == 'mcu' %}
+                <span class="badge bg-primary mb-2 align-self-start">Vi điều khiển</span>
+              {% else %}
+                <span class="badge bg-secondary mb-2 align-self-start">Sản phẩm</span>
+              {% endif %}
 
-              <h5 class="card-title">Thiết bị IoT giám sát</h5>
+              <h5 class="card-title">{{ product.name }}</h5>
 
-              <p class="card-text text-muted flex-grow-1">Theo dõi dữ liệu thời gian thực, ổn định, tối ưu chi phí vận hành.</p>
+              <p class="card-text text-muted flex-grow-1">{{ product.description|default:"Sản phẩm chất lượng cao, đáp ứng nhu cầu của khách hàng."|truncatewords:20 }}</p>
 
               <div class="d-flex gap-2">
-                <a href="#" class="btn btn-outline-success btn-sm">Chi tiết</a>
-                <a href="#" class="btn btn-success btn-sm">Liên hệ tư vấn</a>
+                <a href="{% url 'products:product_detail' product.slug %}" class="btn btn-outline-success btn-sm">Chi tiết</a>
+                <a href="{% url 'products:product_consultation' product.pk %}" class="btn btn-success btn-sm">Liên hệ tư vấn</a>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- PRODUCT 2 -->
-      <div class="card mx-5 mb-4 w-75 product-item position-relative" data-category="solution">
-        <a href="#" class="stretched-link"></a>
-        <div class="row g-0 h-100">
-          <div class="col-md-5">
-            <img src="{% static 'images/carousel2.png' %}" class="img-fluid h-100 w-100 object-fit-cover" alt="" />
-          </div>
-          <div class="col-md-7">
-            <div class="card-body d-flex flex-column h-100">
-              <span class="badge bg-primary mb-2 align-self-start">Giải pháp</span>
-
-              <h5 class="card-title">Giải pháp IoT cho nhà máy</h5>
-
-              <p class="card-text text-muted flex-grow-1">Quản lý, phân tích dữ liệu và tối ưu quy trình sản xuất.</p>
-
-              <div class="d-flex gap-2">
-                <a href="#" class="btn btn-outline-success btn-sm">Chi tiết</a>
-                <a href="#" class="btn btn-success btn-sm">Liên hệ tư vấn</a>
-              </div>
-            </div>
-          </div>
-        </div>
+      {% empty %}
+      <div class="text-center my-5">
+        <p class="text-muted">Chưa có sản phẩm nào. Vui lòng quay lại sau!</p>
       </div>
-
-      <!-- PRODUCT 3 -->
-      <div class="card mx-5 mb-4 w-75 product-item position-relative" data-category="sensor">
-        <a href="#" class="stretched-link"></a>
-        <div class="row g-0 h-100">
-          <div class="col-md-5">
-            <img src="{% static 'images/carousel3.png' %}" class="img-fluid h-100 w-100 object-fit-cover" alt="" />
-          </div>
-          <div class="col-md-7">
-            <div class="card-body d-flex flex-column h-100">
-              <span class="badge bg-warning text-dark mb-2 align-self-start">Cảm biến</span>
-
-              <h5 class="card-title">Cảm biến môi trường</h5>
-
-              <p class="card-text text-muted flex-grow-1">Đo nhiệt độ, độ ẩm, chất lượng không khí với độ chính xác cao.</p>
-
-              <div class="d-flex gap-2">
-                <a href="#" class="btn btn-outline-success btn-sm">Chi tiết</a>
-                <a href="#" class="btn btn-success btn-sm">Liên hệ tư vấn</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {% endfor %}
     </div>
 
     <div class="text-center mt-3">
@@ -178,48 +144,47 @@
   <!-- FILTER -->
   <div class="d-flex justify-content-center gap-2 mb-4">
     <button class="btn btn-outline-primary active" data-post-filter="all">Tất cả</button>
-    <button class="btn btn-outline-primary" data-post-filter="iot">IoT</button>
-    <button class="btn btn-outline-primary" data-post-filter="tech">Công nghệ</button>
-    <button class="btn btn-outline-primary" data-post-filter="guide">Hướng dẫn</button>
+    <button class="btn btn-outline-primary" data-post-filter="cho-dien-tu">Chợ điện tử</button>
+    <button class="btn btn-outline-primary" data-post-filter="du-an-huong-dan">Dự án & Hướng dẫn</button>
+    <button class="btn btn-outline-primary" data-post-filter="lap-trinh-phan-mem">Lập trình & Phần mềm</button>
   </div>
 
   <!-- POST LIST -->
   <div class="d-flex flex-column align-items-center post-list">
-    <div class="card mx-5 mb-4 w-75 post-item" data-category="iot">
+    {% for post in posts %}
+    <div class="card mx-5 mb-4 w-75 post-item" data-category="{% if post.category %}{{ post.category.slug|default:'tech' }}{% else %}tech{% endif %}">
       <div class="row g-0">
         <div class="col-md-5">
-          <img src="{% static 'images/carousel1.webp' %}" class="img-fluid h-100 w-100 object-fit-cover">
+          {% if 'img' in post.content %}
+            <!-- Extract first image from content if exists -->
+            <img src="{% static 'images/carousel1.webp' %}" class="img-fluid h-100 w-100 object-fit-cover">
+          {% else %}
+            <img src="{% static 'images/carousel1.webp' %}" class="img-fluid h-100 w-100 object-fit-cover">
+          {% endif %}
         </div>
         <div class="col-md-7">
           <div class="card-body">
-            <span class="badge bg-success mb-2">IoT</span>
-            <h5>IoT trong nhà máy thông minh</h5>
-            <p class="text-muted">Ứng dụng IoT để tối ưu giám sát và vận hành.</p>
-            <a href="#" class="btn btn-outline-primary btn-sm">Đọc chi tiết</a>
+            {% if post.category %}
+              <span class="badge bg-{{ post.category.name|default:'primary' }} mb-2">{{ post.category.name|default:'Công nghệ' }}</span>
+            {% else %}
+              <span class="badge bg-primary mb-2">Công nghệ</span>
+            {% endif %}
+            <h5>{{ post.title }}</h5>
+            <p class="text-muted">{{ post.content|striptags|truncatewords:15 }}</p>
+            <a href="{% url 'forum:post_detail' post.slug %}" class="btn btn-outline-primary btn-sm">Đọc chi tiết</a>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="card mx-5 mb-4 w-75 post-item" data-category="guide">
-      <div class="row g-0">
-        <div class="col-md-5">
-          <img src="{% static 'images/carousel2.png' %}" class="img-fluid h-100 w-100 object-fit-cover">
-        </div>
-        <div class="col-md-7">
-          <div class="card-body">
-            <span class="badge bg-warning text-dark mb-2">Hướng dẫn</span>
-            <h5>Bắt đầu với ESP32 & IoT</h5>
-            <p class="text-muted">Từng bước xây dựng hệ thống IoT cơ bản.</p>
-            <a href="#" class="btn btn-outline-primary btn-sm">Đọc chi tiết</a>
-          </div>
-        </div>
-      </div>
+    {% empty %}
+    <div class="text-center my-5">
+      <p class="text-muted">Chưa có bài viết nào. Vui lòng quay lại sau!</p>
     </div>
+    {% endfor %}
   </div>
 
   <div class="text-center mt-3">
-    <button class="btn btn-primary px-4">Xem tất cả bài viết</button>
+    <a href="{% url 'forum:home' %}" class="btn btn-primary px-4">Xem tất cả bài viết</a>
   </div>
 </div>
 
@@ -230,61 +195,109 @@
     <h3 class="text-center mb-4">Phản hồi từ khách hàng</h3>
 
     <div class="row row-cols-1 row-cols-md-2 g-4">
-      <!-- Review 1 -->
-      <div class="col">
-        <div class="card h-100 p-3">
-          <div class="d-flex align-items-center mb-3">
-            <img src="https://i.pravatar.cc/80?img=12" class="rounded-circle me-3" width="60" height="60" alt="" />
-            <div>
-              <h6 class="mb-0">Nguyễn Văn Minh</h6>
-              <div class="text-warning">★★★★★</div>
+      {% if reviews %}
+        {% for review in reviews %}
+        <!-- Review {{ forloop.counter }} -->
+        <div class="col">
+          <div class="card h-100 p-3">
+            <div class="d-flex align-items-center mb-3">
+              {% if review.user.profile.avatar %}
+                <img src="{{ review.user.profile.avatar.url }}" class="rounded-circle me-3" width="60" height="60" alt="{{ review.user.get_full_name|default:review.user.username }}" />
+              {% else %}
+                <img src="https://i.pravatar.cc/80?img={{ forloop.counter|add:10 }}" class="rounded-circle me-3" width="60" height="60" alt="{{ review.user.get_full_name|default:review.user.username }}" />
+              {% endif %}
+              <div>
+                <h6 class="mb-0">{{ review.user.get_full_name|default:review.user.username }}</h6>
+                <div class="text-warning">
+                  {% if review.rating == 5 %}★★★★★
+                  {% elif review.rating == 4 %}★★★★☆
+                  {% elif review.rating == 3 %}★★★☆☆
+                  {% elif review.rating == 2 %}★★☆☆☆
+                  {% else %}★☆☆☆☆
+                  {% endif %}
+                </div>
+              </div>
             </div>
+            <p class="mb-0">{{ review.comment }}</p>
           </div>
-          <p class="mb-0">Giải pháp IoT triển khai nhanh, thiết bị chạy ổn định. Đội kỹ thuật hỗ trợ rất nhiệt tình và có trách nhiệm.</p>
         </div>
-      </div>
-
-      <!-- Review 2 -->
-      <div class="col">
-        <div class="card h-100 p-3">
-          <div class="d-flex align-items-center mb-3">
-            <img src="https://i.pravatar.cc/80?img=32" class="rounded-circle me-3" width="60" height="60" alt="" />
-            <div>
-              <h6 class="mb-0">Trần Thị Hạnh</h6>
-              <div class="text-warning">★★★★☆</div>
+        {% endfor %}
+      {% else %}
+        {% for sample_review in sample_reviews %}
+        <!-- Sample Review {{ forloop.counter }} -->
+        <div class="col">
+          <div class="card h-100 p-3">
+            <div class="d-flex align-items-center mb-3">
+              <img src="{{ sample_review.avatar_url }}" class="rounded-circle me-3" width="60" height="60" alt="{{ sample_review.user_name }}" />
+              <div>
+                <h6 class="mb-0">{{ sample_review.user_name }}</h6>
+                <div class="text-warning">
+                  {% if sample_review.rating == 5 %}★★★★★
+                  {% elif sample_review.rating == 4 %}★★★★☆
+                  {% elif sample_review.rating == 3 %}★★★☆☆
+                  {% elif sample_review.rating == 2 %}★★☆☆☆
+                  {% else %}★☆☆☆☆
+                  {% endif %}
+                </div>
+              </div>
             </div>
+            <p class="mb-0">{{ sample_review.comment }}</p>
           </div>
-          <p class="mb-0">Sản phẩm đúng mô tả, chi phí hợp lý. Mong trong tương lai có thêm nhiều mẫu thiết bị hơn.</p>
         </div>
-      </div>
-
-      <!-- Review 3 -->
-      <div class="col">
-        <div class="card h-100 p-3">
-          <div class="d-flex align-items-center mb-3">
-            <img src="https://i.pravatar.cc/80?img=45" class="rounded-circle me-3" width="60" height="60" alt="" />
-            <div>
-              <h6 class="mb-0">Lê Quốc Bảo</h6>
-              <div class="text-warning">★★★★★</div>
-            </div>
-          </div>
-          <p class="mb-0">Hệ thống chạy ổn định liên tục, rất phù hợp cho môi trường sản xuất. Đáng tiền.</p>
-        </div>
-      </div>
-
-      <!-- Review 4 -->
-      <div class="col">
-        <div class="card h-100 p-3">
-          <div class="d-flex align-items-center mb-3">
-            <img src="https://i.pravatar.cc/80?img=7" class="rounded-circle me-3" width="60" height="60" alt="" />
-            <div>
-              <h6 class="mb-0">Phạm Hoàng Long</h6>
-              <div class="text-warning">★★★★☆</div>
-            </div>
-          </div>
-          <p class="mb-0">Giải pháp dễ mở rộng, tài liệu rõ ràng. Phù hợp cho cả đội kỹ thuật nhỏ.</p>
-        </div>
-      </div>
+        {% endfor %}
+      {% endif %}
     </div>
   </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Product filter functionality
+    const productFilterButtons = document.querySelectorAll('[data-filter]');
+    const productItems = document.querySelectorAll('.product-item');
+    
+    productFilterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            
+            // Update active button
+            productFilterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter products
+            productItems.forEach(item => {
+                if (filter === 'all' || item.getAttribute('data-category') === filter) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+    
+    // Post filter functionality
+    const postFilterButtons = document.querySelectorAll('[data-post-filter]');
+    const postItems = document.querySelectorAll('.post-item');
+    
+    postFilterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.getAttribute('data-post-filter');
+            
+            // Update active button
+            postFilterButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Filter posts
+            postItems.forEach(item => {
+                if (filter === 'all' || item.getAttribute('data-category') === filter) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

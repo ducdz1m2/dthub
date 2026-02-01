@@ -95,7 +95,7 @@
                         </a>
                       </li>
                       <li>
-                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'order_manage_view' %}">
+                        <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'orders:order_manage_view' %}">
                           <i class="bi bi-kanban me-2 fs-5"></i>
                           Quản lý đơn hàng
                         </a>
@@ -144,7 +144,7 @@
                       
                       {% if perms.orders.manage_order %}
                         <li>
-                          <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'order_manage_view' %}">
+                          <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'orders:order_manage_view' %}">
                             <i class="bi bi-kanban me-2 fs-5"></i>
                             Quản lý đơn hàng
                           </a>
@@ -156,7 +156,7 @@
                           </a>
                         </li>
                         <li>
-                          <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'tech_dashboard' %}">
+                          <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'orders:tech_dashboard' %}">
                             <i class="bi bi-clipboard-check-fill me-2 fs-5"></i>
                             Nhiệm vụ lắp đặt
                           </a>
@@ -195,7 +195,7 @@
                       {% comment %} Staff chung - Đơn hàng của họ {% endcomment %}
                       {% if request.user.is_staff and not perms.orders.manage_order %}
                         <li>
-                          <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'my_orders' %}">
+                          <a class="dropdown-item d-flex align-items-center py-2" href="{% url 'orders:my_orders' %}">
                             <i class="bi bi-box-seam text-success me-2 fs-5"></i>
                             Đơn hàng của tôi
                           </a>
@@ -283,7 +283,8 @@
 
     {% if request.user.is_authenticated %}
 <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1050">
-    <a href="{% url 'chat_home' %}" 
+    <!-- Temporarily disabled chat button to debug -->
+    <!-- <a href="{% url 'chat_home' %}" 
        class="btn btn-success d-flex align-items-center justify-content-center shadow-lg position-relative"
        style="width: 60px; height: 60px; border-radius: 50%; padding: 0;">
         
@@ -295,7 +296,7 @@
             <span class="visually-hidden">unread messages</span>
         </span>
         {% endif %}
-    </a>
+    </a> -->
 </div>
 {% endif %}
 
@@ -458,5 +459,7 @@
             sendLocation();
         </script>
     {% endif %}
+    
+    {% block extra_js %}{% endblock %}
   </body>
 </html>

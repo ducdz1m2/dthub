@@ -13,7 +13,7 @@
             </h2>
             <p class="text-muted mb-0">Quản lý thông tin chi tiết và hình ảnh hệ sinh thái DTHub.</p>
           </div>
-          <a href="{% url 'product_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
+          <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
             <i class="bi bi-arrow-left"></i> Quay lại
           </a>
         </div>
@@ -94,7 +94,7 @@
           </div>
 
           <div class="sticky-bottom bg-white p-3 border-top shadow-lg rounded-4 d-flex justify-content-end gap-3 mb-5" style="z-index: 1000; bottom: 20px;">
-            <a href="{% url 'product_list' %}" class="btn btn-light rounded-pill px-5 border">Hủy bỏ</a>
+            <a href="{% url 'products:product_list' %}" class="btn btn-light rounded-pill px-5 border">Hủy bỏ</a>
             <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow">
               <i class="bi bi-cloud-arrow-up-fill me-2"></i>Lưu sản phẩm
             </button>

@@ -8,7 +8,7 @@
     <nav aria-label="breadcrumb" class="mb-4">
       <ol class="breadcrumb">
         <li class="breadcrumb-item">
-          <a href="{% url 'product_list' %}" class="text-success text-decoration-none">Sản phẩm</a>
+          <a href="{% url 'products:product_list' %}" class="text-success text-decoration-none">Sản phẩm</a>
         </li>
         <li class="breadcrumb-item active">{{ product.name }}</li>
       </ol>
@@ -88,8 +88,8 @@
           </div>
 
           <div class="d-grid gap-3 d-md-flex">
-            <a href="{% url 'create_order_direct' product.id %}" class="btn btn-warning btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm flex-grow-1"><i class="bi bi-cart-plus-fill me-2"></i>MUA NGAY</a>
-            <a href="{% url 'product_consultation' product.id %}" class="btn btn-info btn-lg rounded-pill px-4 py-3"><i class="bi bi-chat-dots-fill me-1"></i> Tư vấn</a>
+            <a href="{% url 'orders:create_order_direct' product.id %}" class="btn btn-warning btn-lg rounded-pill px-5 py-3 fw-bold shadow-sm flex-grow-1"><i class="bi bi-cart-plus-fill me-2"></i>MUA NGAY</a>
+            <a href="{% url 'products:product_consultation' product.id %}" class="btn btn-info btn-lg rounded-pill px-4 py-3"><i class="bi bi-chat-dots-fill me-1"></i> Tư vấn</a>
           </div>
         </div>
       </div>

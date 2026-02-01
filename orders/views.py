@@ -88,7 +88,7 @@ def update_job_status(request, order_id):
             messages.success(request, f"Đã cập nhật trạng thái đơn hàng #{order.id} sang {order.get_status_display()}.")
         else:
             messages.error(request, "Trạng thái không hợp lệ.")
-    return redirect('tech_dashboard')
+    return redirect('orders:tech_dashboard')
 
 
 # --- QUY TRÌNH ĐẶT HÀNG (KHÁCH HÀNG) ---
@@ -107,7 +107,7 @@ def create_order_direct(request, product_id):
             order.save()
             # Thông báo cho khách hàng
             messages.success(request, "Đặt hàng thành công! Chúng tôi sẽ sớm liên hệ với bạn.")
-            return redirect('my_orders') 
+            return redirect('orders:my_orders') 
         else:
             messages.error(request, "Có lỗi xảy ra trong quá trình đặt hàng. Vui lòng kiểm tra lại thông tin.")
     else:
@@ -282,7 +282,7 @@ def assign_technician(request, order_id):
         order.note = note
         order.save()
         messages.success(request, f"Đã cập nhật điều phối cho đơn hàng #{order.id}")
-    return redirect('order_manage_view')
+    return redirect('orders:order_manage_view')
 @permission_required("orders.manage_order", raise_exception=True)
 def update_order_status(request, order_id):
     if request.method == 'POST':
@@ -291,7 +291,7 @@ def update_order_status(request, order_id):
         # Chặn nếu đơn đã đóng
         if order.is_locked:
             messages.error(request, "Đơn hàng này đã hoàn thành hoặc đã hủy, không thể thay đổi trạng thái.")
-            return redirect('order_manage_view')
+            return redirect('orders:order_manage_view')
 
         new_status = request.POST.get('status')
         if new_status:
@@ -299,7 +299,7 @@ def update_order_status(request, order_id):
             order.save()
             messages.success(request, f"Đã cập nhật trạng thái đơn #{order.id}")
             
-    return redirect('order_manage_view')
+    return redirect('orders:order_manage_view')
 
 @permission_required("orders.manage_order", raise_exception=True)
 def delete_order(request, order_id):
@@ -307,14 +307,14 @@ def delete_order(request, order_id):
         order = get_object_or_404(Order, id=order_id)
         order.delete()
         messages.warning(request, f"Đã xóa vĩnh viễn đơn hàng #{order_id}")
-    return redirect('order_manage_view')
+    return redirect('orders:order_manage_view')
 @login_required
 def submit_review(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
     
     if order.status != 'Completed':
         messages.error(request, "Đơn hàng chưa hoàn thành.")
-        return redirect('my_orders')
+        return redirect('orders:my_orders')
 
     # Tìm review cũ nếu có
     review_instance = getattr(order, 'review', None)
@@ -334,7 +334,7 @@ def submit_review(request, order_id):
         else:
             messages.error(request, "Dữ liệu không hợp lệ.")
             
-    return redirect('my_orders')
+    return redirect('orders:my_orders')
 
 @login_required
 def delete_review(request, order_id):
@@ -342,4 +342,4 @@ def delete_review(request, order_id):
     if hasattr(order, 'review'):
         order.review.delete()
         messages.success(request, "Đã xóa đánh giá của bạn.")
-    return redirect('my_orders')
+    return redirect('orders:my_orders')

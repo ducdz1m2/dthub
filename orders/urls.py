@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 
+app_name = 'orders'
+
 urlpatterns = [
     path('manage/', views.order_manage_view, name='order_manage_view'),
     path('assign/<int:order_id>/', views.assign_technician, name='assign_technician'),
