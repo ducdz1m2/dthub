@@ -236,16 +236,6 @@
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container" style="position: fixed !important; bottom: 20px !important; right: 20px !important; left: auto !important; top: auto !important; z-index: 9999 !important; max-width: 350px !important; width: auto !important; display: flex !important; flex-direction: column !important; align-items: flex-end !important; pointer-events: none !important;"></div>
 
-{% if messages %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            {% for message in messages %}
-                showToast("{{ message|escapejs }}", "{{ message.tags }}");
-            {% endfor %}
-        });
-    </script>
-{% endif %}
-
 <script>
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toast-container');
