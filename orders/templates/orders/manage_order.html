@@ -27,8 +27,9 @@
                         <th class="text-center py-3" style="width: 5%">ID</th>
                         <th style="width: 20%">Khách hàng & Liên lạc</th>
                         <th style="width: 14%">Giải pháp</th>
-                        <th style="width: 15%">Trạng thái</th>
-                        <th style="width: 24%">Kỹ thuật & Ghi chú</th>
+                        <th style="width: 12%">Trạng thái</th>
+                        <th style="width: 10%">Thanh toán</th>
+                        <th style="width: 22%">Kỹ thuật & Ghi chú</th>
                         <th style="width: 15%">Đánh giá</th>
                         <th class="text-center" style="width: 7%">Thao tác</th>
                     </tr>
@@ -64,7 +65,7 @@
                         </td>
 
                         <td>
-                            <form action="{% url 'update_order_status' order.id %}" method="POST">
+                            <form action="{% url 'orders:update_order_status' order.id %}" method="POST">
                                 {% csrf_token %}
                                 <select name="status" class="form-select form-select-sm border-secondary fw-bold mb-1 shadow-sm" 
                                         onchange="this.form.submit()" {% if order.is_locked %}disabled{% endif %}>
@@ -88,7 +89,28 @@
                         </td>
 
                         <td>
-                            <form action="{% url 'assign_technician' order.id %}" method="POST" class="row g-1">
+                            <div class="small">
+                                {% if order.payment %}
+                                <div class="badge rounded-pill 
+                                    {% if order.is_paid %}bg-success
+                                    {% elif order.payment.status == 'pending' %}bg-warning text-dark
+                                    {% elif order.payment.status == 'processing' %}bg-info
+                                    {% elif order.payment.status == 'failed' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}" 
+                                    style="font-size: 0.7rem;">
+                                    {% if order.is_paid %}Đã thanh toán{% else %}{{ order.payment.get_status_display }}{% endif %}
+                                </div>
+                                <div class="text-muted mt-1" style="font-size: 0.65rem;">
+                                    {{ order.payment.get_method_display }}
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">Chưa có</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <td>
+                            <form action="{% url 'orders:assign_technician' order.id %}" method="POST" class="row g-1">
                                 {% csrf_token %}
                                 <div class="col-12 mb-1">
                                     <select name="staff_id" class="form-select form-select-sm border-primary" {% if order.is_locked %}disabled{% endif %}>
@@ -131,7 +153,7 @@
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-1">
                                 {% if not order.is_locked %}
-                                <form action="{% url 'update_order_status' order.id %}" method="POST">
+                                <form action="{% url 'orders:update_order_status' order.id %}" method="POST">
                                     {% csrf_token %}
                                     <input type="hidden" name="status" value="Completed">
                                     <button type="submit" class="btn btn-xs btn-outline-success p-1" title="Xong nhanh">
@@ -140,7 +162,7 @@
                                 </form>
                                 {% endif %}
 
-                                <form action="{% url 'delete_order' order.id %}" method="POST" onsubmit="return confirm('Xóa vĩnh viễn đơn hàng này?')">
+                                <form action="{% url 'orders:delete_order' order.id %}" method="POST" onsubmit="return confirm('Xóa vĩnh viễn đơn hàng này?')">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-xs btn-danger p-1">
                                         <i class="bi bi-trash"></i>
@@ -151,7 +173,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-5 bg-light" id="empty-state">
+                        <td colspan="8" class="text-center py-5 bg-light" id="empty-state">
                             <i class="bi bi-clipboard-x text-muted" style="font-size: 3rem;"></i>
                             <p class="mt-2 text-muted">Chưa có dữ liệu đơn hàng nào.</p>
                         </td>
@@ -351,7 +373,7 @@ function createOrderRow(order, staffMembers) {
                     <div class="badge bg-light text-danger border border-danger-subtle">${formatVND(total)}</div>
                 </td>
                 <td>
-                    <form action="/orders/${order.id}/update_status/" method="POST">
+                    <form action="/orders/update-status/${order.id}/" method="POST">
                         <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
                         <select name="status" class="form-select form-select-sm border-secondary fw-bold mb-1 shadow-sm" 
                                 onchange="this.form.submit()" ${isLocked ? 'disabled' : ''}>
@@ -368,7 +390,23 @@ function createOrderRow(order, staffMembers) {
                     </span>
                 </td>
                 <td>
-                    <form action="/orders/${order.id}/assign_technician/" method="POST" class="row g-1">
+                    <div class="small">
+                        ${order.payment ? `
+                        <div class="badge rounded-pill 
+                            ${order.is_paid ? 'bg-success' : 
+                              order.payment.status === 'pending' ? 'bg-warning text-dark' :
+                              order.payment.status === 'processing' ? 'bg-info' :
+                              order.payment.status === 'failed' ? 'bg-danger' : 'bg-secondary'}" 
+                            style="font-size: 0.7rem;">
+                            ${order.is_paid ? 'Đã thanh toán' : order.payment.status_display || order.payment.status}
+                        </div>
+                        <div class="text-muted mt-1" style="font-size: 0.65rem;">
+                            ${order.payment.method || ''}
+                        </div>` : '<span class="text-muted small">Chưa có</span>'}
+                    </div>
+                </td>
+                <td>
+                    <form action="/orders/assign/${order.id}/" method="POST" class="row g-1">
                         <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
                         <div class="col-12 mb-1">
                             <select name="staff_id" class="form-select form-select-sm border-primary" ${isLocked ? 'disabled' : ''}>
@@ -387,14 +425,14 @@ function createOrderRow(order, staffMembers) {
                 <td class="text-center">
                     <div class="d-flex justify-content-center gap-1">
                         ${!isLocked ? 
-                            `<form action="/orders/${order.id}/update_status/" method="POST">
+                            `<form action="/orders/update-status/${order.id}/" method="POST">
                                 <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
                                 <input type="hidden" name="status" value="Completed">
                                 <button type="submit" class="btn btn-xs btn-outline-success p-1" title="Xong nhanh">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
                             </form>` : ''}
-                        <form action="/orders/${order.id}/delete/" method="POST" onsubmit="return confirm('Xóa vĩnh viễn đơn hàng này?')">
+                        <form action="/orders/delete/${order.id}/" method="POST" onsubmit="return confirm('Xóa vĩnh viễn đơn hàng này?')">
                             <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('input[name="csrfmiddlewaretoken"]').value}">
                             <button type="submit" class="btn btn-xs btn-danger p-1">
                                 <i class="bi bi-trash"></i>
@@ -411,7 +449,7 @@ function createOrderRow(order, staffMembers) {
     } catch (error) {
         console.error('Error creating order row:', error);
         console.error('Order data that caused error:', order);
-        return `<tr><td colspan="7" class="text-danger">Error loading order data</td></tr>`;
+        return `<tr><td colspan="8" class="text-danger">Error loading order data</td></tr>`;
     }
 }
 </script>

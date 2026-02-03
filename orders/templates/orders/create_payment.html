@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load currency_filters %}
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-0">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-credit-card"></i> Chọn phương thức thanh toán</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Order Summary -->
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <h6 class="text-muted mb-2">TÓM TẮT ĐƠN HÀNG</h6>
+                        <p class="mb-1"><strong>Sản phẩm:</strong> {{ order.product.name }}</p>
+                        <p class="mb-1"><strong>Số lượng:</strong> 1</p>
+                        <p class="mb-0"><strong>Tổng tiền:</strong> <span class="text-success fw-bold">{{ order.total|vnd_price }}</span></p>
+                    </div>
+                    
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Chọn phương thức thanh toán:</label>
+                            
+                            <!-- VNPay Option -->
+                            <div class="payment-option mb-3 p-3 border rounded cursor-pointer" onclick="selectPayment('vnpay')">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="vnpay" value="vnpay" checked>
+                                    <label class="form-check-label w-100" for="vnpay">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-university text-primary me-3" style="font-size: 1.5rem;"></i>
+                                            <div>
+                                                <h6 class="mb-1">VNPay</h6>
+                                                <small class="text-muted">Thẻ tín dụng/ghi nợ, Ví điện tử, Internet Banking</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- COD Option -->
+                            <div class="payment-option mb-3 p-3 border rounded cursor-pointer" onclick="selectPayment('cod')">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="cod" value="cod">
+                                    <label class="form-check-label w-100" for="cod">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-money-bill-wave text-success me-3" style="font-size: 1.5rem;"></i>
+                                            <div>
+                                                <h6 class="mb-1">Ship COD</h6>
+                                                <small class="text-muted">Thanh toán khi nhận hàng (an toàn, tiện lợi)</small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-lock"></i> TIẾP TỤC THANH TOÁN
+                        </button>
+                        
+                        <div class="mt-3 text-center">
+                            <a href="{% url 'products:product_detail' order.product.slug %}" class="text-muted">
+                                <i class="fas fa-arrow-left"></i> Quay lại chi tiết sản phẩm
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.payment-option {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.payment-option:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.payment-option.selected {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.payment-option .form-check-input:checked ~ .form-check-label {
+    color: #007bff;
+}
+
+.form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+</style>
+
+<script>
+function selectPayment(method) {
+    // Remove selected class from all options
+    document.querySelectorAll('.payment-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked option
+    event.currentTarget.classList.add('selected');
+    
+    // Check the radio button
+    document.getElementById(method).checked = true;
+}
+
+// Initialize with first option selected
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('.payment-option').classList.add('selected');
+});
+</script>
+{% endblock %}

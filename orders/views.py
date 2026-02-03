@@ -3,9 +3,13 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth import get_user_model
 from django.contrib import messages  # Đã import sẵn
 from django.core.paginator import Paginator
-from django.http import JsonResponse
-from .models import Order
-from orders.forms import OrderForm, ReviewForm  
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.urls import reverse
+from .models import Order, Payment
+from .forms import OrderForm, ReviewForm  
+from .vnpay_service import VNPayService
 from products.models import Product
 
 User = get_user_model()
@@ -98,16 +102,58 @@ def create_order_direct(request, product_id):
     
     if request.method == 'POST':
         form = OrderForm(request.POST)
+        payment_method = request.POST.get('payment_method', 'vnpay')
+        
+        # Check for duplicate order in last 5 minutes
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(minutes=5)
+        duplicate_order = Order.objects.filter(
+            user=request.user,
+            product=product,
+            created_at__gte=recent_time
+        ).first()
+        
+        if duplicate_order:
+            messages.warning(request, f"Bạn đã đặt đơn hàng cho sản phẩm này trong vòng 5 phút qua. Vui lòng kiểm tra đơn hàng #{duplicate_order.id} trong lịch sử đơn hàng.")
+            return redirect('orders:my_orders')
+        
         if form.is_valid():
-            order = form.save(commit=False)
-            order.user = request.user
-            order.product = product
-            order.total = product.price 
-            order.status = 'Pending'
-            order.save()
-            # Thông báo cho khách hàng
-            messages.success(request, "Đặt hàng thành công! Chúng tôi sẽ sớm liên hệ với bạn.")
-            return redirect('orders:my_orders') 
+            from django.db import transaction
+            try:
+                with transaction.atomic():
+                    order = form.save(commit=False)
+                    order.user = request.user
+                    order.product = product
+                    order.total = product.price 
+                    order.status = 'Pending'
+                    order.save()
+                    
+                    # Tạo payment
+                    payment = Payment.objects.create(
+                        order=order,
+                        method=payment_method,
+                        amount=order.total,
+                        status='pending'
+                    )
+                    
+                    if payment_method == 'vnpay':
+                        # Chuyển hướng đến VNPay
+                        vnpay_service = VNPayService()
+                        payment_url = vnpay_service.create_payment_url(payment, request)
+                        return redirect(payment_url)
+                    
+                    elif payment_method == 'cod':
+                        # Đánh dấu là COD và hoàn tất
+                        payment.status = 'pending'  # Chờ thanh toán khi giao hàng
+                        payment.save()
+                        messages.success(request, "Đặt hàng thành công! Chúng tôi sẽ giao hàng và thu tiền khi nhận hàng.")
+                        return redirect('orders:payment_success', payment_id=payment.id)
+                        
+            except Exception as e:
+                messages.error(request, f"Có lỗi xảy ra khi tạo đơn hàng: {str(e)}")
+                return redirect('products:product_detail', slug=product.slug)
+            
         else:
             messages.error(request, "Có lỗi xảy ra trong quá trình đặt hàng. Vui lòng kiểm tra lại thông tin.")
     else:
@@ -164,6 +210,17 @@ def my_orders_view(request):
                     'comment': order.review.comment,
                     'image': order.review.image.url if order.review.image else None
                 }
+            
+            # Add payment information
+            orders_data[-1]['payment_status'] = order.payment_status
+            orders_data[-1]['is_paid'] = order.is_paid
+            if hasattr(order, 'payment'):
+                orders_data[-1]['payment'] = {
+                    'status': order.payment.status,
+                    'method': order.payment.get_method_display(),
+                    'amount': str(order.payment.amount),
+                    'completed_at': order.payment.completed_at.strftime('%d/%m/%Y %H:%M') if order.payment.completed_at else None
+                }
         
         return JsonResponse({
             'orders': orders_data,
@@ -180,6 +237,42 @@ def my_orders_view(request):
         'total_pages': paginator.num_pages
     }
     return render(request, 'orders/my_orders.html', context)
+
+@login_required
+def cancel_order(request, order_id):
+    """Hủy đơn hàng từ phía khách hàng với giới hạn trạng thái"""
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    # Chỉ cho phép hủy ở các trạng thái nhất định
+    CANCELLABLE_STATUSES = ['Pending', 'Surveying', 'Designing']
+    
+    if order.status not in CANCELLABLE_STATUSES:
+        messages.error(request, f"Không thể hủy đơn hàng ở trạng thái '{order.get_status_display()}'. Đơn hàng chỉ có thể được hủy khi đang ở trạng thái: Chờ duyệt, Khảo sát, hoặc Thiết kế.")
+        return redirect('orders:my_orders')
+    
+    # Nếu đã thanh toán thì không cho hủy
+    if order.is_paid:
+        messages.error(request, "Không thể hủy đơn hàng đã thanh toán. Vui lòng liên hệ hỗ trợ để được xử lý.")
+        return redirect('orders:my_orders')
+    
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '')
+        order.status = 'Cancelled'
+        order.note = f"Khách hàng hủy đơn. Lý do: {reason}" + (f". Ghi chú cũ: {order.note}" if order.note else "")
+        order.save()
+        
+        # Cập nhật payment status nếu có
+        if hasattr(order, 'payment'):
+            order.payment.status = 'cancelled'
+            order.payment.save()
+        
+        messages.success(request, f"Đã hủy đơn hàng #{order.id} thành công.")
+        return redirect('orders:my_orders')
+    
+    return render(request, 'orders/cancel_order.html', {
+        'order': order,
+        'cancellable_statuses': CANCELLABLE_STATUSES
+    })
 
 
 # --- QUẢN LÝ ĐƠN HÀNG (ADMIN/STAFF) ---
@@ -234,6 +327,17 @@ def order_manage_view(request):
                 orders_data[-1]['review'] = {
                     'rating': order.review.rating,
                     'comment': order.review.comment
+                }
+            
+            # Add payment information
+            orders_data[-1]['payment_status'] = order.payment_status
+            orders_data[-1]['is_paid'] = order.is_paid
+            if hasattr(order, 'payment'):
+                orders_data[-1]['payment'] = {
+                    'status': order.payment.status,
+                    'method': order.payment.get_method_display(),
+                    'amount': str(order.payment.amount),
+                    'completed_at': order.payment.completed_at.strftime('%d/%m/%Y %H:%M') if order.payment.completed_at else None
                 }
         
         return JsonResponse({
@@ -343,3 +447,109 @@ def delete_review(request, order_id):
         order.review.delete()
         messages.success(request, "Đã xóa đánh giá của bạn.")
     return redirect('orders:my_orders')
+
+
+# --- PAYMENT VIEWS ---
+@login_required
+def create_payment(request, order_id):
+    """Tạo thanh toán cho đơn hàng"""
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    # Kiểm tra nếu đã có payment
+    if hasattr(order, 'payment'):
+        messages.warning(request, "Đơn hàng này đã có thanh toán.")
+        return redirect('orders:payment_detail', payment_id=order.payment.id)
+    
+    if request.method == 'POST':
+        payment_method = request.POST.get('payment_method')
+        
+        if payment_method not in ['vnpay', 'cod']:
+            messages.error(request, "Phương thức thanh toán không hợp lệ.")
+            return redirect('orders:create_payment', order_id=order_id)
+        
+        # Tạo payment
+        payment = Payment.objects.create(
+            order=order,
+            method=payment_method,
+            amount=order.total,
+            status='pending'
+        )
+        
+        if payment_method == 'vnpay':
+            # Chuyển hướng đến VNPay
+            vnpay_service = VNPayService()
+            payment_url = vnpay_service.create_payment_url(payment, request)
+            return redirect(payment_url)
+        
+        elif payment_method == 'cod':
+            # Đánh dấu là COD và hoàn tất
+            payment.status = 'pending'  # Chờ thanh toán khi giao hàng
+            payment.save()
+            messages.success(request, "Đặt hàng thành công! Chúng tôi sẽ giao hàng và thu tiền khi nhận hàng.")
+            return redirect('orders:payment_success', payment_id=payment.id)
+    
+    return render(request, 'orders/create_payment.html', {
+        'order': order
+    })
+
+@login_required
+def payment_detail(request, payment_id):
+    """Chi tiết thanh toán"""
+    payment = get_object_or_404(Payment, id=payment_id, order__user=request.user)
+    return render(request, 'orders/payment_detail.html', {
+        'payment': payment
+    })
+
+@login_required
+def payment_success(request, payment_id):
+    """Trang thanh toán thành công"""
+    payment = get_object_or_404(Payment, id=payment_id, order__user=request.user)
+    return render(request, 'orders/payment_success.html', {
+        'payment': payment
+    })
+
+@login_required
+def payment_failed(request, payment_id):
+    """Trang thanh toán thất bại"""
+    payment = get_object_or_404(Payment, id=payment_id, order__user=request.user)
+    return render(request, 'orders/payment_failed.html', {
+        'payment': payment
+    })
+
+@csrf_exempt
+def vnpay_return(request):
+    """Xử lý callback từ VNPay"""
+    if request.method == 'GET':
+        vnpay_service = VNPayService()
+        result = vnpay_service.verify_return(request)
+        
+        if result['success']:
+            payment = result['payment']
+            messages.success(request, "Thanh toán thành công!")
+            return redirect('orders:payment_success', payment_id=payment.id)
+        else:
+            payment = result.get('payment')
+            error_message = result['message']
+            messages.error(request, f"Thanh toán thất bại: {error_message}")
+            if payment:
+                return redirect('orders:payment_failed', payment_id=payment.id)
+            else:
+                return redirect('orders:my_orders')
+    
+    return redirect('orders:my_orders')
+
+@csrf_exempt
+def vnpay_ipn(request):
+    """IPN handler từ VNPay (server-to-server)"""
+    if request.method == 'POST':
+        vnpay_service = VNPayService()
+        result = vnpay_service.verify_return(request)
+        
+        if result['success']:
+            # Cập nhật trạng thái payment thành công
+            return HttpResponse("RspCode=00&Message=Confirm Success")
+        else:
+            # Lỗi signature hoặc khác
+            return HttpResponse("RspCode=97&Message=Invalid Signature")
+    
+    return HttpResponse("RspCode=99&Message=Invalid Request")

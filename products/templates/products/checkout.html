@@ -1,28 +1,133 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 {% block content %}
 <div class="container my-5">
     <div class="row justify-content-center">
-        <div class="col-md-5">
+        <div class="col-md-6">
             <div class="card shadow border-0">
                 <div class="card-body p-4">
-                    <h4 class="fw-bold mb-3 text-success">Xác nhận địa chỉ lắp đặt</h4>
-                    <p class="text-muted">Sản phẩm: <strong>{{ product.name }}</strong></p>
+                    <h4 class="fw-bold mb-3 text-success">Xác nhận đơn hàng</h4>
+                    
+                    <!-- Product Info -->
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <h6 class="text-muted mb-2">Sản phẩm</h6>
+                        <h5 class="mb-1">{{ product.name }}</h5>
+                        <p class="mb-0 text-muted">{{ product.description|truncatewords:20 }}</p>
+                        <h4 class="text-success mt-2">{{ product.price|vnd_price }}</h4>
+                    </div>
                     
                     <form method="POST">
                         {% csrf_token %}
                         <div class="mb-3">
                             <label class="form-label fw-bold">Địa chỉ nhận hàng/Lắp đặt</label>
-                            {{ form.address }} <small class="text-muted">Vui lòng nhập địa chỉ chính xác để nhân viên liên hệ.</small>
+                            {{ form.address }} 
+                            <small class="text-muted">Vui lòng nhập địa chỉ chính xác để nhân viên liên hệ.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Ghi chú (nếu có)</label>
                             {{ form.note }}
                         </div>
-                        <button type="submit" class="btn btn-success w-100 py-2">XÁC NHẬN ĐẶT ĐƠN</button>
+                        
+                        <!-- Payment Method Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Phương thức thanh toán</label>
+                            <div class="payment-options">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="vnpay" value="vnpay" checked>
+                                    <label class="form-check-label" for="vnpay">
+                                        <i class="fas fa-credit-card text-primary"></i> VNPay (Thẻ tín dụng/ghi nợ, Ví điện tử, Internet Banking)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="payment_method" id="cod" value="cod">
+                                    <label class="form-check-label" for="cod">
+                                        <i class="fas fa-money-bill-wave text-success"></i> Ship COD (Thanh toán khi nhận hàng)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Order Summary -->
+                        <div class="mb-4 p-3 border rounded">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Tạm tính:</span>
+                                <span>{{ product.price|vnd_price }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Phí vận chuyển:</span>
+                                <span class="text-success">Miễn phí</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between fw-bold">
+                                <span>Tổng cộng:</span>
+                                <span class="text-success">{{ product.price|vnd_price }}</span>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100 py-2" id="submit-btn">
+                            <i class="fas fa-shopping-cart"></i> XÁC NHẬN ĐẶT ĐƠN
+                        </button>
+                        
+                        <p class="text-muted small text-center mt-3 mb-0">
+                            <i class="fas fa-lock"></i> Thông tin của bạn được bảo mật. Thanh toán được bảo vệ bởi VNPay.
+                        </p>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+.payment-options .form-check {
+    padding: 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+}
+
+.payment-options .form-check:hover {
+    border-color: #28a745;
+    background-color: #f8f9fa;
+}
+
+.payment-options .form-check-input:checked ~ .form-check-label {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[method="POST"]');
+    const submitBtn = document.getElementById('submit-btn');
+    let isSubmitting = false;
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (isSubmitting) {
+                e.preventDefault();
+                return false;
+            }
+            
+            isSubmitting = true;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG XỬ LÝ...';
+            
+            // Re-enable after 10 seconds in case something goes wrong
+            setTimeout(function() {
+                isSubmitting = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> XÁC NHẬN ĐẶT ĐƠN';
+            }, 10000);
+        });
+    }
+});
+</script>
 {% endblock %}

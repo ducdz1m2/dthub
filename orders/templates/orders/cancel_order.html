@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load currency_filters %}
+
+{% block content %}
+<div class="container my-5" style="max-width: 800px;">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-danger text-white py-3">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Xác nhận hủy đơn hàng
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Order Info -->
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h6 class="text-muted mb-2">Thông tin đơn hàng</h6>
+                                <p class="mb-1"><strong>Mã đơn:</strong> #{{ order.id }}</p>
+                                <p class="mb-1"><strong>Sản phẩm:</strong> {{ order.product.name }}</p>
+                                <p class="mb-1"><strong>Ngày đặt:</strong> {{ order.created_at|date:"d/m/Y H:i" }}</p>
+                                <p class="mb-1"><strong>Trạng thái:</strong> 
+                                    <span class="badge rounded-pill 
+                                        {% if order.status == 'Pending' %}bg-warning text-dark
+                                        {% elif order.status == 'Surveying' %}bg-info
+                                        {% elif order.status == 'Designing' %}bg-secondary
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </p>
+                                <p class="mb-0"><strong>Thành tiền:</strong> <span class="text-danger fw-bold">{{ order.total|vnd_price }}</span></p>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <i class="fas fa-times-circle text-danger" style="font-size: 4rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Warning Message -->
+                    <div class="alert alert-warning border-0" role="alert">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-info-circle"></i> Lưu ý quan trọng
+                        </h6>
+                        <p class="mb-2">
+                            Bạn đang hủy đơn hàng ở trạng thái <strong>"{{ order.get_status_display }}"</strong>. 
+                            Sau khi hủy, bạn sẽ không thể khôi phục lại đơn hàng này.
+                        </p>
+                        <hr>
+                        <p class="mb-0">
+                            <small>Nếu bạn đã thanh toán, vui lòng liên hệ hỗ trợ để được hoàn tiền.</small>
+                        </p>
+                    </div>
+
+                    <!-- Cancellation Form -->
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="reason" class="form-label fw-bold">
+                                <i class="fas fa-comment-alt"></i> Lý do hủy đơn hàng <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="reason" name="reason" rows="4" 
+                                    placeholder="Vui lòng cho chúng tôi biết lý do bạn muốn hủy đơn hàng này..." required></textarea>
+                            <small class="text-muted">Thông tin này sẽ giúp chúng tôi cải thiện dịch vụ tốt hơn.</small>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between gap-3">
+                            <a href="{% url 'orders:my_orders' %}" class="btn btn-secondary btn-lg flex-fill">
+                                <i class="fas fa-arrow-left"></i> Quay lại
+                            </a>
+                            <button type="submit" class="btn btn-danger btn-lg flex-fill" onclick="return confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')">
+                                <i class="fas fa-times"></i> Xác nhận hủy đơn
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Help Section -->
+                    <div class="mt-4 p-3 bg-info bg-opacity-10 rounded">
+                        <h6 class="text-info mb-2">
+                            <i class="fas fa-question-circle"></i> Cần hỗ trợ?
+                        </h6>
+                        <p class="mb-1 small">
+                            Nếu bạn có bất kỳ câu hỏi nào về việc hủy đơn hàng, vui lòng liên hệ:
+                        </p>
+                        <ul class="mb-0 small">
+                            <li><strong>Hotline:</strong> 1900-xxxx</li>
+                            <li><strong>Email:</strong> support@dthub.vn</li>
+                            <li><strong>Chat:</strong> Nhắn tin trực tiếp trên website</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+.alert {
+    border-radius: 10px;
+}
+.btn {
+    border-radius: 8px;
+}
+.form-control:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+</style>
+{% endblock %}

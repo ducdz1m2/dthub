@@ -25,8 +25,15 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'unamalgamable-lillia-particulate.ngrok-free.dev']
 
+# CSRF Trusted Origins for ngrok and external domains
+CSRF_TRUSTED_ORIGINS = [
+    'https://unamalgamable-lillia-particulate.ngrok-free.dev',
+]
+
+# Import VNPay Configuration
+from dthub_settings import *
 
 # Application definition
 
@@ -207,3 +214,6 @@ MDEDITOR_CONFIGS = {
     }
 }
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# Import VNPay Configuration
+from dthub_settings import *

@@ -66,10 +66,30 @@
 
                 <div class="col-md-5 text-md-end mt-3 mt-md-0">
                     <h3 class="text-danger fw-bold">{{ order.total|vnd_price }}</h3>
-                    <div class="p-3 bg-white rounded border border-light small shadow-sm text-start">
+                    <div class="p-3 bg-white rounded border border-light small shadow-sm text-start mb-2">
                         <strong class="text-muted">Ghi chú vận hành:</strong><br />
                         <span class="text-dark">{{ order.note|default:'Thông tin triển khai sẽ được cập nhật sớm nhất.' }}</span>
                     </div>
+                    {% if order.payment %}
+                    <div class="p-2 bg-light rounded border small">
+                        <strong class="text-muted">Thanh toán:</strong><br />
+                        <span class="badge rounded-pill 
+                            {% if order.is_paid %}bg-success
+                            {% elif order.payment.status == 'pending' %}bg-warning text-dark
+                            {% elif order.payment.status == 'processing' %}bg-info
+                            {% elif order.payment.status == 'failed' %}bg-danger
+                            {% else %}bg-secondary{% endif %}" 
+                            style="font-size: 0.7rem;">
+                            {% if order.is_paid %}Đã thanh toán{% else %}{{ order.payment.get_status_display }}{% endif %}
+                        </span>
+                        <div class="text-muted mt-1" style="font-size: 0.65rem;">
+                            {{ order.payment.get_method_display }}
+                            {% if order.payment.completed_at %}
+                                - {{ order.payment.completed_at|date:'d/m/Y' }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -99,6 +119,24 @@
             <div class="d-flex justify-content-between text-muted mb-4" style="font-size: 0.7rem;">
                 <span>Yêu cầu</span><span>Khảo sát</span><span>Thiết kế</span><span>Thi công</span><span>Bàn giao</span>
             </div>
+
+            {# NÚT HỦY ĐƠN HÀNG #}
+            {% if order.status == 'Pending' or order.status == 'Surveying' or order.status == 'Designing' %}
+            {% if not order.is_paid %}
+            <div class="border-top pt-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle"></i> Bạn có thể hủy đơn hàng ở trạng thái hiện tại
+                    </small>
+                    <a href="{% url 'orders:cancel_order' order.id %}" 
+                       class="btn btn-outline-danger btn-sm" 
+                       onclick="return confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')">
+                        <i class="bi bi-x-circle"></i> Hủy đơn hàng
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
 
             {# KHU VỰC ĐÁNH GIÁ #}
             {% if order.status == 'Completed' %}
@@ -414,10 +452,26 @@ function createOrderCard(order) {
 
                     <div class="col-md-5 text-md-end mt-3 mt-md-0">
                         <h3 class="text-danger fw-bold">${formatVND(order.total)}</h3>
-                        <div class="p-3 bg-white rounded border border-light small shadow-sm text-start">
+                        <div class="p-3 bg-white rounded border border-light small shadow-sm text-start mb-2">
                             <strong class="text-muted">Ghi chú vận hành:</strong><br />
                             <span class="text-dark">${order.note}</span>
                         </div>
+                        ${order.payment ? `
+                        <div class="p-2 bg-light rounded border small">
+                            <strong class="text-muted">Thanh toán:</strong><br />
+                            <span class="badge rounded-pill 
+                                ${order.is_paid ? 'bg-success' : 
+                                  order.payment.status === 'pending' ? 'bg-warning text-dark' :
+                                  order.payment.status === 'processing' ? 'bg-info' :
+                                  order.payment.status === 'failed' ? 'bg-danger' : 'bg-secondary'}" 
+                                style="font-size: 0.7rem;">
+                                ${order.is_paid ? 'Đã thanh toán' : order.payment.status_display || order.payment.status}
+                            </span>
+                            <div class="text-muted mt-1" style="font-size: 0.65rem;">
+                                ${order.payment.method || ''}
+                                ${order.payment.completed_at ? ' - ' + order.payment.completed_at : ''}
+                            </div>
+                        </div>` : ''}
                     </div>
                 </div>
             </div>
@@ -431,6 +485,20 @@ function createOrderCard(order) {
                 <div class="d-flex justify-content-between text-muted mb-4" style="font-size: 0.7rem;">
                     <span>Yêu cầu</span><span>Khảo sát</span><span>Thiết kế</span><span>Thi công</span><span>Bàn giao</span>
                 </div>
+                
+                ${ (order.status === 'Pending' || order.status === 'Surveying' || order.status === 'Designing') && !order.is_paid ? `
+                <div class="border-top pt-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> Bạn có thể hủy đơn hàng ở trạng thái hiện tại
+                        </small>
+                        <a href="/orders/cancel/${order.id}/" 
+                           class="btn btn-outline-danger btn-sm" 
+                           onclick="return confirm('Bạn có chắc chắn muốn hủy đơn hàng này?')">
+                            <i class="bi bi-x-circle"></i> Hủy đơn hàng
+                        </a>
+                    </div>
+                </div>` : ''}
                 
                 ${reviewSection}
             </div>
