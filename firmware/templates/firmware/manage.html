@@ -1,115 +1,226 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Master Firmware Control | DTHub{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3>
-            <i class="bi bi-cpu me-2"></i>
-            Quản lý Firmware
-        </h3>
-        <div class="d-flex gap-2">
-            <a href="{% url 'firmware_stats' %}" class="btn btn-info">
-                <i class="bi bi-graph-up me-1"></i> Thống kê
+<style>
+    /* =========================================
+       CYBERPUNK GRID CARDS STYLES
+    ========================================= */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cyber-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 243, 255, 0.15);
+        border-color: rgba(0, 243, 255, 0.3);
+    }
+
+    /* Vạch màu định danh Status */
+    .cyber-card::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+        background: var(--neon-blue);
+        box-shadow: 0 0 10px var(--neon-blue);
+    }
+    .cyber-card.offline::before { background: #dc3545; box-shadow: 0 0 10px #dc3545; }
+
+    /* Header của Thẻ */
+    .card-header-cyber {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 1.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Đèn trạng thái */
+    .status-indicator {
+        width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+        box-shadow: 0 0 8px currentColor;
+    }
+    .status-indicator.online { background: #20c997; color: #20c997; animation: pulse 2s infinite; }
+    .status-indicator.offline { background: #dc3545; color: #dc3545; opacity: 0.5; }
+
+    /* Ảnh bo mạch thu nhỏ */
+    .img-circuit-thumb {
+        width: 100%; height: 120px; object-fit: cover;
+        border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);
+        background: #000; opacity: 0.8; transition: 0.3s;
+    }
+    .cyber-card:hover .img-circuit-thumb { opacity: 1; border-color: var(--neon-blue); }
+    
+    .chip-icon-bg {
+        width: 100%; height: 120px;
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,0.02);
+        border: 1px dashed rgba(255,255,255,0.1);
+    }
+
+    /* Danh sách thông số (Tech Info) */
+    .tech-list-item {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.6rem 0; border-bottom: 1px dashed rgba(255,255,255,0.05);
+        font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+    }
+    .tech-list-item:last-child { border-bottom: none; }
+    .tech-key { color: #6c757d; text-transform: uppercase; letter-spacing: 1px;}
+    .tech-val { color: #e0eaff; font-weight: 600; text-align: right; }
+
+    /* Nút thao tác Cyber */
+    .btn-cyber-action {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #a0aec0;
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        transition: 0.3s;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .btn-cyber-action:hover { background: rgba(0,243,255,0.1); border-color: var(--neon-blue); color: var(--neon-blue); box-shadow: 0 0 10px rgba(0,243,255,0.2); }
+    .btn-cyber-action.edit:hover { background: rgba(255,193,7,0.1); border-color: #ffc107; color: #ffc107; box-shadow: 0 0 10px rgba(255,193,7,0.2); }
+    .btn-cyber-action.danger:hover { background: rgba(220,53,69,0.1); border-color: #dc3545; color: #dc3545; box-shadow: 0 0 10px rgba(220,53,69,0.2); }
+
+    /* Thống kê Footer */
+    .mini-stat-box {
+        background: rgba(0, 243, 255, 0.05);
+        border: 1px solid rgba(0, 243, 255, 0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        display: inline-block;
+        box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+    }
+    .text-glow-info { text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
+    
+    /* Empty State */
+    .cyber-empty-state {
+        background: rgba(0,0,0,0.4);
+        border: 1px dashed rgba(0, 243, 255, 0.3);
+        border-radius: 16px;
+        padding: 5rem 2rem;
+        text-align: center;
+    }
+</style>
+
+<div class="container-fluid my-5 px-lg-4 relative z-1">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-5 border-bottom border-secondary pb-4" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="status-dot" style="width:10px; height:10px; background:var(--neon-purple); border-radius:50%; box-shadow:0 0 8px var(--neon-purple); animation: pulse 2s infinite;"></span>
+                <span class="text-secondary font-monospace small">FIRMWARE_MASTER_CONTROL</span>
+            </div>
+            <h2 class="fw-bold text-white mb-0 text-glow-info"><i class="bi bi-cpu me-2"></i> Firmware Repository</h2>
+            <p class="text-secondary font-monospace mt-2 mb-0">>_ Quản trị kho lưu trữ, phiên bản và module hệ thống.</p>
+        </div>
+        
+        <div class="d-flex gap-3 mt-4 mt-md-0">
+            <a href="{% url 'firmware_stats' %}" class="btn btn-outline-cyber rounded-pill px-4 font-monospace small" style="border: 1px solid rgba(255,255,255,0.2); color: #fff;">
+                <i class="bi bi-graph-up me-2"></i> ANALYTICS
             </a>
-            <a href="{% url 'firmware_create' %}" class="btn btn-primary">
-                <i class="bi bi-plus-circle me-1"></i> Thêm Firmware
+            <a href="{% url 'firmware_create' %}" class="btn btn-neon rounded-pill px-4 fw-bold shadow-lg">
+                <i class="bi bi-plus-lg me-2"></i> ADD_NODE_BINARY
             </a>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Tên Firmware</th>
-                            <th>Loại thiết bị</th>
-                            <th>Phiên bản</th>
-                            <th>Trạng thái</th>
-                            <th>Số lần nạp</th>
-                            <th>Ngày tạo</th>
-                            <th>Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for firmware in firmwares %}
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="device-icon me-2">
-                                        {% if firmware.device_type == 'ESP32' %}
-                                            <i class="bi bi-cpu text-primary"></i>
-                                        {% elif firmware.device_type == 'ESP8266' %}
-                                            <i class="bi bi-cpu text-success"></i>
-                                        {% elif firmware.device_type == 'Arduino' %}
-                                            <i class="bi bi-cpu text-info"></i>
-                                        {% elif firmware.device_type == 'Raspberry_Pi' %}
-                                            <i class="bi bi-cpu text-danger"></i>
-                                        {% else %}
-                                            <i class="bi bi-cpu text-secondary"></i>
-                                        {% endif %}
-                                    </div>
-                                    <div>
-                                        <strong>{{ firmware.name }}</strong>
-                                        <br>
-                                        <small class="text-muted">{{ firmware.description|truncatewords:10 }}</small>
-                                    </div>
+    {% if firmwares %}
+        <div class="row g-4">
+            {% for firmware in firmwares %}
+            <div class="col-xl-3 col-lg-4 col-md-6">
+                <div class="cyber-card h-100 d-flex flex-column {% if not firmware.is_active %}offline{% endif %}">
+                    
+                    <div class="card-header-cyber d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold text-white font-monospace text-truncate" style="max-width: 80%;">
+                            <i class="bi bi-file-earmark-binary text-info me-2"></i>{{ firmware.name|upper }}
+                        </h5>
+                        <div class="status-indicator {% if firmware.is_active %}online{% else %}offline{% endif %}" title="{% if firmware.is_active %}Active{% else %}Void{% endif %}"></div>
+                    </div>
+                    
+                    <div class="p-4 flex-grow-1">
+                        <div class="mb-4">
+                            {% if firmware.hardware_image %}
+                                <img src="{{ firmware.hardware_image.url }}" class="img-circuit-thumb" alt="Circuit">
+                            {% else %}
+                                <div class="chip-icon-bg">
+                                    <i class="bi bi-cpu text-secondary display-4 opacity-50"></i>
                                 </div>
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary">{{ firmware.get_device_type_display }}</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-info">v{{ firmware.version }}</span>
-                            </td>
-                            <td>
-                                {% if firmware.is_active %}
-                                    <span class="badge bg-success">Kích hoạt</span>
-                                {% else %}
-                                    <span class="badge bg-danger">Vô hiệu</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge bg-primary">{{ firmware.flashing_sessions.count }}</span>
-                            </td>
-                            <td>{{ firmware.created_at|date:"d/m/Y" }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{% url 'firmware_detail' firmware.id %}" 
-                                       class="btn btn-outline-primary" 
-                                       title="Xem chi tiết">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{% url 'firmware_edit' firmware.id %}" 
-                                       class="btn btn-outline-warning" 
-                                       title="Chỉnh sửa">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <a href="{% url 'firmware_delete' firmware.id %}" 
-                                       class="btn btn-outline-danger" 
-                                       title="Xóa">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                <i class="bi bi-inbox display-4 text-muted"></i>
-                                <p class="text-muted mt-2">Chưa có firmware nào</p>
-                                <a href="{% url 'firmware_create' %}" class="btn btn-primary">
-                                    <i class="bi bi-plus-circle me-1"></i> Thêm Firmware đầu tiên
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            {% endif %}
+                        </div>
+
+                        <div class="tech-list-item">
+                            <span class="tech-key">TYPE</span>
+                            <span class="tech-val">
+                                <span class="badge bg-transparent border border-secondary font-monospace">{{ firmware.get_device_type_display }}</span>
+                            </span>
+                        </div>
+                        <div class="tech-list-item">
+                            <span class="tech-key">VERSION</span>
+                            <span class="tech-val text-info">v{{ firmware.version }}</span>
+                        </div>
+                        <div class="tech-list-item">
+                            <span class="tech-key">SESSIONS</span>
+                            <span class="tech-val text-warning text-glow-warning">{{ firmware.flashing_sessions.count|stringformat:"02d" }}</span>
+                        </div>
+                        <div class="tech-list-item">
+                            <span class="tech-key">CREATED</span>
+                            <span class="tech-val text-secondary fw-normal">{{ firmware.created_at|date:"Y.m.d" }}</span>
+                        </div>
+
+                        {% if firmware.description %}
+                        <div class="mt-4 p-2 rounded" style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.05);">
+                            <p class="mb-0 text-secondary font-monospace" style="font-size:0.75rem;">{{ firmware.description|truncatewords:10 }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="p-3 border-top border-secondary d-flex gap-2" style="border-color: rgba(255,255,255,0.05) !important; background: rgba(0,0,0,0.2);">
+                        <a href="{% url 'firmware_detail' firmware.id %}" class="btn-cyber-action flex-fill" title="Deep View">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{% url 'firmware_edit' firmware.id %}" class="btn-cyber-action edit flex-fill" title="Modify Config">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                        <a href="{% url 'firmware_delete' firmware.id %}" class="btn-cyber-action danger flex-fill" title="Terminate Node">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                    
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-5 pt-4">
+            <div class="mini-stat-box">
+                <h2 class="mb-1 text-info text-glow-info font-monospace fw-bold">
+                    <i class="bi bi-hdd-stack me-2"></i>{{ firmwares.count|stringformat:"02d" }}
+                </h2>
+                <p class="mb-0 text-secondary font-monospace small" style="letter-spacing: 2px;">TOTAL_BINARY_HASHES</p>
             </div>
         </div>
-    </div>
+        
+    {% else %}
+        <div class="cyber-empty-state">
+            <div class="opacity-25 mb-4"><i class="bi bi-database-x display-1 text-info"></i></div>
+            <h3 class="text-white font-monospace mb-2 text-glow-info">NO_FIRMWARE_INSTANCES_DETECTED</h3>
+            <p class="mb-4 text-secondary font-monospace">> Kho lưu trữ hiện đang trống. Vui lòng thêm bản đóng gói đầu tiên.</p>
+            <a href="{% url 'firmware_create' %}" class="btn btn-neon rounded-pill px-5 fw-bold shadow-lg">
+                <i class="bi bi-plus-lg me-2"></i>CREATE_FIRST_ENTRY
+            </a>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

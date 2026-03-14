@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}MCP Server Editor | DTHub{% endblock %}
+
+{% block content %}
+<style>
+    .editor-container {
+        height: 600px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid rgba(0, 243, 255, 0.2);
+    }
+    #ace-editor {
+        width: 100%;
+        height: 100%;
+    }
+    .log-panel {
+        background: rgba(0,0,0,0.5);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        height: 600px;
+        overflow-y: auto;
+        color: #a5d6ff;
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+    }
+</style>
+
+<div class="container-fluid my-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-white fw-bold mb-1">
+                <i class="fa-solid fa-code me-2 text-info"></i> MCP Code Editor
+            </h2>
+            <div class="text-secondary font-monospace small">
+                SERVER: <span class="text-info">{{ server.name }}</span> | ID: {{ server.device_id }}
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button id="btn-save" class="btn btn-primary rounded-pill px-4">
+                <i class="fa-solid fa-save me-2"></i> Lưu mã nguồn
+            </button>
+            <button id="btn-test" class="btn btn-success rounded-pill px-4">
+                <i class="fa-solid fa-play me-2"></i> Chạy thử
+            </button>
+            <a href="{% url 'mcp_server_detail' server.device_id %}" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="fa-solid fa-times me-2"></i> Đóng
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="editor-container">
+                <div id="ace-editor">{{ server.code_template }}</div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="text-white mb-0 font-monospace">TEST LOGS</h5>
+                <button id="btn-clear-logs" class="btn btn-sm btn-link text-secondary text-decoration-none">Xóa log</button>
+            </div>
+            <div class="log-panel" id="log-content">
+                {% if server.last_test_log %}
+                    {{ server.last_test_log|linebreaksbr }}
+                {% else %}
+                    <div class="text-secondary opacity-50">Chưa có log chạy thử...</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts for Ace Editor -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/ace.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/mode-python.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.0/theme-monokai.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Khởi tạo Ace Editor
+        const editor = ace.edit("ace-editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/python");
+        editor.setOptions({
+            fontSize: "14px",
+            showPrintMargin: false,
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true
+        });
+
+        const logContent = document.getElementById('log-content');
+        const btnSave = document.getElementById('btn-save');
+        const btnTest = document.getElementById('btn-test');
+        const btnClearLogs = document.getElementById('btn-clear-logs');
+
+        function appendLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `mb-1 ${type === 'error' ? 'text-danger' : (type === 'success' ? 'text-success' : 'text-info')}`;
+            div.innerHTML = `<span class="opacity-50">[${new Date().toLocaleTimeString()}]</span> ${message}`;
+            logContent.appendChild(div);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        // Lưu mã nguồn
+        btnSave.addEventListener('click', async function() {
+            const code = editor.getValue();
+            btnSave.disabled = true;
+            btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Đang lưu...';
+
+            try {
+                const response = await fetch('{% url "mcp_save_code" server.pk %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ code: code })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    appendLog('Đã lưu mã nguồn thành công', 'success');
+                } else {
+                    appendLog('Lỗi khi lưu: ' + result.message, 'error');
+                }
+            } catch (e) {
+                appendLog('Lỗi kết nối: ' + e.message, 'error');
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerHTML = '<i class="fa-solid fa-save me-2"></i> Lưu mã nguồn';
+            }
+        });
+
+        // Chạy thử
+        btnTest.addEventListener('click', async function() {
+            // Lưu trước khi chạy
+            await btnSave.click();
+
+            btnTest.disabled = true;
+            btnTest.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Đang chạy thử...';
+            appendLog('Đang khởi tạo server chạy thử (đợi khoảng 3-5s)...', 'info');
+
+            try {
+                const response = await fetch('{% url "mcp_test_code" server.pk %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    logContent.innerHTML = ''; // Clear logs for new test
+                    appendLog('--- KẾT QUẢ CHẠY THỬ ---', 'success');
+                    
+                    const logs = result.logs.split('\n');
+                    logs.forEach(line => {
+                        const div = document.createElement('div');
+                        div.className = 'small font-monospace';
+                        div.textContent = line;
+                        logContent.appendChild(div);
+                    });
+                    
+                    if (result.is_valid) {
+                        appendLog('Server phản hồi hợp lệ (HTTP 200). Bạn có thể đồng bộ tools ngay bây giờ.', 'success');
+                    } else {
+                        appendLog('Server không phản hồi đúng chuẩn metadata. Vui lòng kiểm tra lại code.', 'error');
+                    }
+                } else {
+                    appendLog('Lỗi thực thi: ' + result.message, 'error');
+                }
+            } catch (e) {
+                appendLog('Lỗi kết nối server test: ' + e.message, 'error');
+            } finally {
+                btnTest.disabled = false;
+                btnTest.innerHTML = '<i class="fa-solid fa-play me-2"></i> Chạy thử';
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+        });
+
+        btnClearLogs.addEventListener('click', () => {
+            logContent.innerHTML = '<div class="text-secondary opacity-50">Logs đã được xóa...</div>';
+        });
+    });
+</script>
+{% endblock %}

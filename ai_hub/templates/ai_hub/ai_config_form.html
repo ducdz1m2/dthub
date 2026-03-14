@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}DTHub | {{ title }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Cyber Card Style */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .cyber-card:hover { 
+        box-shadow: 0 0 25px rgba(0, 243, 255, 0.1); 
+    }
+    
+    .card-header-custom {
+        background: rgba(0, 243, 255, 0.05);
+        border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+        padding: 1.25rem 1.5rem;
+        border-radius: 16px 16px 0 0;
+    }
+
+    /* Form Styles */
+    .form-label {
+        color: var(--neon-blue);
+        font-weight: 600;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        border-radius: 8px;
+        transition: 0.3s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        background: rgba(0, 0, 0, 0.6);
+        border-color: var(--neon-blue);
+        box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+        color: white;
+    }
+    
+    .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+    
+    .form-check-input {
+        background-color: rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 255, 255, 0.2);
+        transition: 0.3s;
+    }
+    
+    .form-check-input:checked {
+        background-color: var(--neon-blue);
+        border-color: var(--neon-blue);
+    }
+    
+    /* Section Headers */
+    .section-header {
+        background: rgba(0, 0, 0, 0.3);
+        border-left: 3px solid var(--neon-blue);
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0 1rem 0;
+        border-radius: 8px;
+    }
+    
+    .section-header h6 {
+        color: var(--neon-blue);
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: 1px;
+    }
+    
+    /* Provider Cards */
+    .provider-card {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: 0.3s;
+    }
+    
+    .provider-card:hover {
+        background: rgba(0, 243, 255, 0.05);
+        border-color: rgba(0, 243, 255, 0.2);
+    }
+    
+    .provider-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: bold;
+        color: white;
+        margin-right: 1rem;
+    }
+    
+    .provider-ollama { background: #6d75e0; }
+    .provider-openai { background: #10a37f; }
+    .provider-gemini { background: #4285f4; }
+    .provider-claude { background: #d97757; }
+    
+    /* Alert Styles */
+    .alert {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: white;
+    }
+    
+    .alert-info {
+        background: rgba(0, 243, 255, 0.1);
+        border-color: var(--neon-blue);
+    }
+    
+    .alert-warning {
+        background: rgba(255, 193, 7, 0.1);
+        border-color: #ffc107;
+    }
+    
+    /* Button Styles */
+    .btn-neon {
+        background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+        border: none;
+        color: white;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        transition: 0.3s;
+    }
+    
+    .btn-neon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 20px rgba(0, 243, 255, 0.4);
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        transition: 0.3s;
+    }
+    
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+</style>
+
+<div class="container mt-4 mb-5">
+    
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div class="d-flex align-items-center justify-content-center me-3" style="width: 55px; height: 55px; border-radius: 12px; background: rgba(0, 243, 255, 0.1); border: 1px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,243,255,0.2);">
+            <i class="fa-solid fa-sliders text-info fs-3 text-glow-info"></i>
+        </div>
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="status-dot" style="width:8px; height:8px; background:var(--neon-blue); border-radius:50%; box-shadow:0 0 8px var(--neon-blue); animation: pulse 2s infinite;"></span>
+                <span class="text-secondary font-monospace small">AI_CONFIG_EDITOR</span>
+            </div>
+            <h2 class="fw-bold text-white mb-0 text-glow-info" style="letter-spacing: 1px;">{{ title }}</h2>
+        </div>
+        <div class="ms-auto">
+            <a href="{% url 'ai_config_list' %}" class="btn btn-secondary">
+                <i class="fa-solid fa-arrow-left me-2"></i>Quay Lại
+            </a>
+        </div>
+    </div>
+    
+    <!-- Form -->
+    <div class="cyber-card">
+        <div class="card-header-custom">
+            <i class="fa-solid fa-cogs text-info me-2 fs-5"></i>
+            <h5 class="mb-0 fw-bold text-white font-monospace">CONFIGURATION_DETAILS</h5>
+        </div>
+        
+        <div class="p-4">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <form method="post" id="configForm">
+                {% csrf_token %}
+                
+                <!-- Basic Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small mt-1">{{ form.name.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check mt-4">
+                            {{ form.is_default }}
+                            <label for="{{ form.is_default.id_for_label }}" class="form-check-label">
+                                {{ form.is_default.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check mt-4">
+                            {{ form.is_active }}
+                            <label for="{{ form.is_active.id_for_label }}" class="form-check-label">
+                                {{ form.is_active.label }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- STT Configuration -->
+                <div class="section-header">
+                    <h6><i class="fa-solid fa-microphone me-2"></i>SPEECH-TO-TEXT</h6>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="{{ form.stt_engine.id_for_label }}" class="form-label">{{ form.stt_engine.label }}</label>
+                        {{ form.stt_engine }}
+                        {% if form.stt_engine.errors %}
+                            <div class="text-danger small mt-1">{{ form.stt_engine.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="{{ form.stt_language.id_for_label }}" class="form-label">{{ form.stt_language.label }}</label>
+                        {{ form.stt_language }}
+                        {% if form.stt_language.errors %}
+                            <div class="text-danger small mt-1">{{ form.stt_language.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4" id="stt_custom_url_container" style="display: none;">
+                        <label for="{{ form.stt_custom_url.id_for_label }}" class="form-label">{{ form.stt_custom_url.label }}</label>
+                        {{ form.stt_custom_url }}
+                        {% if form.stt_custom_url.errors %}
+                            <div class="text-danger small mt-1">{{ form.stt_custom_url.errors }}</div>
+                        {% endif %}
+                        <small class="text-secondary font-monospace">API endpoint cho STT</small>
+                    </div>
+                </div>
+                
+                <!-- LLM & Response Configuration -->
+                <div class="section-header">
+                    <h6><i class="fa-solid fa-brain me-2"></i>AI MODEL & RESPONSE</h6>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="{{ form.llm_model.id_for_label }}" class="form-label">{{ form.llm_model.label }}</label>
+                        {{ form.llm_model }}
+                        {% if form.llm_model.errors %}
+                            <div class="text-danger small mt-1">{{ form.llm_model.errors }}</div>
+                        {% endif %}
+                        <small class="text-secondary font-monospace">Tự động lấy danh sách từ Ollama của bạn</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.response_language.id_for_label }}" class="form-label">{{ form.response_language.label }}</label>
+                        {{ form.response_language }}
+                        {% if form.response_language.errors %}
+                            <div class="text-danger small mt-1">{{ form.response_language.errors }}</div>
+                        {% endif %}
+                        <small class="text-secondary font-monospace">Ngôn ngữ AI sẽ dùng để trả lời</small>
+                    </div>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between">
+                            <label for="{{ form.llm_temperature.id_for_label }}" class="form-label">{{ form.llm_temperature.label }}</label>
+                            <span class="badge bg-info font-monospace" id="tempValueDisplay">{{ form.llm_temperature.value|default:"0.1" }}</span>
+                        </div>
+                        {{ form.llm_temperature }}
+                        {% if form.llm_temperature.errors %}
+                            <div class="text-danger small mt-1">{{ form.llm_temperature.errors }}</div>
+                        {% endif %}
+                        <div class="d-flex justify-content-between small text-secondary font-monospace mt-1">
+                            <span>Chính xác</span>
+                            <span>Sáng tạo</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.llm_max_tokens.id_for_label }}" class="form-label">{{ form.llm_max_tokens.label }}</label>
+                        {{ form.llm_max_tokens }}
+                        {% if form.llm_max_tokens.errors %}
+                            <div class="text-danger small mt-1">{{ form.llm_max_tokens.errors }}</div>
+                        {% endif %}
+                        <small class="text-secondary font-monospace">Độ dài phản hồi tối đa (Tokens)</small>
+                    </div>
+                </div>
+                
+                <!-- TTS Configuration -->
+                <div class="section-header">
+                    <h6><i class="fa-solid fa-volume-up me-2"></i>TEXT-TO-SPEECH</h6>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="{{ form.tts_engine.id_for_label }}" class="form-label">{{ form.tts_engine.label }}</label>
+                        {{ form.tts_engine }}
+                        {% if form.tts_engine.errors %}
+                            <div class="text-danger small mt-1">{{ form.tts_engine.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 tts-gtts-field">
+                        <label for="{{ form.tts_voice.id_for_label }}" class="form-label">{{ form.tts_voice.label }}</label>
+                        {{ form.tts_voice }}
+                        {% if form.tts_voice.errors %}
+                            <div class="text-danger small mt-1">{{ form.tts_voice.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4 tts-gtts-field">
+                        <label for="{{ form.tts_speed.id_for_label }}" class="form-label">{{ form.tts_speed.label }}</label>
+                        {{ form.tts_speed }}
+                        {% if form.tts_speed.errors %}
+                            <div class="text-danger small mt-1">{{ form.tts_speed.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-8" id="tts_custom_url_container" style="display: none;">
+                        <label for="{{ form.tts_custom_url.id_for_label }}" class="form-label">{{ form.tts_custom_url.label }}</label>
+                        {{ form.tts_custom_url }}
+                        {% if form.tts_custom_url.errors %}
+                            <div class="text-danger small mt-1">{{ form.tts_custom_url.errors }}</div>
+                        {% endif %}
+                        <small class="text-secondary font-monospace">API endpoint cho TTS</small>
+                    </div>
+                </div>
+                
+                <!-- Form Errors -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Submit Buttons -->
+                <div class="d-flex justify-content-between pt-4 border-top border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
+                    <a href="{% url 'ai_config_list' %}" class="btn btn-secondary">
+                        <i class="fa-solid fa-times me-2"></i>Hủy
+                    </a>
+                    <div>
+                        <button type="submit" class="btn btn-neon">
+                            <i class="fa-solid fa-save me-2"></i>Lưu Cấu Hình
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Cập nhật hiển thị giá trị Temperature khi kéo thanh range
+    const tempInput = document.querySelector('input[type="range"]');
+    const tempDisplay = document.getElementById('tempValueDisplay');
+    
+    if (tempInput && tempDisplay) {
+        tempInput.addEventListener('input', function() {
+            tempDisplay.textContent = this.value;
+        });
+    }
+
+    // Logic ẩn/hiện trường STT Custom URL
+    const sttEngineSelect = document.getElementById('id_stt_engine');
+    const sttCustomUrlContainer = document.getElementById('stt_custom_url_container');
+    
+    function toggleSttCustomFields() {
+        if (sttEngineSelect.value === 'custom') {
+            sttCustomUrlContainer.style.display = 'block';
+        } else {
+            sttCustomUrlContainer.style.display = 'none';
+        }
+    }
+    
+    if (sttEngineSelect) {
+        sttEngineSelect.addEventListener('change', toggleSttCustomFields);
+        toggleSttCustomFields(); // Khởi tạo ban đầu
+    }
+
+    // Logic ẩn/hiện trường TTS Custom URL
+    const ttsEngineSelect = document.getElementById('id_tts_engine');
+    const ttsCustomUrlContainer = document.getElementById('tts_custom_url_container');
+    const ttsGttsFields = document.querySelectorAll('.tts-gtts-field');
+    
+    function toggleTtsCustomFields() {
+        if (ttsEngineSelect.value === 'custom') {
+            ttsCustomUrlContainer.style.display = 'block';
+            ttsGttsFields.forEach(f => f.style.display = 'none');
+        } else {
+            ttsCustomUrlContainer.style.display = 'none';
+            ttsGttsFields.forEach(f => f.style.display = 'block');
+        }
+    }
+    
+    if (ttsEngineSelect) {
+        ttsEngineSelect.addEventListener('change', toggleTtsCustomFields);
+        toggleTtsCustomFields(); // Khởi tạo ban đầu
+    }
+
+    // Auto-focus on first field
+    const firstField = document.querySelector('.form-control');
+    if (firstField) {
+        firstField.focus();
+    }
+});
+</script>
+{% endblock %}

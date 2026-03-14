@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chi tiết thiết bị | DTHub{% endblock %}
+
+{% block content %}
+<style>
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+    .text-glow-info { text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
+    .label-item {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        transition: 0.3s;
+    }
+    .label-item:hover {
+        border-color: var(--neon-blue);
+        background: rgba(0, 243, 255, 0.05);
+    }
+</style>
+
+<div class="container my-5 relative z-1">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 border-bottom border-secondary pb-4" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="status-dot" style="width:10px; height:10px; background:var(--neon-blue); border-radius:50%; box-shadow:0 0 8px var(--neon-blue); animation: pulse 2s infinite;"></span>
+                <span class="text-secondary font-monospace small">DEVICE_SPECIFIC_CONFIGURATION</span>
+            </div>
+            <h2 class="fw-bold text-white mb-0 text-glow-info">
+                <i class="fa-solid fa-microchip me-2"></i> {{ device.name }} 
+            </h2>
+        </div>
+        
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="{% url 'device_management' %}" class="btn btn-outline-secondary rounded-pill px-4 font-monospace">
+                <i class="fa-solid fa-arrow-left me-1"></i> BACK_TO_NODES
+            </a>
+            <a href="{% url 'ai_dashboard' %}" class="btn btn-outline-info rounded-pill px-4 font-monospace">
+                <i class="fa-solid fa-house me-1"></i> DASHBOARD
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Thông tin thiết bị -->
+        <div class="col-lg-4">
+            <div class="cyber-card h-100">
+                <h4 class="text-white fw-bold mb-4 text-glow-info"><i class="fa-solid fa-microchip me-2 text-info"></i>Thông tin thiết bị</h4>
+                <div class="mb-3">
+                    <label class="text-secondary small font-monospace d-block">DEVICE_ID</label>
+                    <span class="text-info font-monospace">{{ device.device_id }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-secondary small font-monospace d-block">NAME</label>
+                    <span class="text-white fw-bold">{{ device.name }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-secondary small font-monospace d-block">IP_ADDRESS</label>
+                    <span class="text-success font-monospace">{{ device.ip_address|default:"N/A" }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-secondary small font-monospace d-block">LOCATION</label>
+                    <span class="text-white">{{ device.location|default:"-" }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-secondary small font-monospace d-block">STATUS</label>
+                    {% if device.is_online %}
+                        <span class="badge bg-transparent border border-success text-success rounded-pill px-3 font-monospace text-glow-success">
+                            <span class="spinner-grow spinner-grow-sm me-1" style="width: 0.3rem; height: 0.3rem;"></span>ONLINE
+                        </span>
+                    {% else %}
+                        <span class="badge bg-transparent border border-secondary text-secondary rounded-pill px-3 font-monospace">OFFLINE</span>
+                    {% endif %}
+                </div>
+                <div class="mb-3">
+                    <label class="text-secondary small font-monospace d-block">LAST_SEEN</label>
+                    <span class="text-white font-monospace small">{% if device.last_seen %}{{ device.last_seen|date:"Y-m-d H:i:s" }}{% else %}Never{% endif %}</span>
+                </div>
+                <hr class="border-secondary opacity-25">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'device_sensor_data' device.device_id %}" class="btn btn-outline-info rounded-pill">
+                        <i class="fa-solid fa-chart-line me-2"></i>Xem dữ liệu cảm biến
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quản lý nhãn điều khiển -->
+        <div class="col-lg-8">
+            <div class="cyber-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="text-white fw-bold mb-0 text-glow-info"><i class="fa-solid fa-tags me-2 text-info"></i>Nhãn điều khiển (Relays/GPIO)</h4>
+                    <button class="btn btn-neon btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addLabelModal">
+                        <i class="fa-solid fa-plus me-1"></i> THÊM NHÃN MỚI
+                    </button>
+                </div>
+
+                <div class="labels-list">
+                    {% for label in labels %}
+                        <div class="label-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge bg-transparent border border-info text-info font-monospace me-2">{{ label.channel }}</span>
+                                <span class="text-white fw-bold fs-5">{{ label.label }}</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                {% if label.is_active %}
+                                    <span class="text-success small font-monospace"><i class="fa-solid fa-circle-check me-1"></i>ACTIVE</span>
+                                {% else %}
+                                    <span class="text-secondary small font-monospace"><i class="fa-solid fa-circle-xmark me-1"></i>INACTIVE</span>
+                                {% endif %}
+                                <a href="{% url 'delete_device_label' label.pk %}" class="btn btn-outline-danger btn-sm border-0" onclick="return confirm('Bạn có chắc chắn muốn xóa nhãn này?')">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </a>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-5 opacity-50">
+                            <i class="fa-solid fa-tag fs-1 mb-3"></i>
+                            <p>Thiết bị này chưa có nhãn điều khiển nào.</p>
+                            <p class="small">Hãy thêm nhãn (VD: relay1 -> Quạt) để AI có thể điều khiển bằng giọng nói.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<!-- Modal Thêm Nhãn -->
+<div class="modal fade cyber-modal" id="addLabelModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: #0a0f1e; border: 1px solid var(--neon-blue);">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title text-white"><i class="fa-solid fa-tag me-2 text-info"></i>THÊM NHÃN ĐIỀU KHIỂN</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'add_device_label' device.device_id %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">MÃ KÊNH (VD: relay1, relay2, gpio13)</label>
+                        {{ form.channel }}
+                        <div class="form-text text-muted small">Mã lệnh thực tế mà ESP8266 nhận (VD: relay1_on).</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">TÊN NHÃN (VD: Quạt trần, Đèn chùm)</label>
+                        {{ form.label }}
+                        <div class="form-text text-muted small">Tên bạn sẽ dùng để gọi chatbot điều khiển.</div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        {{ form.is_active }}
+                        <label class="form-check-label text-white ms-2">Kích hoạt nhãn</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">HỦY</button>
+                    <button type="submit" class="btn btn-neon rounded-pill px-4">LƯU NHÃN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

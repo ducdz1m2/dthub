@@ -1,111 +1,244 @@
 {% extends 'base.html' %}
 {% load currency_filters %}
 {% block content %}
-<div class="container my-5">
+<style>
+    /* Bố cục Cyber Card (Vẫn giữ nguyên độ ngầu) */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+    }
+    
+    .cyber-card-inner {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(0, 243, 255, 0.1);
+        border-radius: 12px;
+    }
+
+    /* Biên lai số */
+    .digital-receipt {
+        background: rgba(0, 243, 255, 0.05);
+        border: 1px dashed var(--neon-blue);
+        border-radius: 12px;
+        position: relative;
+    }
+    .digital-receipt::before, .digital-receipt::after {
+        content: '';
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: var(--dark-bg);
+        border-radius: 50%;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .digital-receipt::before { left: -10px; border-right: 1px dashed var(--neon-blue); }
+    .digital-receipt::after { right: -10px; border-left: 1px dashed var(--neon-blue); }
+
+    /* Ô nhập liệu */
+    .cyber-input {
+        background: rgba(0, 0, 0, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #fff !important;
+        border-radius: 8px;
+    }
+    .cyber-input:focus {
+        border-color: var(--neon-blue) !important;
+        box-shadow: 0 0 10px rgba(0, 243, 255, 0.2) !important;
+    }
+    
+    .form-label { color: #a0aec0; font-weight: 600; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 1px;}
+    
+    /* Phương thức thanh toán */
+    .payment-option-box {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .payment-option-box:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .payment-option-box input[type="radio"] { display: none; }
+    
+    .radio-custom {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        position: relative;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .payment-option-box input[type="radio"]:checked + .radio-custom {
+        border-color: var(--neon-blue);
+        box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+    }
+    .payment-option-box input[type="radio"]:checked + .radio-custom::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 10px;
+        height: 10px;
+        background: var(--neon-blue);
+        border-radius: 50%;
+    }
+    .payment-option-box input[type="radio"]:checked ~ .payment-label {
+        color: var(--neon-blue);
+        font-weight: bold;
+    }
+    .payment-option-box.selected {
+        border-color: var(--neon-blue);
+        background: rgba(0, 243, 255, 0.05);
+    }
+
+    .payment-label { color: #e0eaff; margin-bottom: 0; cursor: pointer; transition: 0.3s; }
+
+    .text-glow-success { text-shadow: 0 0 10px rgba(25, 135, 84, 0.5); }
+    .text-glow-info { text-shadow: 0 0 10px rgba(0, 243, 255, 0.4); }
+</style>
+
+<div class="container my-5 relative z-1">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow border-0">
-                <div class="card-body p-4">
-                    <h4 class="fw-bold mb-3 text-success">Xác nhận đơn hàng</h4>
+        <div class="col-lg-8 col-xl-7">
+            
+            <div class="cyber-card shadow-lg">
+                <div class="p-4 border-bottom border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="status-dot" style="width:10px; height:10px; background:var(--neon-blue); border-radius:50%; box-shadow:0 0 8px var(--neon-blue); animation: pulse 2s infinite;"></span>
+                        <span class="text-secondary font-monospace small">THANH TOÁN AN TOÀN & BẢO MẬT</span>
+                    </div>
+                    <h3 class="fw-bold text-white mb-0 text-glow-info"><i class="fa-solid fa-shield-halved me-2"></i> Xác nhận Đơn hàng</h3>
+                </div>
+                
+                <div class="p-4 p-md-5">
                     
-                    <!-- Product Info -->
-                    <div class="mb-4 p-3 bg-light rounded">
-                        <h6 class="text-muted mb-2">Sản phẩm</h6>
-                        <h5 class="mb-1">{{ product.name }}</h5>
-                        <p class="mb-0 text-muted">{{ product.description|truncatewords:20 }}</p>
-                        <h4 class="text-success mt-2">{{ product.price|vnd_price }}</h4>
+                    <div class="digital-receipt p-4 mb-5">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-info font-monospace mb-0">THÔNG TIN SẢN PHẨM</h6>
+                            <span class="badge bg-transparent border border-secondary text-secondary font-monospace">Mã SP: {{ product.pk|stringformat:"04d" }}</span>
+                        </div>
+                        
+                        <h4 class="text-white fw-bold mb-2">{{ product.name }}</h4>
+                        <p class="text-secondary mb-4" style="font-size: 0.95rem;">{{ product.description|truncatewords:20 }}</p>
+                        
+                        <div class="d-flex justify-content-between align-items-end pt-3 border-top border-secondary" style="border-color: rgba(0, 243, 255, 0.2) !important;">
+                            <span class="text-secondary">Giá sản phẩm:</span>
+                            <h3 class="text-info fw-bold mb-0 font-monospace text-glow-info">{{ product.price|vnd_price }}</h3>
+                        </div>
                     </div>
                     
-                    <form method="POST">
+                    <form method="POST" id="checkout-form">
                         {% csrf_token %}
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Địa chỉ nhận hàng/Lắp đặt</label>
+                        
+                        <div class="mb-4">
+                            <label class="form-label"><i class="fa-solid fa-location-dot text-secondary me-2"></i>Địa chỉ nhận hàng / Lắp đặt</label>
                             {{ form.address }} 
-                            <small class="text-muted">Vui lòng nhập địa chỉ chính xác để nhân viên liên hệ.</small>
+                            <small class="text-secondary mt-2 d-block opacity-75">Vui lòng nhập địa chỉ chính xác để nhân viên giao hàng liên hệ.</small>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Ghi chú (nếu có)</label>
+                        
+                        <div class="mb-5">
+                            <label class="form-label"><i class="fa-solid fa-comment-dots text-secondary me-2"></i>Ghi chú đơn hàng (Nếu có)</label>
                             {{ form.note }}
                         </div>
                         
-                        <!-- Payment Method Selection -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">Phương thức thanh toán</label>
-                            <div class="payment-options">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" name="payment_method" id="vnpay" value="vnpay" checked>
-                                    <label class="form-check-label" for="vnpay">
-                                        <i class="fas fa-credit-card text-primary"></i> VNPay (Thẻ tín dụng/ghi nợ, Ví điện tử, Internet Banking)
-                                    </label>
+                        <div class="mb-5">
+                            <label class="form-label mb-3"><i class="fa-solid fa-credit-card text-secondary me-2"></i>Phương thức thanh toán</label>
+                            
+                            <label class="payment-option-box selected" for="vnpay">
+                                <input type="radio" name="payment_method" id="vnpay" value="vnpay" checked>
+                                <div class="radio-custom"></div>
+                                <div class="payment-label">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-qrcode fs-4" style="color: var(--neon-blue);"></i>
+                                        <div>
+                                            <span class="d-block fw-bold">Thanh toán VNPay</span>
+                                            <span class="small text-secondary fw-normal">Thẻ tín dụng/ghi nợ, Ví điện tử, Internet Banking</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="payment_method" id="cod" value="cod">
-                                    <label class="form-check-label" for="cod">
-                                        <i class="fas fa-money-bill-wave text-success"></i> Ship COD (Thanh toán khi nhận hàng)
-                                    </label>
+                            </label>
+
+                            <label class="payment-option-box" for="cod">
+                                <input type="radio" name="payment_method" id="cod" value="cod">
+                                <div class="radio-custom"></div>
+                                <div class="payment-label">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-box-check fs-4 text-success"></i>
+                                        <div>
+                                            <span class="d-block fw-bold">Thanh toán khi nhận hàng (COD)</span>
+                                            <span class="small text-secondary fw-normal">Kiểm tra sản phẩm và thanh toán bằng tiền mặt</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            </label>
                         </div>
                         
-                        <!-- Order Summary -->
-                        <div class="mb-4 p-3 border rounded">
-                            <div class="d-flex justify-content-between mb-2">
+                        <div class="cyber-card-inner p-4 mb-5 border-0" style="background: rgba(0, 0, 0, 0.6);">
+                            <div class="d-flex justify-content-between mb-3 text-secondary">
                                 <span>Tạm tính:</span>
                                 <span>{{ product.price|vnd_price }}</span>
                             </div>
-                            <div class="d-flex justify-content-between mb-2">
+                            <div class="d-flex justify-content-between mb-3 text-secondary">
                                 <span>Phí vận chuyển:</span>
-                                <span class="text-success">Miễn phí</span>
+                                <span class="text-success text-glow-success fw-bold">Miễn phí</span>
                             </div>
-                            <hr>
-                            <div class="d-flex justify-content-between fw-bold">
-                                <span>Tổng cộng:</span>
-                                <span class="text-success">{{ product.price|vnd_price }}</span>
+                            <hr style="border-color: rgba(255,255,255,0.1);">
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span class="fw-bold text-white text-uppercase ls-1">Tổng thanh toán:</span>
+                                <span class="text-info fs-4 fw-bold font-monospace text-glow-info">{{ product.price|vnd_price }}</span>
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn btn-success w-100 py-2" id="submit-btn">
-                            <i class="fas fa-shopping-cart"></i> XÁC NHẬN ĐẶT ĐƠN
+                        <button type="submit" class="btn btn-neon w-100 py-3 fs-5 fw-bold d-flex justify-content-center align-items-center gap-2" id="submit-btn">
+                            <i class="fa-solid fa-cart-shopping fs-4"></i> XÁC NHẬN ĐẶT HÀNG
                         </button>
                         
-                        <p class="text-muted small text-center mt-3 mb-0">
-                            <i class="fas fa-lock"></i> Thông tin của bạn được bảo mật. Thanh toán được bảo vệ bởi VNPay.
+                        <p class="text-secondary small text-center mt-4 mb-0">
+                            <i class="fa-solid fa-lock text-success"></i> Thông tin của bạn được bảo mật. Giao dịch an toàn qua cổng VNPay.
                         </p>
                     </form>
                 </div>
             </div>
+            
         </div>
     </div>
 </div>
 
-<style>
-.payment-options .form-check {
-    padding: 12px;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    transition: all 0.3s ease;
-}
-
-.payment-options .form-check:hover {
-    border-color: #28a745;
-    background-color: #f8f9fa;
-}
-
-.payment-options .form-check-input:checked ~ .form-check-label {
-    color: #28a745;
-    font-weight: 500;
-}
-
-.form-check-input:checked {
-    background-color: #28a745;
-    border-color: #28a745;
-}
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form[method="POST"]');
+    const formInputs = document.querySelectorAll('input[type="text"], input[type="email"], textarea');
+    formInputs.forEach(input => {
+        input.classList.add('form-control', 'cyber-input');
+        if(input.tagName.toLowerCase() === 'textarea') {
+            input.setAttribute('rows', '3');
+        }
+    });
+
+    const paymentBoxes = document.querySelectorAll('.payment-option-box');
+    const paymentRadios = document.querySelectorAll('input[name="payment_method"]');
+
+    paymentRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            paymentBoxes.forEach(box => box.classList.remove('selected'));
+            if (this.checked) {
+                this.closest('.payment-option-box').classList.add('selected');
+            }
+        });
+    });
+
+    const form = document.getElementById('checkout-form');
     const submitBtn = document.getElementById('submit-btn');
     let isSubmitting = false;
     
@@ -117,14 +250,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             isSubmitting = true;
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG XỬ LÝ...';
+            submitBtn.style.opacity = '0.7';
+            submitBtn.style.pointerEvents = 'none';
+            // Đã đổi dòng chữ Loading
+            submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin fs-4"></i> ĐANG XỬ LÝ ĐƠN HÀNG...';
             
-            // Re-enable after 10 seconds in case something goes wrong
             setTimeout(function() {
                 isSubmitting = false;
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> XÁC NHẬN ĐẶT ĐƠN';
+                submitBtn.style.opacity = '1';
+                submitBtn.style.pointerEvents = 'auto';
+                submitBtn.innerHTML = '<i class="fa-solid fa-cart-shopping fs-4"></i> XÁC NHẬN ĐẶT HÀNG';
             }, 10000);
         });
     }

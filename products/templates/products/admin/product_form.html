@@ -2,157 +2,234 @@
 {% load static %}
 
 {% block content %}
-  <div class="container my-5">
-    <div class="row justify-content-center">
-      <div class="col-lg-10">
-        <div class="d-flex align-items-center justify-content-between mb-4">
-          <div>
-            <h2 class="fw-bold text-dark">
-              <i class="bi bi-pencil-square text-primary me-2"></i>
-              {% if object %}Cập nhật{% else %}Thêm mới{% endif %} sản phẩm
-            </h2>
-            <p class="text-muted mb-0">Quản lý thông tin chi tiết và hình ảnh hệ sinh thái DTHub.</p>
-          </div>
-          <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
-            <i class="bi bi-arrow-left"></i> Quay lại
-          </a>
-        </div>
+<style>
+    /* Bố cục Cyber Card */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+    }
+    
+    .cyber-card-inner {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(0, 243, 255, 0.1);
+        border-radius: 12px;
+    }
 
-        <form method="post" enctype="multipart/form-data" class="needs-validation" id="product-form">
-          {% csrf_token %}
-
-          <div class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-header bg-white py-3 border-bottom shadow-none">
-              <h5 class="mb-0 fw-bold"><i class="bi bi-card-text me-2 text-primary"></i>Thông tin chung</h5>
-            </div>
-            <div class="card-body p-4">
-              <div class="row g-3">
-                {% for field in form %}
-                  <div class="{% if field.name == 'description' %}col-12{% else %}col-md-6{% endif %}">
-                    <label class="form-label fw-bold small text-uppercase text-muted">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.errors %}
-                      <div class="text-danger small mt-1">{{ field.errors }}</div>
-                    {% endif %}
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-
-          <div class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-header bg-white py-3 border-bottom">
-              <h5 class="mb-0 fw-bold"><i class="bi bi-images me-2 text-primary"></i>Thư viện ảnh</h5>
-            </div>
-            <div class="card-body p-4 bg-light-subtle">
-              {{ formset.management_form }}
-              <div class="row row-cols-1 row-cols-md-3 g-3" id="image-formset-container">
-                {% for f in formset %}
-                  <div class="col image-form-item">
-                    <div class="card h-100 border shadow-sm rounded-3 overflow-hidden product-image-card">
-                      {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
-
-                      <div class="position-relative bg-secondary-subtle d-flex align-items-center justify-content-center" style="height: 180px;">
-                        {% if f.instance.pk and f.instance.image %}
-                          <img src="{{ f.instance.image.url }}" class="w-100 h-100 object-fit-cover preview-target" />
-                          <div class="position-absolute top-0 end-0 p-2">
-                            <span class="badge bg-success shadow-sm">Ảnh hiện tại</span>
-                          </div>
-                        {% else %}
-                          <img src="" class="w-100 h-100 object-fit-cover preview-target d-none" />
-                          <div class="text-center placeholder-box">
-                            <i class="bi bi-image text-muted display-4"></i>
-                            <p class="small text-muted mb-0">Chưa có ảnh</p>
-                          </div>
-                        {% endif %}
-                      </div>
-
-                      <div class="card-body p-3">
-                        <div class="mb-3">
-                          <label class="form-label small fw-bold">Tải ảnh lên</label>
-                          <div class="input-group input-group-sm">
-                            {{ f.image }}
-                          </div>
-                        </div>
-                        <div class="mb-2">
-                          <label class="form-label small fw-bold">Mô tả ảnh</label>
-                          {{ f.alt_text }}
-                        </div>
-
-                        {% if f.instance.pk %}
-                          <div class="form-check form-switch mt-3 pt-2 border-top">
-                            {{ f.DELETE }}
-                            <label class="form-check-label text-danger fw-bold small">Đánh dấu xóa ảnh này</label>
-                          </div>
-                        {% endif %}
-                      </div>
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-
-          <div class="sticky-bottom bg-white p-3 border-top shadow-lg rounded-4 d-flex justify-content-end gap-3 mb-5" style="z-index: 1000; bottom: 20px;">
-            <a href="{% url 'products:product_list' %}" class="btn btn-light rounded-pill px-5 border">Hủy bỏ</a>
-            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold shadow">
-              <i class="bi bi-cloud-arrow-up-fill me-2"></i>Lưu sản phẩm
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <style>
-    /* Style cho các ô nhập liệu Django */
-    input[type='text'], input[type='number'], input[type='url'], select, textarea {
-      display: block;
-      width: 100%;
-      padding: 0.6rem 1rem;
-      font-size: 0.95rem;
-      border: 1px solid #dee2e6;
-      border-radius: 12px;
-      transition: all 0.2s ease-in-out;
+    /* Style chung cho Form Inputs của Django */
+    input[type='text'], input[type='number'], input[type='url'], input[type='email'], select, textarea {
+        display: block;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        background: rgba(0, 0, 0, 0.5) !important;
+        border: 1px solid rgba(0, 243, 255, 0.3) !important;
+        color: #e0eaff !important;
+        border-radius: 8px;
+        transition: all 0.3s ease-in-out;
+        font-family: 'JetBrains Mono', monospace;
     }
     
     input:focus, textarea:focus, select:focus {
-      border-color: #0d6efd;
-      outline: 0;
-      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1) !important;
-      background-color: #fff;
+        border-color: var(--neon-purple) !important;
+        outline: 0;
+        box-shadow: 0 0 15px rgba(188, 19, 254, 0.2) !important;
+        background-color: rgba(0, 0, 0, 0.7) !important;
     }
 
-    /* Style riêng cho nút chọn file trong formset */
+    /* Nút chọn File ảnh */
     input[type="file"] {
-      font-size: 0.85rem;
-      padding: 0.5rem;
+        font-size: 0.85rem;
+        padding: 0.5rem;
+        color: #a0aec0;
+        background: transparent;
+        border: 1px dashed rgba(0, 243, 255, 0.4);
+        border-radius: 8px;
+        width: 100%;
+        cursor: pointer;
+    }
+    input[type="file"]::file-selector-button {
+        background: rgba(0, 243, 255, 0.1);
+        color: var(--neon-blue);
+        border: 1px solid var(--neon-blue);
+        padding: 0.3rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 10px;
+        transition: 0.3s;
+    }
+    input[type="file"]::file-selector-button:hover {
+        background: var(--neon-blue);
+        color: #000;
     }
 
+    /* Checkbox & Switch của Django */
+    input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--neon-blue);
+        cursor: pointer;
+    }
+
+    /* Labels */
+    .form-label {
+        color: #a0aec0;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    /* Card chứa ảnh */
     .product-image-card {
-      transition: transform 0.2s;
+        transition: transform 0.3s, box-shadow 0.3s;
     }
-    
     .product-image-card:hover {
-      border-color: #0d6efd !important;
+        border-color: var(--neon-blue) !important;
+        box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+    }
+    
+    /* Vùng preview ảnh */
+    .preview-zone {
+        background: #02040a;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        position: relative;
     }
 
-    .object-fit-cover { object-fit: cover; }
-    
-    .bg-light-subtle { background-color: #f8f9fa; }
-  </style>
+    /* Thanh chức năng trôi nổi dưới cùng */
+    .sticky-action-bar {
+        background: rgba(5, 9, 20, 0.85);
+        backdrop-filter: blur(15px);
+        border-top: 1px solid rgba(0, 243, 255, 0.3);
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+    }
+</style>
 
-  <script>
+<div class="container my-5 relative z-1">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 border-bottom border-secondary pb-3" style="border-color: rgba(255,255,255,0.1) !important;">
+                <div class="mb-3 mb-md-0">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="status-dot" style="width:10px; height:10px; background:var(--neon-purple); border-radius:50%; box-shadow:0 0 8px var(--neon-purple); animation: pulse 2s infinite;"></span>
+                        <span class="text-secondary font-monospace small">QUẢN TRỊ VIÊN HỆ THỐNG</span>
+                    </div>
+                    <h2 class="fw-bold text-white mb-0">
+                        <i class="fa-solid fa-pen-to-square me-2" style="color: var(--neon-blue);"></i>
+                        {% if object %}Cập nhật{% else %}Thêm mới{% endif %} Sản phẩm
+                    </h2>
+                </div>
+                <a href="{% url 'products:product_list' %}" class="btn btn-outline-secondary text-light rounded-pill px-4" style="border-color: rgba(255,255,255,0.2);">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
+                </a>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" class="needs-validation" id="product-form">
+                {% csrf_token %}
+
+                <div class="cyber-card shadow-lg mb-5">
+                    <div class="p-4 border-bottom border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
+                        <h5 class="mb-0 fw-bold text-info"><i class="fa-solid fa-database me-2"></i>Thông tin cơ bản</h5>
+                    </div>
+                    <div class="p-4">
+                        <div class="row g-4">
+                            {% for field in form %}
+                                <div class="{% if field.name == 'description' %}col-12{% else %}col-md-6{% endif %}">
+                                    <label class="form-label">{{ field.label }}</label>
+                                    
+                                    {{ field }}
+                                    
+                                    {% if field.errors %}
+                                        <div class="text-danger small mt-2 font-monospace"><i class="fa-solid fa-triangle-exclamation"></i> {{ field.errors|striptags }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cyber-card shadow-lg mb-5">
+                    <div class="p-4 border-bottom border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
+                        <h5 class="mb-0 fw-bold text-info"><i class="fa-solid fa-images me-2"></i>Thư viện ảnh sản phẩm</h5>
+                    </div>
+                    
+                    <div class="p-4" style="background: rgba(0, 0, 0, 0.2);">
+                        {{ formset.management_form }}
+                        
+                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="image-formset-container">
+                            {% for f in formset %}
+                                <div class="col image-form-item">
+                                    <div class="cyber-card-inner h-100 product-image-card overflow-hidden">
+                                        {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+
+                                        <div class="preview-zone d-flex align-items-center justify-content-center" style="height: 200px;">
+                                            {% if f.instance.pk and f.instance.image %}
+                                                <img src="{{ f.instance.image.url }}" class="w-100 h-100 object-fit-cover preview-target" />
+                                                <div class="position-absolute top-0 end-0 p-2">
+                                                    <span class="badge bg-dark border border-success text-success shadow-sm" style="backdrop-filter: blur(5px);">Ảnh hiện tại</span>
+                                                </div>
+                                            {% else %}
+                                                <img src="" class="w-100 h-100 object-fit-cover preview-target d-none" />
+                                                <div class="text-center placeholder-box">
+                                                    <i class="fa-solid fa-image text-secondary opacity-25" style="font-size: 3rem;"></i>
+                                                    <p class="small text-secondary mt-2 mb-0 font-monospace">Chưa tải ảnh</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="p-3">
+                                            <div class="mb-3">
+                                                <label class="form-label text-white">Tải ảnh lên</label>
+                                                {{ f.image }}
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label text-white">Mô tả ảnh (Alt Text)</label>
+                                                {{ f.alt_text }}
+                                            </div>
+
+                                            {% if f.instance.pk %}
+                                                <div class="form-check mt-3 pt-3 border-top border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
+                                                    {{ f.DELETE }}
+                                                    <label class="form-check-label text-danger fw-bold ms-1" for="{{ f.DELETE.id_for_label }}">
+                                                        <i class="fa-solid fa-trash-can me-1"></i> Xóa ảnh này
+                                                    </label>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <div class="sticky-action-bar p-3 rounded-pill d-flex justify-content-end align-items-center gap-3 mb-5 position-sticky" style="bottom: 20px; z-index: 1000;">
+                    <span class="text-secondary font-monospace small d-none d-md-block me-auto ps-3">SYS_STATUS: READY_TO_WRITE</span>
+                    <a href="{% url 'products:product_list' %}" class="btn text-light rounded-pill px-4" style="border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05);">Hủy bỏ</a>
+                    <button type="submit" class="btn btn-neon rounded-pill px-5 py-2 fw-bold shadow-lg">
+                        <i class="fa-solid fa-cloud-arrow-up me-2"></i> LƯU SẢN PHẨM
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
     document.addEventListener('DOMContentLoaded', function() {
         const formContainer = document.getElementById('product-form');
 
-        // Xử lý Preview ảnh động cho Formset
+        // Xử lý Preview ảnh khi người dùng bấm chọn file mới
         formContainer.addEventListener('change', function(e) {
             if (e.target && e.target.type === 'file') {
                 const input = e.target;
                 const file = input.files[0];
                 
-                // Tìm đúng card chứa input đang thay đổi
+                // Tìm đúng Card chứa input đang thay đổi
                 const card = input.closest('.product-image-card');
                 const previewImg = card.querySelector('.preview-target');
                 const placeholder = card.querySelector('.placeholder-box');
@@ -172,6 +249,14 @@
                 }
             }
         });
+        
+        // Cập nhật class tự động cho Checkbox/Switch của Django nếu có
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            if(!cb.classList.contains('form-check-input')) {
+                cb.classList.add('form-check-input');
+            }
+        });
     });
-  </script>
+</script>
 {% endblock %}

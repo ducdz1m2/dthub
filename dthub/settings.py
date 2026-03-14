@@ -25,7 +25,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'unamalgamable-lillia-particulate.ngrok-free.dev']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.64', 'unamalgamable-lillia-particulate.ngrok-free.dev']
 
 # CSRF Trusted Origins for ngrok and external domains
 CSRF_TRUSTED_ORIGINS = [
@@ -41,7 +41,6 @@ INSTALLED_APPS = [
     'daphne',
     'dashboard',
     'accounts',
-    'forum',
     'ai_hub',
     'orders',
     'products',
@@ -165,6 +164,7 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
 MEDIA_URL = '/media/'
+# Reload trigger
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
@@ -214,6 +214,16 @@ MDEDITOR_CONFIGS = {
     }
 }
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+
+# Channels Configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer'
+    }
+}
+
+ASGI_APPLICATION = 'dthub.asgi.application'
 
 # Import VNPay Configuration
 from dthub_settings import *

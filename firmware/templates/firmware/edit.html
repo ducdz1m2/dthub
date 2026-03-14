@@ -1,152 +1,275 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Update Firmware | DTHub{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header bg-warning text-dark">
-                    <h4 class="mb-0">
-                        <i class="bi bi-pencil me-2"></i>
-                        Chỉnh sửa Firmware: {{ firmware.name }}
-                    </h4>
+<style>
+    /* Container & Card */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.9), rgba(5, 9, 20, 0.98));
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 193, 7, 0.2);
+        border-radius: 16px;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        overflow: hidden;
+    }
+
+    .card-header-cyber {
+        background: rgba(255, 193, 7, 0.05);
+        border-bottom: 1px solid rgba(255, 193, 7, 0.2);
+        padding: 2rem;
+    }
+
+    /* Form Styling */
+    .form-label {
+        font-family: 'JetBrains Mono', monospace;
+        color: #a0aec0;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Override Django Widgets */
+    .form-control, .form-select {
+        background: rgba(0, 0, 0, 0.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #e0eaff !important;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-family: 'JetBrains Mono', monospace;
+        transition: 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #ffc107 !important;
+        box-shadow: 0 0 15px rgba(255, 193, 7, 0.2) !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+    }
+
+    /* Custom File Input */
+    input[type="file"] {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+    input[type="file"]::-webkit-file-upload-button {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        border: 1px solid #ffc107;
+        border-radius: 4px;
+        padding: 0.3rem 0.8rem;
+        margin-right: 1rem;
+        cursor: pointer;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Checkbox Styling */
+    .form-check-input {
+        background-color: transparent;
+        border-color: rgba(255, 193, 7, 0.3);
+    }
+    .form-check-input:checked {
+        background-color: #ffc107;
+        border-color: #ffc107;
+    }
+
+    /* Current File Info Block */
+    .file-status-panel {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+    .file-status-item {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 1rem;
+        height: 100%;
+    }
+    .file-status-item a { color: var(--neon-blue); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; word-break: break-all; }
+    .file-status-item a:hover { color: #fff; text-shadow: 0 0 8px var(--neon-blue); }
+
+    .upload-hint {
+        color: #4a5568;
+        font-size: 0.7rem;
+        font-family: 'JetBrains Mono', monospace;
+        display: block;
+        margin-top: 0.4rem;
+    }
+
+    .btn-cyber-outline {
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #a0aec0;
+        background: rgba(255,255,255,0.05);
+        border-radius: 8px;
+        padding: 0.8rem 2rem;
+        font-family: 'JetBrains Mono', monospace;
+        transition: 0.3s;
+    }
+    .btn-cyber-outline:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+    
+    .btn-cyber-warning {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 0.8rem 2rem;
+        font-family: 'JetBrains Mono', monospace;
+        transition: 0.3s;
+    }
+    .btn-cyber-warning:hover {
+        background: #ffc107;
+        color: #000;
+        box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+    }
+
+    .text-glow-warning { text-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
+</style>
+
+<div class="container mt-5 mb-5 relative z-1">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="cyber-card">
+                
+                <div class="card-header-cyber">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="flex-shrink-0" style="width: 50px; height: 50px; background: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-pencil-square text-warning fs-3"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0 text-white fw-bold text-glow-warning font-monospace">MODIFY_FIRMWARE_CONFIG</h3>
+                            <p class="mb-0 text-secondary font-monospace small">>_ Target: <span class="text-warning">{{ firmware.name }}</span></p>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post" enctype="multipart/form-data">
+
+                <div class="p-4 p-md-5">
+                    <form method="post" enctype="multipart/form-data" id="firmware-form">
                         {% csrf_token %}
                         
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.name.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.name.label }} <span class="text-danger">*</span>
-                                    </label>
-                                    {{ form.name }}
-                                    {% if form.name.errors %}
-                                        <div class="text-danger small">{{ form.name.errors }}</div>
-                                    {% endif %}
-                                </div>
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-8">
+                                <label for="{{ form.name.id_for_label }}" class="form-label">
+                                    <i class="bi bi-tag-fill me-2"></i>{{ form.name.label }} <span class="text-warning">*</span>
+                                </label>
+                                {{ form.name }}
+                                <div class="text-danger small font-monospace mt-1">{{ form.name.errors }}</div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.version.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.version.label }} <span class="text-danger">*</span>
-                                    </label>
-                                    {{ form.version }}
-                                    {% if form.version.errors %}
-                                        <div class="text-danger small">{{ form.version.errors }}</div>
-                                    {% endif %}
-                                </div>
+                            <div class="col-md-4">
+                                <label for="{{ form.version.id_for_label }}" class="form-label">
+                                    <i class="bi bi-git me-2"></i>{{ form.version.label }} <span class="text-warning">*</span>
+                                </label>
+                                {{ form.version }}
+                                <div class="text-danger small font-monospace mt-1">{{ form.version.errors }}</div>
                             </div>
                         </div>
 
-                        <div class="row">
+                        <div class="row g-4 mb-4">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.device_type.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.device_type.label }}
-                                    </label>
-                                    {{ form.device_type }}
-                                    {% if form.device_type.errors %}
-                                        <div class="text-danger small">{{ form.device_type.errors }}</div>
-                                    {% endif %}
-                                </div>
+                                <label for="{{ form.device_type.id_for_label }}" class="form-label">
+                                    <i class="bi bi-cpu-fill me-2"></i>{{ form.device_type.label }}
+                                </label>
+                                {{ form.device_type }}
+                                <div class="text-danger small font-monospace mt-1">{{ form.device_type.errors }}</div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.is_active.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.is_active.label }}
+                                <label class="form-label">
+                                    <i class="bi bi-toggle-on me-2"></i>AVAILABILITY_STATUS
+                                </label>
+                                <div class="form-check p-3 rounded" style="background: rgba(255, 193, 7, 0.03); border: 1px solid rgba(255, 193, 7, 0.1);">
+                                    {{ form.is_active }}
+                                    <label class="form-check-label text-secondary font-monospace small ms-2" for="{{ form.is_active.id_for_label }}">
+                                        Kích hoạt bản Firmware này trên hệ thống.
                                     </label>
-                                    <div class="form-check mt-2">
-                                        {{ form.is_active }}
-                                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
-                                            Kích hoạt firmware này
-                                        </label>
-                                    </div>
-                                    {% if form.is_active.errors %}
-                                        <div class="text-danger small">{{ form.is_active.errors }}</div>
-                                    {% endif %}
                                 </div>
+                                <div class="text-danger small font-monospace mt-1">{{ form.is_active.errors }}</div>
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.description.id_for_label }}" class="form-label fw-bold">
-                                {{ form.description.label }}
+                        <div class="mb-4">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                <i class="bi bi-journal-text me-2"></i>CHANGELOG / DESCRIPTION
                             </label>
                             {{ form.description }}
-                            {% if form.description.errors %}
-                                <div class="text-danger small">{{ form.description.errors }}</div>
-                            {% endif %}
+                            <div class="text-danger small font-monospace mt-1">{{ form.description.errors }}</div>
                         </div>
 
-                        <div class="row">
+                        <div class="file-status-panel mb-4">
+                            <h6 class="text-white font-monospace mb-3"><i class="bi bi-hdd-fill text-info me-2"></i>CURRENT_STORAGE_STATUS</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="file-status-item">
+                                        <div class="text-secondary font-monospace small mb-2">CIRCUIT_DIAGRAM</div>
+                                        {% if firmware.hardware_image %}
+                                            <a href="{{ firmware.hardware_image.url }}" target="_blank" class="d-block mt-2">
+                                                <img src="{{ firmware.hardware_image.url }}" alt="Circuit" class="img-fluid rounded border border-secondary" style="max-height: 80px; width: auto; object-fit: contain; background: #000;">
+                                            </a>
+                                        {% else %}
+                                            <div class="text-muted font-monospace small mt-2">> NO_IMAGE_FOUND</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="file-status-item">
+                                        <div class="text-secondary font-monospace small mb-2">BINARY_FILE</div>
+                                        {% if firmware.bin_file %}
+                                            <a href="{{ firmware.bin_file.url }}" target="_blank"><i class="bi bi-file-earmark-binary me-1"></i>{{ firmware.bin_file.name|slice:"10:" }}</a>
+                                        {% else %}
+                                            <div class="text-muted font-monospace small">> NO_FILE_FOUND</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="file-status-item">
+                                        <div class="text-secondary font-monospace small mb-2">MANIFEST_FILE</div>
+                                        {% if firmware.manifest_file %}
+                                            <a href="{{ firmware.manifest_file.url }}" target="_blank"><i class="bi bi-file-earmark-code me-1"></i>{{ firmware.manifest_file.name|slice:"10:" }}</a>
+                                        {% else %}
+                                            <div class="text-muted font-monospace small">> AUTO_GENERATED</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.hardware_image.id_for_label }}" class="form-label">
+                                <i class="bi bi-image me-2"></i>UPDATE_HARDWARE_IMAGE
+                            </label>
+                            {{ form.hardware_image }}
+                            <div class="text-danger small font-monospace mt-1">{{ form.hardware_image.errors }}</div>
+                            <span class="upload-hint">>_ Để trống nếu không muốn thay đổi hình ảnh hiện tại.</span>
+                        </div>
+
+                        <div class="row g-4 mb-5 p-4 rounded" style="background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.1);">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.bin_file.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.bin_file.label }}
-                                    </label>
-                                    {{ form.bin_file }}
-                                    {% if form.bin_file.errors %}
-                                        <div class="text-danger small">{{ form.bin_file.errors }}</div>
-                                    {% endif %}
-                                    {% if firmware.bin_file %}
-                                    <small class="text-muted d-block">File hiện tại: {{ firmware.bin_file.name }}</small>
-                                    {% endif %}
-                                    <small class="text-muted">Chỉ chấp nhận file .bin</small>
-                                </div>
+                                <label for="{{ form.bin_file.id_for_label }}" class="form-label text-info">
+                                    <i class="bi bi-file-earmark-binary me-2"></i>UPDATE_BINARY (.BIN)
+                                </label>
+                                {{ form.bin_file }}
+                                <div class="text-danger small font-monospace mt-1">{{ form.bin_file.errors }}</div>
+                                <span class="upload-hint text-info">>_ Để trống nếu không thay đổi bộ vi điều khiển.</span>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.manifest_file.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.manifest_file.label }}
-                                    </label>
-                                    {{ form.manifest_file }}
-                                    {% if form.manifest_file.errors %}
-                                        <div class="text-danger small">{{ form.manifest_file.errors }}</div>
-                                    {% endif %}
-                                    {% if firmware.manifest_file %}
-                                    <small class="text-muted d-block">File hiện tại: {{ firmware.manifest_file.name }}</small>
-                                    {% endif %}
-                                    <small class="text-muted">Chỉ chấp nhận file .json (tùy chọn)</small>
-                                </div>
+                                <label for="{{ form.manifest_file.id_for_label }}" class="form-label text-warning">
+                                    <i class="bi bi-file-earmark-code me-2"></i>UPDATE_MANIFEST (.JSON)
+                                </label>
+                                {{ form.manifest_file }}
+                                <div class="text-danger small font-monospace mt-1">{{ form.manifest_file.errors }}</div>
+                                <span class="upload-hint text-warning">>_ Tải lên tệp cấu hình mới để ghi đè.</span>
                             </div>
                         </div>
 
-                        <!-- Current Files Info -->
-                        <div class="alert alert-info">
-                            <h6><i class="bi bi-info-circle me-2"></i>Thông tin file hiện tại:</h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <strong>File .bin:</strong> 
-                                    {% if firmware.bin_file %}
-                                        <a href="{{ firmware.bin_file.url }}" target="_blank" class="text-decoration-none">
-                                            {{ firmware.bin_file.name }}
-                                        </a>
-                                    {% else %}
-                                        <span class="text-muted">Chưa có file</span>
-                                    {% endif %}
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>File manifest:</strong>
-                                    {% if firmware.manifest_file %}
-                                        <a href="{{ firmware.manifest_file.url }}" target="_blank" class="text-decoration-none">
-                                            {{ firmware.manifest_file.name }}
-                                        </a>
-                                    {% else %}
-                                        <span class="text-muted">Chưa có file (sẽ tự động tạo)</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'firmware_manage' %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-1"></i> Quay lại
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 pt-4 border-top border-secondary" style="border-color: rgba(255,255,255,0.05) !important;">
+                            <a href="{% url 'firmware_manage' %}" class="btn btn-cyber-outline w-100 w-md-auto text-center">
+                                <i class="bi bi-arrow-left me-2"></i>CANCEL_OP
                             </a>
-                            <button type="submit" class="btn btn-warning">
-                                <i class="bi bi-pencil me-1"></i> Cập nhật Firmware
+                            <button type="submit" class="btn btn-cyber-warning w-100 w-md-auto fw-bold px-5">
+                                <i class="bi bi-arrow-repeat me-2"></i>UPDATE_FIRMWARE
                             </button>
                         </div>
                     </form>
@@ -155,4 +278,15 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('firmware-form');
+        form.addEventListener('submit', function() {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESSING...';
+            submitBtn.disabled = true;
+        });
+    });
+</script>
 {% endblock %}

@@ -1,0 +1,11 @@
+# Voice AI dependencies (NO PYTORCH)
+SpeechRecognition==3.10.0
+vosk==0.3.45
+gTTS==2.3.2
+pydub==0.25.1
+
+# Existing dependencies
+ollama==0.1.7
+numpy==1.24.3
+faiss-cpu==1.7.4
+sentence-transformers==2.2.2

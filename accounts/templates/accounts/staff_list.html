@@ -1,315 +1,365 @@
 {% extends 'base.html' %}
 {% block content %}
-  <div class="container my-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="fw-bold">Quản lý Nhân sự</h2>
-      {% if perms.accounts.add_user %}
-        <a href="{% url 'create_staff_view' %}" class="btn btn-primary rounded-pill"><i class="bi bi-person-plus"></i> Thêm nhân viên</a>
-      {% endif %}
+<style>
+    /* Bố cục Cyber Card */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+    }
+
+    /* Bảng dữ liệu Cyberpunk */
+    .cyber-table {
+        width: 100%;
+        margin-bottom: 0;
+        color: #e0eaff;
+    }
+    .cyber-table thead {
+        background: rgba(0, 243, 255, 0.05);
+    }
+    .cyber-table th {
+        border-bottom: 1px solid var(--neon-blue);
+        color: var(--neon-blue);
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        padding: 1rem;
+        letter-spacing: 1px;
+    }
+    .cyber-table td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: transparent;
+    }
+    .cyber-table tbody tr {
+        transition: 0.3s ease;
+    }
+    .cyber-table tbody tr:hover {
+        background: rgba(0, 243, 255, 0.03);
+    }
+
+    /* Avatar viền sáng */
+    .staff-avatar {
+        border: 1px solid var(--neon-blue);
+        box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+    }
+
+    /* Nút Thao tác dạng Mini */
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: 0.3s;
+        border: 1px solid transparent;
+        background: rgba(255,255,255,0.05);
+        color: #a0aec0;
+    }
+    .btn-action.edit:hover { border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,243,255,0.1); }
+    .btn-action.toggle:hover { border-color: #ffc107; color: #ffc107; background: rgba(255,193,7,0.1); }
+    .btn-action.delete:hover { border-color: #dc3545; color: #dc3545; background: rgba(220,53,69,0.1); }
+    
+    .glow-online {
+        text-shadow: 0 0 8px #198754;
+    }
+</style>
+
+<div class="container my-5 relative z-1">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 border-bottom border-secondary pb-4" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="status-dot" style="width:10px; height:10px; background:var(--neon-purple); border-radius:50%; box-shadow:0 0 8px var(--neon-purple); animation: pulse 2s infinite;"></span>
+                <span class="text-secondary font-monospace small">USER_MANAGEMENT_PROTOCOL</span>
+            </div>
+            <h2 class="fw-bold text-white mb-0"><i class="fa-solid fa-users-gear me-2" style="color: var(--neon-blue);"></i> Quản lý Quản trị viên</h2>
+        </div>
+        
+        {% if perms.accounts.add_user %}
+            <a href="{% url 'create_staff_view' %}" class="btn btn-neon rounded-pill mt-3 mt-md-0 px-4 fw-bold">
+                <i class="fa-solid fa-user-plus me-1"></i> Thêm quản trị viên
+            </a>
+        {% endif %}
     </div>
 
-    <div class="card border-0 shadow-sm">
-      <div class="table-responsive">
-        <table class="table align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Nhân viên</th>
-              <th>Số điện thoại</th>
-              <th>Vai trò (Role)</th>
-              <th>Trạng thái</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody id="staff-tbody">
-            {% for staff in staffs %}
-              <tr>
-                <td>
-                  <div class="d-flex align-items-center">
-                    <img src="{{ staff.profile.get_avatar_url }}" class="rounded-circle me-2" width="35" height="35" style="object-fit: cover;" />
-                    <div>
-                      <div class="fw-bold">{{ staff.username }}</div>
-                      <small class="text-muted">{{ staff.email }}</small>
-                    </div>
-                  </div>
-                </td>
-                <td>{{ staff.profile.phone|default:'-' }}</td>
-                <td>
-                  {% for group in staff.groups.all %}
-                    <span class="badge bg-info-subtle text-info border border-info-subtle">{{ group.name }}</span>
-                  {% empty %}
-                    <span class="text-muted small">Chưa gán Role</span>
-                  {% endfor %}
-                </td>
-                <td>
-                  <div class="d-flex align-items-center gap-2">
-                    {% if staff.is_active %}
-                      <span class="badge bg-success">Đang hoạt động</span>
-                      <span class="staff-online-status-{{ staff.id }} badge bg-secondary text-white rounded-pill px-2" style="font-size: 0.7rem;">
-                        <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline
-                      </span>
-                    {% else %}
-                      <span class="badge bg-danger">Khóa</span>
-                    {% endif %}
-                  </div>
-                </td>
-                <td>
-                  <div class="btn-group">
-                    {% if perms.accounts.change_user and not staff.is_superuser or request.user.is_superuser %}
-                      <a href="{% url 'edit_staff' staff.id %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                    {% endif %}
-
-                    {% if perms.accounts.change_user and not staff.is_superuser or request.user.is_superuser %}
-                      <form action="{% url 'toggle_staff_status' staff.id %}" method="POST" class="d-inline">
-                        {% csrf_token %}
-                        <button type="submit"
-                          {% if staff.is_superuser %}disabled title="Không thể khóa tài khoản Administrator"{% endif %}
-                          class="btn btn-sm {% if staff.is_active %}
-                            btn-outline-warning
-                          {% else %}
-                            btn-outline-success
-                          {% endif %} {% if staff.is_superuser %}disabled opacity-50{% endif %}">
-                          <i class="bi {% if staff.is_active %}
-                              bi-lock
+    <div class="cyber-card shadow-lg overflow-hidden">
+        <div class="table-responsive">
+            <table class="cyber-table align-middle">
+                <thead>
+                    <tr>
+                        <th>Tài khoản</th>
+                        <th>Liên hệ</th>
+                        <th>Vai trò</th>
+                        <th>Trạng thái</th>
+                        <th class="text-center">Điều khiển</th>
+                    </tr>
+                </thead>
+                <tbody id="staff-tbody">
+                    {% for staff in staffs %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="{{ staff.profile.get_avatar_url }}" class="rounded-circle me-3 staff-avatar" width="45" height="45" style="object-fit: cover;" />
+                                <div>
+                                    <div class="fw-bold text-white" style="font-size: 1.05rem;">{{ staff.username }}</div>
+                                    <small class="text-secondary font-monospace">{{ staff.email }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-secondary font-monospace">{{ staff.profile.phone|default:'---' }}</td>
+                        <td>
+                            {% if staff.is_superuser %}
+                                <span class="badge bg-transparent border border-danger text-danger rounded-pill px-3 font-monospace">
+                                    <i class="fa-solid fa-shield-halved me-1"></i> Quản trị viên
+                                </span>
                             {% else %}
-                              bi-unlock
-                            {% endif %}">
+                                <span class="badge bg-transparent border border-info text-info rounded-pill px-3 font-monospace">
+                                    <i class="fa-solid fa-user me-1"></i> Khách hàng
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-1 align-items-start">
+                                {% if staff.is_active %}
+                                    <span class="badge bg-success text-white shadow-sm mb-1">Đang hoạt động</span>
+                                    <span class="staff-online-status-{{ staff.id }} badge bg-transparent border border-secondary text-secondary rounded-pill px-2 font-monospace" style="font-size: 0.7rem;">
+                                        <i class="fa-solid fa-circle me-1" style="font-size: 0.4rem;"></i>Offline
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger text-white shadow-sm">Đã khóa</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex gap-2 justify-content-center">
+                                {% if perms.accounts.change_user and not staff.is_superuser or request.user.is_superuser %}
+                                    <a href="{% url 'edit_staff' staff.id %}" class="btn-action edit" title="Chỉnh sửa">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                {% endif %}
 
-                          </i>
-                        </button>
-                      </form>
-                    {% endif %}
+                                {% if perms.accounts.change_user and not staff.is_superuser or request.user.is_superuser %}
+                                    <form action="{% url 'toggle_staff_status' staff.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" 
+                                            {% if staff.is_superuser %}disabled title="Không thể khóa tài khoản Administrator"{% endif %}
+                                            class="btn-action toggle {% if staff.is_superuser %}opacity-50{% endif %}"
+                                            title="{% if staff.is_active %}Khóa tài khoản{% else %}Mở khóa tài khoản{% endif %}">
+                                            <i class="fa-solid {% if staff.is_active %}fa-lock{% else %}fa-unlock text-warning{% endif %}"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
 
-                    {% if perms.accounts.delete_user and not staff.is_superuser or request.user.is_superuser %}
-                      <form action="{% url 'delete_staff' staff.id %}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên {{ staff.username }}? Thao tác này không thể hoàn tác!');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                      </form>
-                    {% endif %}
-                  </div>
-                </td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="5" class="text-center py-5">
-                  <div class="text-muted">
-                    <i class="bi bi-people display-4 d-block mb-2"></i>
-                    Chưa có nhân viên nào
-                  </div>
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+                                {% if perms.accounts.delete_user and not staff.is_superuser or request.user.is_superuser %}
+                                    <form action="{% url 'delete_staff' staff.id %}" method="POST" class="d-inline" onsubmit="return confirm('CẢNH BÁO BẢO MẬT: Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên {{ staff.username }}? Thao tác này sẽ xóa bỏ toàn bộ dữ liệu và không thể hoàn tác!');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-action delete" title="Xóa tài khoản">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="text-secondary opacity-50">
+                                <i class="fa-solid fa-users-slash display-4 d-block mb-3"></i>
+                                <span class="font-monospace">DATABASE_EMPTY // Chưa có quản trị viên nào.</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     
-    <!-- Load More Button -->
     {% if has_next %}
-    <div class="text-center mt-4">
-        <button id="load-more-btn" class="btn btn-outline-primary rounded-pill px-4" onclick="loadMoreStaff()">
-            <i class="bi bi-arrow-down-circle me-2"></i>Xem thêm nhân viên
+    <div class="text-center mt-5">
+        <button id="load-more-btn" class="btn text-info rounded-pill px-4 py-2 border border-info" style="background: rgba(0,243,255,0.05); transition: 0.3s;" onclick="loadMoreStaff()">
+            <i class="fa-solid fa-arrow-down me-2"></i> Tải thêm dữ liệu
         </button>
-        <div id="loading-spinner" class="d-none">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Đang tải...</span>
-            </div>
+        <div id="loading-spinner" class="d-none mt-3">
+            <i class="fa-solid fa-circle-notch fa-spin text-info fs-3"></i>
         </div>
     </div>
     {% endif %}
-  </div>
+</div>
 
-  <script>
+<script>
     let currentPage = parseInt('{{ current_page|default:1 }}');
     
-    // User permissions (simplified to avoid template parsing issues)
-    const canChangeUser = true;  // Will be controlled by backend permissions
-    const canDeleteUser = true;  // Will be controlled by backend permissions  
+    const canChangeUser = true;  
+    const canDeleteUser = true;  
     const isSuperuser = {{ request.user.is_superuser|yesno:"true,false" }};
     
-    // WebSocket connection for real-time status updates
+    // WebSocket logic (Đã tối ưu giao diện nhấp nháy đèn Neon)
     let globalSocket;
     
     function initWebSocket() {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/global/`;
-      
-      globalSocket = new WebSocket(wsUrl);
-      
-      globalSocket.onopen = function(e) {
-        console.log("WebSocket connected for staff status updates");
-        // Request current online users list immediately after connection
-        globalSocket.send(JSON.stringify({type: 'get_online_users'}));
-      };
-      
-      globalSocket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/global/`;
         
-        if (data.type === 'presence_update') {
-          updateStaffOnlineStatus(data.user_id, data.status === 'online');
-        } else if (data.type === 'online_users_list') {
-          // Initialize all staff status based on online users list
-          data.online_users.forEach(userId => {
-            updateStaffOnlineStatus(userId, true);
-          });
-          // Set all other staff to offline
-          document.querySelectorAll('[class^="staff-online-status-"]').forEach(element => {
-            const userId = element.className.match(/staff-online-status-(\d+)/)?.[1];
-            if (userId && !data.online_users.includes(parseInt(userId))) {
-              updateStaffOnlineStatus(parseInt(userId), false);
+        globalSocket = new WebSocket(wsUr l);
+        
+        globalSocket.onopen = function(e) {
+            console.log("WebSocket connected for staff status updates");
+            globalSocket.send(JSON.stringify({type: 'get_online_users'}));
+        };
+        
+        globalSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            
+            if (data.type === 'presence_update') {
+                updateStaffOnlineStatus(data.user_id, data.status === 'online');
+            } else if (data.type === 'online_users_list') {
+                data.online_users.forEach(userId => {
+                    updateStaffOnlineStatus(userId, true);
+                });
+                document.querySelectorAll('[class^="staff-online-status-"]').forEach(element => {
+                    const userId = element.className.match(/staff-online-status-(\d+)/)?.[1];
+                    if (userId && !data.online_users.includes(parseInt(userId))) {
+                        updateStaffOnlineStatus(parseInt(userId), false);
+                    }
+                });
             }
-          });
-        }
-      };
-      
-      globalSocket.onclose = function(e) {
-        console.log("WebSocket disconnected, attempting to reconnect...");
-        setTimeout(initWebSocket, 3000);
-      };
-      
-      globalSocket.onerror = function(e) {
-        console.error("WebSocket error:", e);
-      };
+        };
+        
+        globalSocket.onclose = function(e) {
+            setTimeout(initWebSocket, 3000);
+        };
     }
     
+    // Thay đổi giao diện Online/Offline
     function updateStaffOnlineStatus(userId, isOnline) {
-      const statusElement = document.querySelector(`.staff-online-status-${userId}`);
-      if (statusElement) {
-        // Get the staff row to check if account is active
-        const staffRow = statusElement.closest('tr');
-        const isActiveBadge = staffRow.querySelector('.badge.bg-success');
-        
-        // Only show online/offline if account is active
-        if (isActiveBadge) {
-          if (isOnline) {
-            statusElement.className = `staff-online-status-${userId} badge bg-success text-white rounded-pill px-2`;
-            statusElement.innerHTML = '<i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Online';
-          } else {
-            statusElement.className = `staff-online-status-${userId} badge bg-secondary text-white rounded-pill px-2`;
-            statusElement.innerHTML = '<i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline';
-          }
-          statusElement.style.display = 'inline-block';
-        } else {
-          // Hide online status for inactive accounts
-          statusElement.style.display = 'none';
+        const statusElement = document.querySelector(`.staff-online-status-${userId}`);
+        if (statusElement) {
+            const staffRow = statusElement.closest('tr');
+            const isActiveBadge = staffRow.querySelector('.badge.bg-success');
+            
+            if (isActiveBadge) {
+                if (isOnline) {
+                    statusElement.className = `staff-online-status-${userId} badge bg-transparent border border-success text-success rounded-pill px-2 font-monospace glow-online`;
+                    statusElement.innerHTML = '<i class="fa-solid fa-circle me-1" style="font-size: 0.4rem;"></i>Online';
+                } else {
+                    statusElement.className = `staff-online-status-${userId} badge bg-transparent border border-secondary text-secondary rounded-pill px-2 font-monospace`;
+                    statusElement.innerHTML = '<i class="fa-solid fa-circle me-1" style="font-size: 0.4rem;"></i>Offline';
+                }
+                statusElement.style.display = 'inline-block';
+            } else {
+                statusElement.style.display = 'none';
+            }
         }
-      }
     }
     
     function loadMoreStaff() {
-      const loadMoreBtn = document.getElementById('load-more-btn');
-      const loadingSpinner = document.getElementById('loading-spinner');
-      const staffTbody = document.getElementById('staff-tbody');
-      
-      // Show loading spinner and hide button
-      loadMoreBtn.classList.add('d-none');
-      loadingSpinner.classList.remove('d-none');
-      
-      // Fetch next page
-      fetch(`?page=${currentPage + 1}`, {
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.staffs && data.staffs.length > 0) {
-          // Append new staff to the table
-          data.staffs.forEach(staff => {
-            const staffRow = createStaffRow(staff);
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = staffRow;
-            staffTbody.appendChild(tempDiv.firstElementChild);
-            
-            // Update online status for new staff if WebSocket is connected
-            if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
-              // Request current online users list to update new staff
-              globalSocket.send(JSON.stringify({type: 'get_online_users'}));
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const staffTbody = document.getElementById('staff-tbody');
+        
+        loadMoreBtn.classList.add('d-none');
+        loadingSpinner.classList.remove('d-none');
+        
+        fetch(`?page=${currentPage + 1}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.staffs && data.staffs.length > 0) {
+                data.staffs.forEach(staff => {
+                    const staffRow = createStaffRow(staff);
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = staffRow;
+                    staffTbody.appendChild(tempDiv.firstElementChild);
+                    
+                    if (globalSocket && globalSocket.readyState === WebSocket.OPEN) {
+                        globalSocket.send(JSON.stringify({type: 'get_online_users'}));
+                    }
+                });
+                
+                currentPage = data.current_page;
+                
+                if (data.has_next) {
+                    loadMoreBtn.classList.remove('d-none');
+                } else {
+                    loadMoreBtn.remove();
+                }
             }
-          });
-          
-          currentPage = data.current_page;
-          
-          // Update button visibility
-          if (data.has_next) {
-            loadMoreBtn.classList.remove('d-none');
-          } else {
-            loadMoreBtn.remove();
-          }
-        }
-      })
-      .catch(error => {
-        console.error('Error loading more staff:', error);
-        loadMoreBtn.classList.remove('d-none');
-      })
-      .finally(() => {
-        loadingSpinner.classList.add('d-none');
-      });
+        })
+        .finally(() => {
+            loadingSpinner.classList.add('d-none');
+        });
     }
     
+    // Khởi tạo hàng mới khi tải thêm bằng JS
     function createStaffRow(staff) {
-      const groupsHtml = staff.groups.map(group => 
-        `<span class="badge bg-info-subtle text-info border border-info-subtle">${group.name}</span>`
-      ).join(' ') || '<span class="text-muted small">Chưa gán Role</span>';
-      
-      const activeStatusBadge = staff.is_active ? 
-        '<span class="badge bg-success">Đang hoạt động</span>' :
-        '<span class="badge bg-danger">Khóa</span>';
-      
-      const toggleButtonClass = staff.is_active ? 'btn-outline-warning' : 'btn-outline-success';
-      const toggleButtonIcon = staff.is_active ? 'bi-lock' : 'bi-unlock';
-      const toggleButtonDisabled = staff.is_superuser ? 'disabled title="Không thể khóa tài khoản Administrator"' : '';
-      const toggleButtonOpacity = staff.is_superuser ? 'opacity-50' : '';
-      
-      return `
+        const roleHtml = staff.role || (staff.is_superuser ? 
+            '<span class="badge bg-transparent border border-danger text-danger rounded-pill px-3 font-monospace"><i class="fa-solid fa-shield-halved me-1"></i> Quản trị viên</span>' :
+            '<span class="badge bg-transparent border border-info text-info rounded-pill px-3 font-monospace"><i class="fa-solid fa-user me-1"></i> Khách hàng</span>');
+        
+        const activeStatusBadge = staff.is_active ? 
+            '<span class="badge bg-success text-white shadow-sm mb-1">Đang hoạt động</span>' :
+            '<span class="badge bg-danger text-white shadow-sm">Đã khóa</span>';
+        
+        const toggleButtonIcon = staff.is_active ? 'fa-lock' : 'fa-unlock text-warning';
+        const toggleButtonDisabled = staff.is_superuser ? 'disabled title="Không thể khóa tài khoản Administrator"' : '';
+        const toggleButtonOpacity = staff.is_superuser ? 'opacity-50' : '';
+        
+        return `
         <tr>
-          <td>
-            <div class="d-flex align-items-center">
-              <img src="${staff.avatar_url}" class="rounded-circle me-2" width="35" height="35" style="object-fit: cover;" />
-              <div>
-                <div class="fw-bold">${staff.username}</div>
-                <small class="text-muted">${staff.email}</small>
-              </div>
-            </div>
-          </td>
-          <td>${staff.phone}</td>
-          <td>${groupsHtml}</td>
-          <td>
-            <div class="d-flex align-items-center gap-2">
-              ${activeStatusBadge}
-              ${staff.is_active ? `
-                <span class="staff-online-status-${staff.id} badge bg-secondary text-white rounded-pill px-2" style="font-size: 0.7rem;">
-                  <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Offline
-                </span>
-              ` : ''}
-            </div>
-          </td>
-          <td>
-            <div class="btn-group">
-              ${canChangeUser ? `
-                <a href="${staff.edit_url}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                <form action="${staff.toggle_url}" method="POST" class="d-inline">
-                  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                  <button type="submit" class="btn btn-sm ${toggleButtonClass} ${toggleButtonOpacity}" ${toggleButtonDisabled}>
-                    <i class="bi ${toggleButtonIcon}"></i>
-                  </button>
-                </form>
-              ` : ''}
-              ${canDeleteUser ? `
-                <form action="${staff.delete_url}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên ${staff.username}? Thao tác này không thể hoàn tác!');">
-                  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-                  <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
-                </form>
-              ` : ''}
-            </div>
-          </td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <img src="${staff.avatar_url}" class="rounded-circle me-3 staff-avatar" width="45" height="45" style="object-fit: cover;" />
+                    <div>
+                        <div class="fw-bold text-white" style="font-size: 1.05rem;">${staff.username}</div>
+                        <small class="text-secondary font-monospace">${staff.email}</small>
+                    </div>
+                </div>
+            </td>
+            <td class="text-secondary font-monospace">${staff.phone || '---'}</td>
+            <td>${roleHtml}</td>
+            <td>
+                <div class="d-flex flex-column gap-1 align-items-start">
+                    ${activeStatusBadge}
+                    ${staff.is_active ? `
+                        <span class="staff-online-status-${staff.id} badge bg-transparent border border-secondary text-secondary rounded-pill px-2 font-monospace" style="font-size: 0.7rem;">
+                            <i class="fa-solid fa-circle me-1" style="font-size: 0.4rem;"></i>Offline
+                        </span>
+                    ` : ''}
+                </div>
+            </td>
+            <td class="text-center">
+                <div class="d-flex gap-2 justify-content-center">
+                    ${canChangeUser ? `
+                        <a href="${staff.edit_url}" class="btn-action edit" title="Chỉnh sửa"><i class="fa-solid fa-pen"></i></a>
+                        <form action="${staff.toggle_url}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                            <button type="submit" class="btn-action toggle ${toggleButtonOpacity}" ${toggleButtonDisabled} title="Khóa/Mở khóa">
+                                <i class="fa-solid ${toggleButtonIcon}"></i>
+                            </button>
+                        </form>
+                    ` : ''}
+                    ${canDeleteUser ? `
+                        <form action="${staff.delete_url}" method="POST" class="d-inline" onsubmit="return confirm('CẢNH BÁO BẢO MẬT: Bạn có chắc chắn muốn XÓA VĨNH VIỄN nhân viên ${staff.username}? Thao tác này sẽ xóa bỏ toàn bộ dữ liệu và không thể hoàn tác!');">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                            <button type="submit" class="btn-action delete" title="Xóa tài khoản"><i class="fa-solid fa-trash-can"></i></button>
+                        </form>
+                    ` : ''}
+                </div>
+            </td>
         </tr>
-      `;
+        `;
     }
     
-    // Initialize WebSocket when page loads
     document.addEventListener('DOMContentLoaded', function() {
-      // Small delay to ensure DOM is fully rendered
-      setTimeout(initWebSocket, 100);
+        setTimeout(initWebSocket, 100);
     });
-  </script>
+</script>
 {% endblock %}

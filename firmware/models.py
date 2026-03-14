@@ -13,6 +13,7 @@ class FirmwareFile(models.Model):
     device_type = models.CharField(max_length=20, choices=DEVICE_CHOICES, default='ESP32', verbose_name="Loại thiết bị")
     version = models.CharField(max_length=50, verbose_name="Phiên bản")
     description = models.TextField(verbose_name="Mô tả")
+    hardware_image = models.ImageField(upload_to='firmware/images/', null=True, blank=True, verbose_name="Hình ảnh mạch điện")
     bin_file = models.FileField(upload_to='firmware/', verbose_name="File .bin")
     manifest_file = models.FileField(upload_to='firmware/manifests/', verbose_name="File manifest.json")
     

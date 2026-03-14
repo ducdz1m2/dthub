@@ -76,9 +76,9 @@ def auth_view(request):
             return redirect("auth")
 
         if action == "login":
-            user = authenticate(request, username=username, password=password)
+            user = authenticate(request, username=username, password=password, backend='django.contrib.auth.backends.ModelBackend')
             if user:
-                login(request, user)
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 messages.success(request, "Đăng nhập thành công.")
                 return redirect("/")
             else:
@@ -107,7 +107,7 @@ def auth_view(request):
                     password=password,
                     email=email  # Quan trọng: Lưu email vào database
                 )
-                login(request, user)
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 messages.success(request, "Đăng ký thành công và đã đăng nhập.")
                 return redirect("/")
             except Exception as e:
@@ -122,8 +122,8 @@ def manage_staff_list(request):
     page = request.GET.get('page', 1)
     per_page = 10  # Show 10 staff members per page
     
-    # Lấy tất cả user là nhân viên (is_staff=True)
-    staffs = User.objects.filter(is_staff=True).prefetch_related('groups', 'profile')
+    # Lấy tất cả quản trị viên (is_superuser=True)
+    staffs = User.objects.filter(is_superuser=True).prefetch_related('profile')
     
     paginator = Paginator(staffs, per_page)
     
@@ -143,9 +143,8 @@ def manage_staff_list(request):
                 'phone': staff.profile.phone if hasattr(staff, 'profile') and staff.profile.phone else '-',
                 'avatar_url': staff.profile.get_avatar_url() if hasattr(staff, 'profile') else '/static/images/avatar-default.png',
                 'is_active': staff.is_active,
-                'is_superuser': staff.is_superuser,
+                'role': staff.role_display,
                 'is_online': False,  # Will be updated by WebSocket
-                'groups': [{'name': group.name} for group in staff.groups.all()],
                 'edit_url': f'/accounts/staff/edit/{staff.id}/',
                 'toggle_url': f'/accounts/staff/toggle/{staff.id}/',
                 'delete_url': f'/accounts/staff/delete/{staff.id}/'
@@ -185,9 +184,9 @@ def create_staff_view(request):
 
 @permission_required('accounts.change_user', raise_exception=True)
 def edit_staff(request, staff_id):
-    staff = get_object_or_404(User, id=staff_id, is_staff=True)
+    staff = get_object_or_404(User, id=staff_id, is_superuser=True)
     
-    # Ngăn sửa thông tin superuser (admin) - chỉ có superuser mới được sửa superuser khác
+    # Ngăn sửa thông tin admin khác - chỉ có admin mới được sửa admin khác
     if staff.is_superuser and not request.user.is_superuser:
         messages.error(request, "Bạn không thể chỉnh sửa thông tin Administrator!")
         return redirect('manage_staff_list')
@@ -195,36 +194,28 @@ def edit_staff(request, staff_id):
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
-        role_id = request.POST.get('role')
         new_password = request.POST.get('new_password') # Lấy mật khẩu mới
         
         staff.username = username
         staff.email = email
         
-        # Xử lý đổi mật khẩu nếu có nhập
-        if new_password and len(new_password.strip()) > 0:
+        if new_password:
             staff.set_password(new_password)
             # Nếu admin tự đổi pass cho chính mình, cần update_session_auth_hash để không bị văng login
-            # Nhưng ở đây là admin đổi cho nhân viên nên không cần lo lắng.
+            # Nhưng ở đây là admin đổi cho admin khác nên không cần lo lắng.
         
-        if role_id:
-            role = Group.objects.get(id=role_id)
-            staff.groups.clear()
-            staff.groups.add(role)
-            
         staff.save()
-        messages.success(request, f"Cập nhật nhân viên {staff.username} thành công.")
+        messages.success(request, f"Cập nhật quản trị viên {staff.username} thành công.")
         return redirect('manage_staff_list')
     
-    roles = Group.objects.all()
-    return render(request, 'accounts/edit_staff.html', {'staff': staff, 'roles': roles})
+    return render(request, 'accounts/edit_staff.html', {'staff': staff})
 
 @permission_required('accounts.delete_user', raise_exception=True)
 @require_POST
 def delete_staff(request, staff_id):
-    staff = get_object_or_404(User, id=staff_id, is_staff=True)
+    staff = get_object_or_404(User, id=staff_id, is_superuser=True)
     
-    # Ngăn xóa superuser (admin) - chỉ có superuser mới được xóa superuser khác
+    # Ngăn xóa admin khác - chỉ có admin mới được xóa admin khác
     if staff.is_superuser and not request.user.is_superuser:
         messages.error(request, "Bạn không thể xóa tài khoản Administrator!")
         return redirect('manage_staff_list')
@@ -236,7 +227,7 @@ def delete_staff(request, staff_id):
         
     username = staff.username
     staff.delete()
-    messages.success(request, f"Đã xóa vĩnh viễn nhân viên {username}.")
+    messages.success(request, f"Đã xóa vĩnh viễn quản trị viên {username}.")
     return redirect('manage_staff_list')
 
 @permission_required('accounts.change_user', raise_exception=True)
@@ -244,7 +235,7 @@ def toggle_staff_status(request, staff_id):
     if request.method == 'POST':
         staff = get_object_or_404(User, id=staff_id)
         
-        # Ngăn khóa tài khoản superuser (admin)
+        # Ngăn khóa tài khoản admin
         if staff.is_superuser:
             messages.error(request, "Bạn không thể khóa tài khoản Administrator!")
             return redirect('manage_staff_list')

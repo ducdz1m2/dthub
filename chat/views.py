@@ -12,14 +12,15 @@ User = get_user_model()
 @login_required
 def chat_home(request):
     """Trang chủ danh sách chat"""
-    admin_groups = ["ProductOrderManager", "ContentFeedbackManager", "AIArchitect"]
-    is_admin = request.user.groups.filter(name__in=admin_groups).exists() or request.user.is_superuser
+    # Chỉ admin mới có thể xem tất cả users
+    is_admin = request.user.is_superuser
 
     if is_admin:
         users = User.objects.exclude(id=request.user.id)
     else:
+        # Khách hàng chỉ chat với admin
         users = User.objects.filter(
-            Q(groups__name__in=admin_groups) | Q(is_superuser=True)
+            is_superuser=True
         ).distinct()
 
     # Tính số tin nhắn chưa đọc cho mỗi user

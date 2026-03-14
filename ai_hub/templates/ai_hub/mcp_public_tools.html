@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}MCP Tools Public - DTHub AI{% endblock %}
+{% block content %}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-white font-monospace">
+                <i class="fa-solid fa-toolbox text-info me-2"></i>Trung tâm Công cụ AI
+            </h2>
+            <p class="text-secondary mb-0 font-monospace small">>_ Browse, add, and manage your AI tools collection</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'ai_chat' %}" class="btn btn-outline-purple font-monospace" style="color: var(--neon-purple); border-color: var(--neon-purple);">
+                <i class="fa-solid fa-robot me-2"></i>Back to Chat
+            </a>
+            <div class="dropdown">
+                <button class="btn btn-outline-info font-monospace dropdown-toggle" type="button" id="addMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-plus-circle me-2"></i>Thêm mới
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end cyber-dropdown shadow-lg" aria-labelledby="addMenu">
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'device_management' %}">
+                            <i class="fa-solid fa-microchip text-info me-2"></i>Thêm thiết bị (ESP32)
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="{% url 'create_mcp_server' %}">
+                            <i class="fa-solid fa-server text-purple me-2" style="color: var(--neon-purple);"></i>Kết nối Node riêng
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {% if request.user.is_superuser %}
+            <a href="{% url 'mcp_dashboard' %}" class="btn btn-outline-secondary font-monospace">
+                <i class="fa-solid fa-gear me-2"></i>Admin Dashboard
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="cyber-card p-3">
+                <div class="d-flex align-items-center">
+                    <i class="fa-solid fa-cubes text-info fs-3 me-3"></i>
+                    <div>
+                        <div class="text-secondary small font-monospace">Tổng số công cụ</div>
+                        <div class="text-white fw-bold fs-4">{{ total_tools }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="cyber-card p-3">
+                <div class="d-flex align-items-center">
+                    <i class="fa-solid fa-check-circle text-success fs-3 me-3"></i>
+                    <div>
+                        <div class="text-secondary small font-monospace">Đã kích hoạt</div>
+                        <div class="text-white fw-bold fs-4">{{ my_tools_count }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tools by Category -->
+    {% for category, tools in categories.items %}
+    <div class="cyber-card mb-4 border-0 shadow-lg" style="background: rgba(15, 15, 25, 0.8);">
+        <div class="card-header-custom d-flex align-items-center justify-content-between py-3 px-4" 
+             style="background: linear-gradient(90deg, rgba(0, 243, 255, 0.1), transparent); border-left: 4px solid var(--neon-blue);">
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-layer-group text-info me-3 fs-5"></i>
+                <h5 class="mb-0 fw-bold text-white font-monospace text-uppercase tracking-wider">{{ category }}</h5>
+            </div>
+            <span class="badge rounded-pill bg-dark border border-info text-info font-monospace px-3">{{ tools|length }} tools</span>
+        </div>
+        <div class="p-4">
+            <div class="row g-4">
+                {% for item in tools %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 mcp-tool-card {% if item.is_added %}added-border{% endif %}" 
+                         style="background: rgba(20, 20, 35, 0.6); border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="tool-icon-wrapper rounded-3 d-flex align-items-center justify-content-center me-3" 
+                                     style="width: 48px; height: 48px; background: rgba(0, 243, 255, 0.1); border: 1px solid rgba(0, 243, 255, 0.2);">
+                                    <i class="fa-solid {{ item.tool.icon|default:'fa-cube' }} {% if item.is_added %}text-success{% else %}text-info{% endif %} fs-4"></i>
+                                </div>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <h6 class="text-white fw-bold mb-0 text-truncate">{{ item.tool.display_name }}</h6>
+                                    <small class="text-secondary font-monospace" style="font-size: 0.7rem;">ID: {{ item.tool.name }}</small>
+                                </div>
+                            </div>
+                            
+                            <p class="text-secondary small mb-4 flex-grow-1" style="line-height: 1.5; min-height: 3rem;">
+                                {{ item.tool.description|default:"No description available." }}
+                            </p>
+                            
+                            <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top border-secondary-subtle">
+                                <div class="tool-tags">
+                                    <span class="badge bg-transparent border border-secondary text-secondary font-monospace" style="font-size: 0.65rem;">
+                                        {{ item.tool.tool_type|upper }}
+                                    </span>
+                                </div>
+                                
+                                {% if item.is_added %}
+                                <form method="post" action="{% url 'mcp_tool_remove' item.tool.name %}" class="tool-remove-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger px-3 rounded-pill font-monospace">
+                                        <i class="fa-solid fa-trash-can me-2"></i>GỠ BỎ
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{% url 'mcp_tool_add' item.tool.name %}" class="tool-add-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-neon-blue px-3 rounded-pill font-monospace">
+                                        <i class="fa-solid fa-plus me-2"></i>KÍCH HOẠT
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="cyber-card p-5 text-center">
+        <i class="fa-solid fa-box-open text-secondary fs-1 mb-3"></i>
+        <h5 class="text-secondary font-monospace">No tools available</h5>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+.cyber-card {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+.card-header-custom {
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1rem 1.25rem;
+    border-radius: 12px 12px 0 0;
+}
+.mcp-tool-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    border-color: var(--neon-blue) !important;
+}
+.added-border {
+    border-color: rgba(40, 167, 69, 0.3) !important;
+    background: rgba(40, 167, 69, 0.05) !important;
+}
+.btn-neon-blue {
+    background: transparent;
+    color: var(--neon-blue);
+    border: 1px solid var(--neon-blue);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+    transition: all 0.3s ease;
+}
+.btn-neon-blue:hover {
+    background: var(--neon-blue);
+    color: #000;
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+}
+.cyber-dropdown {
+    background: rgba(10, 15, 30, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--neon-blue);
+    border-radius: 12px;
+}
+.cyber-dropdown .dropdown-item {
+    color: #e0eaff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    transition: 0.2s;
+}
+.cyber-dropdown .dropdown-item:hover {
+    background: rgba(0, 243, 255, 0.1);
+    color: var(--neon-blue);
+}
+</style>
+{% endblock %}

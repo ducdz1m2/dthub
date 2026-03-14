@@ -2,83 +2,453 @@
 {% load static %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow border-0 rounded-4">
-                <div class="card-header bg-white py-3 border-bottom shadow-none">
-                    <h4 class="mb-0 fw-bold text-dark">
-                        <i class="bi bi-chat-dots-fill text-success me-2"></i>Tin nhắn DTHub
-                    </h4>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        {% for person in users %}
-                        <a href="{% url 'chat_room' person.id %}" class="list-group-item list-group-item-action p-3 border-bottom" data-user-id="{{ person.id }}">
-                            <div class="d-flex align-items-center">
-                                <div class="position-relative flex-shrink-0">
-                                    {% if person.profile.avatar %}
-                                    <img src="{{ person.profile.avatar.url }}" class="rounded-circle border" width="50" height="50" style="object-fit: cover" />
-                                    {% else %}
-                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 50px; height: 50px">
-                                        {{ person.username|slice:':1'|upper }}
-                                    </div>
-                                    {% endif %}
-                                </div>
-
-                                <div class="ms-3 flex-grow-1 min-w-0">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div class="flex-grow-1 min-w-0">
-                                            <h6 class="mb-1 fw-bold text-dark text-truncate">{{ person.username }}</h6>
-                                            <small class="text-muted">
-                                                {% if person.is_staff %}
-                                                <span class="badge bg-info-subtle text-info rounded-pill px-2">Nhân viên</span>
-                                                {% else %}
-                                                <span class="badge bg-light text-dark border rounded-pill px-2">Khách hàng</span>
-                                                {% endif %}
-                                            </small>
-                                        </div>
-                                        <div class="text-end flex-shrink-0 ms-2">
-                                            {% if person.unread_count > 0 %}
-                                            <span class="badge rounded-pill bg-danger d-block mb-1" style="font-size: 0.65rem;">{{ person.unread_count }}</span>
-                                            {% endif %}
-                                            <span class="status-indicator bg-secondary text-white rounded-pill px-2 d-block" style="font-size: 0.6rem;">Offline</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="text-muted small flex-shrink-0 ms-2">
-                                    <i class="bi bi-chevron-right"></i>
-                                </div>
-                            </div>
-                        </a>
-                        {% empty %}
-                        <div class="p-5 text-center">
-                            <i class="bi bi-people text-muted display-4"></i>
-                            <p class="mt-3 text-muted">Hiện chưa có ai để trò chuyện.</p>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-xl-8 col-lg-10 col-md-12">
+      <!-- Chat Hub Header -->
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center gap-3 glass-panel px-4 py-3 rounded-4">
+          <div class="neon-icon">
+            <i class="fa-solid fa-comments fs-2" style="color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue);"></i>
+          </div>
+          <div class="text-start">
+            <h1 class="mb-0 logo-text">DTHub Chat Hub</h1>
+            <p class="mb-0 text-secondary">Kết nối thời gian thực</p>
+          </div>
         </div>
+      </div>
+
+      <!-- Chat List Container -->
+      <div class="glass-panel rounded-4 overflow-hidden">
+        <!-- Search Bar -->
+        <div class="p-3 border-bottom" style="border-color: var(--glass-border) !important;">
+          <div class="position-relative">
+            <input type="text" id="search-users" class="form-control neon-input" placeholder="Tìm kiếm người dùng...">
+            <i class="fa-solid fa-search position-absolute" style="right: 15px; top: 50%; transform: translateY(-50%); color: var(--neon-blue);"></i>
+          </div>
+        </div>
+
+        <!-- Users List -->
+        <div class="chat-users-list" style="max-height: 600px; overflow-y: auto;">
+          {% for person in users %}
+          <a href="{% url 'chat_room' person.id %}" class="chat-user-item d-flex align-items-center p-3 text-decoration-none border-bottom" data-user-id="{{ person.id }}" data-username="{{ person.username|lower }}">
+            <!-- Avatar -->
+            <div class="position-relative flex-shrink-0">
+              <div class="avatar-container">
+                {% if person.profile.avatar and person.profile.avatar.url and 'default.png' not in person.profile.avatar.url %}
+                  <img src="{{ person.profile.avatar.url }}" class="user-avatar" alt="{{ person.username }}" />
+                {% else %}
+                  <div class="user-avatar-placeholder">
+                    {{ person.username|slice:':1'|upper }}
+                  </div>
+                {% endif %}
+                <!-- Online Status -->
+                <span class="online-status online-status-{{ person.id }} position-absolute bottom-0 end-0" style="width: 14px; height: 14px; border: 2px solid var(--dark-bg);"></span>
+              </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="ms-3 flex-grow-1 min-w-0">
+              <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1 min-w-0">
+                  <h6 class="mb-1 fw-bold user-name">{{ person.username }}</h6>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="user-role-badge">
+                      {% if person.is_superuser %}
+                        <i class="fa-solid fa-crown text-warning me-1"></i>Admin
+                      {% elif person.is_staff %}
+                        <i class="fa-solid fa-user-tie text-info me-1"></i>Nhân viên
+                      {% else %}
+                        <i class="fa-solid fa-user text-secondary me-1"></i>Khách hàng
+                      {% endif %}
+                    </span>
+                    <span class="last-seen text-secondary small" data-user-id="{{ person.id }}">
+                      <i class="fa-solid fa-clock me-1"></i>Đang ngoại tuyến
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- Status & Unread Count -->
+                <div class="text-end flex-shrink-0 ms-3">
+                  {% if person.unread_count > 0 %}
+                    <span class="unread-badge pulse-animation" data-count="{{ person.unread_count }}">
+                      {{ person.unread_count }}
+                    </span>
+                  {% endif %}
+                  <div class="connection-status">
+                    <i class="fa-solid fa-circle text-secondary connection-dot" data-user-id="{{ person.id }}"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation Arrow -->
+            <div class="ms-3 text-neon-blue">
+              <i class="fa-solid fa-chevron-right"></i>
+            </div>
+          </a>
+          {% empty %}
+          <div class="empty-state text-center p-5">
+            <div class="empty-icon mb-3">
+              <i class="fa-solid fa-user-slash fs-1 text-secondary"></i>
+            </div>
+            <h5 class="text-secondary mb-2">Chưa có người dùng nào</h5>
+            <p class="text-secondary small">Hiện tại không có ai để trò chuyện.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="mt-3">
+        <div class="glass-panel rounded-3 p-3">
+          <div class="row text-center">
+            <div class="col-4">
+              <div class="stat-item">
+                <div class="stat-number text-neon-blue fw-bold">{{ users|length }}</div>
+                <div class="stat-label small text-secondary">Người dùng</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="stat-item">
+                <div class="stat-number text-success fw-bold" id="online-count">0</div>
+                <div class="stat-label small text-secondary">Online</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="stat-item">
+                <div class="stat-number text-warning fw-bold" id="unread-total">0</div>
+                <div class="stat-label small text-secondary">Chưa đọc</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <style>
-.list-group-item {
-    transition: all 0.2s ease;
-}
-.list-group-item:hover {
-    background-color: #f8f9fa !important;
-    transform: scale(1.01);
-    z-index: 1;
-}
+  /* Chat Hub Styles */
+  .neon-icon {
+    animation: neon-pulse 2s infinite;
+  }
+
+  @keyframes neon-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  /* Search Input */
+  .neon-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 25px;
+    padding: 10px 45px 10px 20px;
+    color: #e0eaff;
+    transition: all 0.3s ease;
+  }
+
+  .neon-input:focus {
+    outline: none;
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .neon-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* Chat User Items */
+  .chat-user-item {
+    transition: all 0.3s ease;
+    color: #e0eaff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chat-user-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .chat-user-item:hover::before {
+    left: 100%;
+  }
+
+  .chat-user-item:hover {
+    background: rgba(0, 243, 255, 0.05);
+    transform: translateX(5px);
+  }
+
+  .chat-user-item:hover .user-name {
+    color: var(--neon-blue);
+    text-shadow: 0 0 5px var(--neon-blue);
+  }
+
+  /* Avatar Styles */
+  .avatar-container {
+    position: relative;
+  }
+
+  .user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--glass-border);
+    transition: all 0.3s ease;
+  }
+
+  .user-avatar-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    border: 2px solid var(--glass-border);
+  }
+
+  .chat-user-item:hover .user-avatar,
+  .chat-user-item:hover .user-avatar-placeholder {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+  }
+
+  /* Online Status */
+  .online-status {
+    border-radius: 50%;
+    transition: all 0.3s ease;
+  }
+
+  .online-status.online {
+    background: #198754;
+    box-shadow: 0 0 8px #198754;
+    animation: online-pulse 2s infinite;
+  }
+
+  .online-status.offline {
+    background: #6c757d;
+  }
+
+  @keyframes online-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  /* Badges */
+  .unread-badge {
+    background: linear-gradient(135deg, #dc3545, #ff6b6b);
+    color: white;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .pulse-animation {
+    animation: badge-pulse 2s infinite;
+  }
+
+  @keyframes badge-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+  }
+
+  .user-role-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Connection Status */
+  .connection-dot {
+    font-size: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .connection-dot.online {
+    color: #198754 !important;
+  }
+
+  /* Stats */
+  .stat-item {
+    transition: all 0.3s ease;
+  }
+
+  .stat-item:hover .stat-number {
+    transform: scale(1.1);
+  }
+
+  .stat-number {
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+  }
+
+  /* Scrollbar */
+  .chat-users-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chat-users-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chat-users-list::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 3px;
+  }
+
+  .chat-users-list::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-blue);
+  }
+
+  /* Empty State */
+  .empty-icon {
+    opacity: 0.5;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container-fluid {
+      padding: 10px;
+    }
+
+    .user-avatar,
+    .user-avatar-placeholder {
+      width: 40px;
+      height: 40px;
+    }
+
+    .unread-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+    }
+
+    .stat-number {
+      font-size: 1rem;
+    }
+  }
 </style>
 
 <script>
-// Không auto reload nữa vì có real-time updates qua WebSocket
-console.log("Home page loaded with real-time status updates");
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('search-users');
+    const userItems = document.querySelectorAll('.chat-user-item');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        userItems.forEach(item => {
+            const username = item.dataset.username;
+            const shouldShow = username.includes(searchTerm);
+            
+            item.style.display = shouldShow ? 'flex' : 'none';
+            
+            if (shouldShow && searchTerm) {
+                item.style.animation = 'slideIn 0.3s ease';
+            }
+        });
+    });
+
+    // Update online status
+    function updateOnlineStatus(userId, isOnline) {
+        const statusIndicator = document.querySelector(`.online-status-${userId}`);
+        const connectionDot = document.querySelector(`.connection-dot[data-user-id="${userId}"]`);
+        const lastSeen = document.querySelector(`.last-seen[data-user-id="${userId}"]`);
+        
+        if (statusIndicator) {
+            statusIndicator.classList.toggle('online', isOnline);
+            statusIndicator.classList.toggle('offline', !isOnline);
+        }
+        
+        if (connectionDot) {
+            connectionDot.classList.toggle('online', isOnline);
+            connectionDot.classList.toggle('text-secondary', !isOnline);
+        }
+        
+        if (lastSeen) {
+            if (isOnline) {
+                lastSeen.innerHTML = '<i class="fa-solid fa-circle text-success me-1"></i>Đang hoạt động';
+            } else {
+                lastSeen.innerHTML = '<i class="fa-solid fa-clock me-1"></i>Đang ngoại tuyến';
+            }
+        }
+    }
+
+    // Update stats
+    function updateStats() {
+        const onlineCount = document.querySelectorAll('.online-status.online').length;
+        const unreadTotal = Array.from(document.querySelectorAll('.unread-badge'))
+            .reduce((total, badge) => total + parseInt(badge.dataset.count || 0), 0);
+        
+        const onlineCountEl = document.getElementById('online-count');
+        const unreadTotalEl = document.getElementById('unread-total');
+        
+        if (onlineCountEl) {
+            onlineCountEl.textContent = onlineCount;
+            onlineCountEl.style.animation = 'pulse 0.5s ease';
+        }
+        
+        if (unreadTotalEl) {
+            unreadTotalEl.textContent = unreadTotal;
+            if (unreadTotal > 0) {
+                unreadTotalEl.style.animation = 'pulse 0.5s ease';
+            }
+        }
+    }
+
+    // Global WebSocket for presence
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const globalSocket = new WebSocket(protocol + '//' + window.location.host + '/ws/global/');
+
+    globalSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'presence_update') {
+            updateOnlineStatus(data.user_id, data.status === 'online');
+            updateStats();
+        } else if (data.type === 'online_users_list') {
+            // Update all online users
+            data.online_users.forEach(userId => {
+                updateOnlineStatus(userId, true);
+            });
+            updateStats();
+        }
+    };
+
+    // Initial stats update
+    updateStats();
+
+    // Add slide-in animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+    `;
+    document.head.appendChild(style);
+});
 </script>
 
 {% endblock %}

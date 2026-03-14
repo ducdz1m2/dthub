@@ -1,15 +1,11 @@
 from django.shortcuts import render
 from products.models import Product, ProductImage
-from forum.models import Post, Category
 from orders.models import Review
 from django.db.models import Avg
 
 def home(request):
     # Get featured products (limit to 6 for homepage)
     products = Product.objects.filter(is_active=True)[:6]
-    
-    # Get latest posts for blog section
-    posts = Post.objects.select_related('author', 'category').order_by('-created_at')[:2]
     
     # Get reviews (since there are no reviews yet, we'll create some sample data)
     reviews = Review.objects.select_related('user', 'order__product').order_by('-created_at')[:4]
@@ -48,7 +44,6 @@ def home(request):
     
     context = {
         'products': products,
-        'posts': posts,
         'reviews': reviews,
         'sample_reviews': sample_reviews,
     }

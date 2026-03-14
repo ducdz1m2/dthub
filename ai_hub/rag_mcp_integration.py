@@ -1,351 +1,435 @@
 """
 RAG-MCP Integration cho DTHub AI Hub
-Tích hợp RAG system với Django và ESP32/MQTT
+
+File này đã được refactor - logic tách ra các module trong mcp_tools/:
+- db_helpers.py: Database operations
+- device_tools.py: IoT device control
+- dictionary_tools.py: English/Japanese lookup  
+- knowledge_tools.py: Wikipedia, RAG search
+- science_tools.py: Physics, Chemistry
+- system_tools.py: System info, weather, help
+- llm_processor.py: LLM interaction
 """
 
 import os
-import json
-import asyncio
-from django.conf import settings
-from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.layers import get_channel_layer
-from asgiref.sync import sync_to_async
-import time
-
-# Import từ RAG-MCP system
 import sys
-import os
+import json
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
 # Get the rag-mcp directory path (parent of dthub)
 rag_mcp_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'rag-mcp')
 sys.path.append(rag_mcp_path)
 
-# Mock MQTT cho testing
-class MockMQTTClient:
-    def __init__(self):
-        self.connected = False
-        
-    def connect(self, host, port, keepalive):
-        self.connected = True
-        print(f"🔌 Mock MQTT connected to {host}:{port}")
-        
-    def loop_start(self):
-        pass
-        
-    def subscribe(self, topic):
-        print(f"📡 Subscribed to: {topic}")
-        
-    def publish(self, topic, payload):
-        print(f"📤 Published to {topic}: {payload[:100]}...")
-
-# Try import paho-mqtt, use mock if not available
+# Import MCPDispatcher from rag-mcp với error handling
 try:
-    import paho.mqtt.client as mqtt
-    MQTT_AVAILABLE = True
-except ImportError:
-    MQTT_AVAILABLE = False
-    mqtt = None
+    from main import MCPDispatcher
+    from database import load_db
+    print("[OK] Successfully imported MCPDispatcher from rag-mcp")
+except Exception as e:
+    print(f"[FAIL] Failed to import MCPDispatcher: {e}")
+    # Create a minimal fallback dispatcher
+    class MCPDispatcher:
+        def __init__(self):
+            self.tools = {
+                "general_chat": {
+                    "handler": lambda q: q,
+                    "description": "General chat",
+                    "keywords": []
+                }
+            }
+        def smart_route(self, query):
+            return "general_chat", 0.5
+    def load_db():
+        return None
 
-from main import MCPDispatcher
-from database import load_db
+# Import các module đã tách
+from .mcp_tools import (
+    register_device_tools,
+    register_dictionary_tools,
+    register_knowledge_tools,
+    register_science_tools,
+    register_system_tools,
+)
+from .mcp_tools.llm_processor import LLMProcessor
+from .mcp_tools.db_helpers import get_chat_history_async, save_chat_message_async, get_chat_history_sync, save_chat_message_sync
+from asgiref.sync import sync_to_async
+
+
+# Mock MCP client for HTTP device control
+class MockMCPClient:
+    def __init__(self):
+        pass
+    
+    def get_online_servers(self):
+        return []
+
+
+def get_mcp_client():
+    """Get mock MCP client for HTTP system"""
+    return MockMCPClient()
+
 
 class RAGMCPService:
-    """Service chính cho RAG-MCP integration"""
-    
+    """Service chính cho RAG-MCP integration - Kết hợp RAG và MCP một cách hài hòa"""
+
     def __init__(self):
-        self.dispatcher = MCPDispatcher()
+        try:
+            self.dispatcher = MCPDispatcher()
+        except Exception as e:
+            print(f"[FAIL] Failed to create MCPDispatcher: {e}")
+            self.dispatcher = MCPDispatcher()  # Fallback to minimal dispatcher
+        
         self.vectorstore = None
         self.retriever = None
-        self.mqtt_client = None
-        self.channel_layer = get_channel_layer()
+        self.llm_processor = None
         
-        # Load RAG database
-        self._load_rag_db()
+        self._load_vector_database()
+        self._init_llm_processor()
         
-        # Setup MQTT
-        self._setup_mqtt()
-    
-    def _load_rag_db(self):
-        """Load RAG database"""
+        # Register all tools
+        try:
+            self._register_all_tools()
+        except Exception as e:
+            print(f"[FAIL] Failed to register tools: {e}")
+
+    def _load_vector_database(self):
+        """Load vector database cho RAG"""
         try:
             self.vectorstore = load_db()
-            self.retriever = self.vectorstore.as_retriever(
-                search_kwargs={"k": 3, "fetch_k": 8}
+            self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": 3, "fetch_k": 8})
+            print("Vector database loaded successfully")
+        except Exception as e:
+            print(f"Vector database not available: {e}")
+            self.retriever = None
+    
+    def _init_llm_processor(self):
+        """Initialize LLM processor với config từ AI service"""
+        try:
+            from .ai_service import get_ai_service
+            ai_service = get_ai_service()
+            self.llm_processor = LLMProcessor(
+                llm_model=ai_service.config.llm_model,
+                temperature=ai_service.config.llm_temperature,
+                max_tokens=ai_service.config.llm_max_tokens
             )
-            print("✅ RAG Database loaded successfully")
+            print("LLM processor initialized successfully")
         except Exception as e:
-            print(f"❌ Failed to load RAG DB: {e}")
+            print(f"[FAIL] Failed to initialize LLM processor: {e}")
+            # Fallback values
+            self.llm_processor = LLMProcessor(
+                llm_model="llama3.2",
+                temperature=0.7,
+                max_tokens=2048
+            )
     
-    def _setup_mqtt(self):
-        """Setup MQTT client cho ESP32 communication"""
-        try:
-            # Use real MQTT if available, otherwise use mock
-            if MQTT_AVAILABLE:
-                self.mqtt_client = mqtt.Client()
-                self.mqtt_client.on_connect = self._on_mqtt_connect
-                self.mqtt_client.on_message = self._on_mqtt_message
-            else:
-                self.mqtt_client = MockMQTTClient()
-                print("⚠️ Using Mock MQTT (paho-mqtt not available)")
-            
-            # Connect to MQTT broker (localhost hoặc external)
-            mqtt_host = getattr(settings, 'MQTT_HOST', 'localhost')
-            mqtt_port = getattr(settings, 'MQTT_PORT', 1883)
-            
-            self.mqtt_client.connect(mqtt_host, mqtt_port, 60)
-            self.mqtt_client.loop_start()
-            
-            print("✅ MQTT client connected")
-        except Exception as e:
-            print(f"❌ MQTT setup failed: {e}")
-            # Fallback to mock MQTT
-            self.mqtt_client = MockMQTTClient()
-            print("🔌 Fallback to Mock MQTT")
-    
-    def _on_mqtt_connect(self, client, userdata, flags, rc):
-        """Callback khi MQTT kết nối"""
-        print(f"MQTT Connected with result code {rc}")
+    def _register_all_tools(self):
+        """Đăng ký tất cả các tools từ các module và đồng bộ với Database"""
+        # Knowledge tools (RAG, Wikipedia)
+        register_knowledge_tools(self.dispatcher, self.retriever)
         
-        # Subscribe đến ESP32 topics
-        client.subscribe("esp32/+/sensor_data")
-        client.subscribe("esp32/+/request")
-        client.subscribe("esp32/+/status")
-    
-    def _on_mqtt_message(self, client, userdata, msg):
-        """Callback khi nhận MQTT message"""
+        # Device tools (IoT control, list devices)
+        register_device_tools(self.dispatcher)
+        
+        # Dictionary tools (English, Japanese)
+        register_dictionary_tools(self.dispatcher)
+        
+        # Science tools (Physics, Chemistry)
+        register_science_tools(self.dispatcher)
+        
+        # System tools (system info, weather, help)
+        register_system_tools(self.dispatcher)
+        
+        # ĐỒNG BỘ TOOLS VỚI DATABASE (Auto-registration)
         try:
-            topic_parts = msg.topic.split('/')
-            device_id = topic_parts[1]
-            message_type = topic_parts[2]
-            
-            payload = json.loads(msg.payload.decode())
-            
-            if message_type == "request":
-                # ESP32 request đến LLM
-                self._handle_esp32_request(device_id, payload)
-            elif message_type == "sensor_data":
-                # Lưu sensor data vào database
-                self._handle_sensor_data(device_id, payload)
+            from .models import MCPTool
+            for name, config in self.dispatcher.tools.items():
+                display_name = config.get('display_name', name.replace('_', ' ').title())
+                description = config.get('description', f"Tool {name}")
+                keywords = config.get('keywords', [])
                 
-        except Exception as e:
-            print(f"❌ MQTT message error: {e}")
-    
-    def _handle_esp32_request(self, device_id, payload):
-        """Xử lý request từ ESP32 - generate response giống như main.py"""
-        import ollama
-        query = payload.get("query", "")
-        
-        # Process với RAG-MCP
-        selected_tool, confidence = self.dispatcher.smart_route(query)
-        
-        if selected_tool in self.dispatcher.tools:
-            handler = self.dispatcher.tools[selected_tool]["handler"]
-            
-            if selected_tool == "rag_search":
-                prompt = handler(query, self.retriever)
-            else:
-                prompt = handler(query)
-        else:
-            prompt = query
-        
-        # Generate response với ollama - giống như main.py
-        try:
-            stream = ollama.chat(
-                model="qwen2.5:1.5b",
-                messages=[{"role": "user", "content": prompt}],
-                stream=False,
-                options={
-                    "temperature": 0.1,
-                    "num_predict": 250
-                }
-            )
-            response = stream['message']['content']
-        except Exception as e:
-            response = f"Lỗi khi gọi LLM: {str(e)}"
-        
-        # Gửi response qua MQTT
-        response_topic = f"esp32/{device_id}/response"
-        response_data = {
-            "query": query,
-            "response": response,
-            "tool_used": selected_tool,
-            "confidence": confidence,
-            "timestamp": time.time()
-        }
-        
-        self.mqtt_client.publish(response_topic, json.dumps(response_data))
-    
-    def _handle_sensor_data(self, device_id, payload):
-        """Xử lý sensor data từ ESP32"""
-        # Broadcast qua WebSocket cho real-time dashboard
-        asyncio.create_task(
-            self.channel_layer.group_send(
-                "sensor_dashboard",
-                {
-                    "type": "sensor_data",
-                    "device_id": device_id,
-                    "data": payload,
-                    "timestamp": time.time()
-                }
-            )
-        )
-    
-    async def process_websocket_query(self, consumer, query):
-        """Xử lý query từ WebSocket - streaming response"""
-        import ollama
-        print(f"🔥 Starting process_websocket_query for: {query}")
-        
-        selected_tool, confidence = self.dispatcher.smart_route(query)
-        print(f"🔥 Selected tool: {selected_tool}, confidence: {confidence}")
-        
-        if selected_tool in self.dispatcher.tools:
-            handler = self.dispatcher.tools[selected_tool]["handler"]
-            
-            if selected_tool == "rag_search":
-                prompt = handler(query, self.retriever)
-            else:
-                prompt = handler(query)
-        else:
-            prompt = query
-        
-        print(f"🔥 Generated prompt: {prompt[:100]}...")
-        
-        # Send initial debug message
-        await consumer.send(text_data=json.dumps({
-            "type": "response",
-            "query": query,
-            "debug": "Starting ollama chat...",
-            "done": False
-        }))
-        print("🔥 Sent debug message")
-        
-        # Generate response với ollama - streaming
-        try:
-            if selected_tool == "general_chat":
-                # For general chat, return handler response directly
-                response = handler(query)
-                await consumer.send(text_data=json.dumps({
-                    "type": "response",
-                    "query": query,
-                    "chunk": response,
-                    "done": False
-                }))
-                await consumer.send(text_data=json.dumps({
-                    "type": "response",
-                    "query": query,
-                    "done": True,
-                    "full_response": response,
-                    "tool_used": selected_tool,
-                    "confidence": confidence,
-                    "response_time": 0.1
-                }))
-            else:
-                # Use ollama for other tools with streaming
-                stream = ollama.chat(
-                    model="qwen2.5:1.5b",
-                    messages=[{"role": "user", "content": prompt}],
-                    stream=True,
-                    options={
-                        "temperature": 0.1,
-                        "num_predict": 250
+                # Các tool hệ thống mặc định (Chỉ giữ lại những thứ cốt yếu nhất)
+                is_system = name in {"general_chat", "help_info", "tool_metadata"}
+                is_public = not is_system # Các tool còn lại (gồm cả system_info) là public để user tự thêm
+                
+                MCPTool.objects.update_or_create(
+                    name=name,
+                    defaults={
+                        'display_name': display_name,
+                        'description': description,
+                        'keywords': keywords,
+                        'is_system': is_system,
+                        'is_public': is_public,
+                        'is_enabled': True,
+                        'is_visible': True
                     }
                 )
-                
-                await consumer.send(text_data=json.dumps({
-                    "type": "response",
-                    "query": query,
-                    "debug": "Ollama stream started...",
-                    "done": False
-                }))
-                
-                full_response = ""
-                chunk_count = 0
-                for chunk in stream:
-                    content = chunk['message']['content']
-                    full_response += content
-                    chunk_count += 1
-                    
-                    print(f"🔥 Sending chunk {chunk_count}: {content}")
-                    
-                    # Send chunk immediately
-                    await consumer.send(text_data=json.dumps({
-                        "type": "response",
-                        "query": query,
-                        "chunk": content,
-                        "done": False,
-                        "chunk_num": chunk_count
-                    }))
-                    print(f"🔥 Sent chunk {chunk_count}")
-                    
-                    # Small delay to allow browser processing
-                    if chunk_count % 3 == 0:  # Every 3 chunks
-                        import asyncio
-                        await asyncio.sleep(0.01)
-                
-                print(f"🔥 Stream loop completed, sent {chunk_count} chunks")
-                
-                # Send completion signal
-                await consumer.send(text_data=json.dumps({
-                    "type": "response",
-                    "query": query,
-                    "done": True,
-                    "full_response": full_response,
-                    "tool_used": selected_tool,
-                    "confidence": confidence,
-                    "response_time": 0.0  # Will be calculated on frontend
-                }))
-                
+            print("[OK] All MCP tools synchronized with Database")
         except Exception as e:
-            print(f"❌ Error in process_websocket_query: {e}")
-            import traceback
-            traceback.print_exc()
-            await consumer.send(text_data=json.dumps({
-                "type": "response",
-                "query": query,
-                "error": f"Lỗi khi gọi LLM: {str(e)}",
-                "done": True
-            }))
+            print(f"[FAIL] Failed to sync tools with DB: {e}")
+        
+        print("All MCP tools registered successfully")
 
-# Global service instance
-rag_mcp_service = RAGMCPService()
-
-class RAGMCPConsumer(AsyncWebsocketConsumer):
-    """WebSocket consumer cho RAG-MCP"""
-    
-    async def connect(self):
-        await self.accept()
-        await self.channel_layer.group_add("rag_mcp_chat", self.channel_name)
-    
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard("rag_mcp_chat", self.channel_name)
-    
-    async def receive(self, text_data):
-        try:
-            data = json.loads(text_data)
-            query = data.get("query", "")
-            print(f"🔥 WebSocket received query: {query}")
+    def _check_metadata_query(self, query):
+        """Pre-filter to check if query is asking about tool metadata/source (highest priority)"""
+        query_lower = query.lower()
+        
+        # Metadata-indicating patterns
+        metadata_patterns = [
+            "lấy ở đâu", "từ đâu ra", "nguồn", "cách hoạt động", 
+            "cơ chế", "dữ liệu từ đâu", "thông tin này ở đâu", 
+            "ai lấy từ đâu", "lấy thông tin ở đâu", "dữ liệu ở đâu",
+            "source of", "how does", "where do you get"
+        ]
+        
+        # Check if query matches metadata patterns
+        is_metadata_question = any(pattern in query_lower for pattern in metadata_patterns)
+        
+        if is_metadata_question and "tool_metadata" in self.dispatcher.tools:
+            # Also check that a tool name is mentioned
+            tool_keywords = {
+                "thời tiết": "weather", "weather": "weather",
+                "wikipedia": "wikipedia", "wiki": "wikipedia",
+                "từ điển": "dictionary", "dictionary": "dictionary",
+                "tiếng anh": "dictionary", "tiếng nhật": "dictionary",
+                "thiết bị": "device", "device": "device",
+                "rag": "rag", "tài liệu": "rag",
+                "vật lý": "physics", "physics": "physics",
+                "hóa học": "chemistry", "chemistry": "chemistry",
+                "hệ thống": "system", "system": "system",
+                "ai": "llm", "llm": "llm", "model": "llm"
+            }
             
-            # Process với RAG-MCP service
-            await rag_mcp_service.process_websocket_query(self, query)
-        except Exception as e:
-            print(f"❌ WebSocket receive error: {e}")
-            import traceback
-            traceback.print_exc()
-            await self.send(text_data=json.dumps({
-                "type": "response",
-                "error": f"WebSocket error: {str(e)}",
-                "done": True
-            }))
+            for keyword, tool_key in tool_keywords.items():
+                if keyword in query_lower:
+                    return "tool_metadata"
+        
+        return None
 
-class SensorDashboardConsumer(AsyncWebsocketConsumer):
-    """WebSocket consumer cho real-time sensor dashboard"""
-    
-    async def connect(self):
-        await self.accept()
-        await self.channel_layer.group_add("sensor_dashboard", self.channel_name)
-    
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard("sensor_dashboard", self.channel_name)
-    
-    async def sensor_data(self, event):
-        """Handle sensor data broadcast"""
-        await self.send(text_data=json.dumps(event))
+    async def _check_user_tool_access(self, user_id, tool_name):
+        """
+        Kiểm tra quyền truy cập công cụ MCP (Xác thực & Ủy quyền).
+        CHỈ những tool đã được thêm vào bộ sưu tập của user (UserMCPTool) mới được sử dụng.
+        NGOẠI LỆ: Các công cụ hệ thống (is_system=True) luôn được phép.
+        """
+        if not user_id:
+            logger.warning(f"[AUTH_FAILED] Truy cập tool '{tool_name}' bị từ chối: User chưa đăng nhập")
+            return False, "403: Không có quyền thực thi. Bạn cần đăng nhập để sử dụng công cụ này."
+        
+        try:
+            from .models import MCPTool, UserMCPTool
+            
+            # Sử dụng sync_to_async cho truy vấn database
+            @sync_to_async
+            def check_db():
+                # 1. Kiểm tra nếu là tool hệ thống (mặc định cho mọi user)
+                try:
+                    tool_obj = MCPTool.objects.get(name=tool_name, is_enabled=True)
+                    if tool_obj.is_system:
+                        return True, None
+                except MCPTool.DoesNotExist:
+                    return False, f"404: Công cụ '{tool_name}' không tồn tại hoặc bị vô hiệu hóa."
+
+                # 2. Kiểm tra nếu user đã thêm tool này vào bộ sưu tập chưa
+                has_access = UserMCPTool.objects.filter(
+                    user_id=user_id,
+                    tool=tool_obj,
+                    is_active=True
+                ).exists()
+                
+                if not has_access:
+                    logger.error(f"[ACCESS_DENIED] User {user_id} cố gắng truy cập tool '{tool_name}' mà không có quyền")
+                    return False, f"403: Không có quyền thực thi. Công cụ '{tool_name}' chưa được thêm vào bộ sưu tập của bạn."
+                
+                return True, None
+
+            return await check_db()
+            
+        except Exception as e:
+            logger.exception(f"[SYSTEM_ERROR] Lỗi kiểm tra quyền cho user {user_id} với tool {tool_name}")
+            return False, f"500: Lỗi hệ thống khi kiểm tra quyền: {str(e)}"
+
+    async def _get_user_ai_config(self, user_id):
+        """Lấy cấu hình AI của User (hoặc mặc định)"""
+        from .models import AIConfiguration
+        try:
+            config = await sync_to_async(AIConfiguration.objects.filter(user_id=user_id, is_default=True, is_active=True).first)()
+            if not config:
+                config = await sync_to_async(AIConfiguration.objects.filter(user__isnull=True, is_default=True, is_active=True).first)()
+            return config
+        except Exception:
+            return None
+
+    async def process_websocket_query(self, consumer, query, session_id=None):
+        """Xử lý query từ WebSocket (Nâng cấp Agentic MCP)"""
+        from .models import MCPTool, ChatMessage
+        from .mcp_client import MCPDiscoveryClient
+        
+        # Lấy user_id từ consumer scope
+        scope_user = getattr(consumer, "scope", {}).get("user") if consumer else None
+        user_id = scope_user.id if scope_user and getattr(scope_user, "is_authenticated", False) else None
+        
+        # 0. Cấu hình AI
+        ai_config = await self._get_user_ai_config(user_id)
+        if ai_config:
+            self.llm_processor.llm_model = ai_config.llm_model
+            self.llm_processor.temperature = ai_config.llm_temperature
+            self.llm_processor.max_tokens = ai_config.llm_max_tokens
+            self.llm_processor.response_language = ai_config.response_language
+        
+        # Gửi tín hiệu đang lập kế hoạch
+        if hasattr(consumer, 'send'):
+            await consumer.send(text_data=json.dumps({
+                "type": "response", "query": query, "debug": "Đang lập kế hoạch thực thi...", "done": False
+            }, ensure_ascii=False))
+
+        # 1. DECOMPOSITION - Lập kế hoạch
+        # Lấy danh sách tools mà user có quyền dùng
+        @sync_to_async
+        def get_user_tools():
+            from .models import UserMCPTool
+            system_tools = list(MCPTool.objects.filter(is_system=True, is_enabled=True))
+            if user_id:
+                user_tools = list(MCPTool.objects.filter(user_assignments__user_id=user_id, user_assignments__is_active=True, is_enabled=True))
+                return system_tools + user_tools
+            return system_tools
+
+        available_tools = await get_user_tools()
+        logger.info(f"[AGENTIC_MCP] Available tools: {[t.name for t in available_tools]}")
+        
+        chat_history = await get_chat_history_async(session_id or "default", limit=5, user_id=user_id)
+        
+        plan = await self.llm_processor.generate_plan(query, chat_history, available_tools)
+        logger.info(f"[AGENTIC_MCP] Plan: {plan}")
+        
+        # 2. EXECUTION - Thực thi song song
+        results = []
+        for task in plan:
+            tool_name = task.get('tool')
+            params = task.get('parameters', {})
+            
+            if tool_name == "general_chat":
+                results.append({"tool": tool_name, "result": "No specific tool needed"})
+                continue
+
+            logger.info(f"[AGENTIC_MCP] Executing: {tool_name} with {params}")
+            if hasattr(consumer, 'send'):
+                await consumer.send(text_data=json.dumps({
+                    "type": "response", "debug": f"Đang thực thi: {tool_name}...", "done": False
+                }, ensure_ascii=False))
+
+            # Thực thi tool (External MCP hoặc Built-in)
+            try:
+                # Tìm tool trong DB
+                @sync_to_async
+                def find_tool(name):
+                    return MCPTool.objects.filter(name=name).first()
+                
+                tool_obj = await find_tool(tool_name)
+                
+                if not tool_obj:
+                    logger.warning(f"[AGENTIC_MCP] Tool not found in DB: {tool_name}")
+                    results.append({"tool": tool_name, "result": f"Lỗi: Không tìm thấy tool {tool_name}"})
+                    continue
+
+                if tool_obj.tool_type == 'external_api':
+                    # Gọi MCP Server từ xa
+                    res = await sync_to_async(MCPDiscoveryClient.execute_remote_tool)(tool_name, params)
+                    results.append({"tool": tool_name, "result": res})
+                else:
+                    # Gọi Built-in tool qua dispatcher cũ
+                    if tool_name in self.dispatcher.tools:
+                        handler = self.dispatcher.tools[tool_name]["handler"]
+                        if tool_name == "rag_search":
+                            res = await sync_to_async(handler)(params.get('query', query), self.retriever)
+                        else:
+                            res = await sync_to_async(handler)(query if not params else params)
+                        results.append({"tool": tool_name, "result": res})
+                    else:
+                        logger.warning(f"[AGENTIC_MCP] Handler not found in dispatcher: {tool_name}")
+                        results.append({"tool": tool_name, "result": f"Lỗi: Handler cho {tool_name} chưa được đăng ký"})
+            except Exception as e:
+                logger.error(f"[AGENTIC_MCP] Execution error for {tool_name}: {e}")
+                results.append({"tool": tool_name, "result": f"Lỗi thực thi: {str(e)}"})
+
+        # 3. SYNTHESIS - Tổng hợp
+        logger.info(f"[AGENTIC_MCP] Synthesizing response for results: {len(results)}")
+        final_response = await self.llm_processor.synthesize_response(query, results, self.llm_processor.response_language)
+        
+        # 4. TRẢ VỀ & LƯU DB
+        if hasattr(consumer, 'send'):
+            # Gửi từng chunk nếu muốn streaming (ở đây làm đơn giản gửi cả cục)
+            await consumer.send(text_data=json.dumps({
+                "type": "chunk", "chunk": final_response, "done": False
+            }, ensure_ascii=False))
+            
+            await consumer.send(text_data=json.dumps({
+                "type": "response", "done": True, "full_response": final_response,
+                "tool_used": "agentic_mcp", "response_time": 0.0 # Cần tính thực tế
+            }, ensure_ascii=False))
+
+        await save_chat_message_async(session_id, query, final_response, "agentic_mcp", user_id=user_id)
+        return final_response
+
+    def process_sync_query(self, query, session_id=None, user_id=None):
+        """Phiên bản đồng bộ dành cho API ESP32"""
+        from .ai_service import get_ai_service
+        from asgiref.sync import async_to_sync
+        
+        # 1. Routing
+        selected_tool, _ = self.dispatcher.smart_route(query)
+        ai_service = get_ai_service()
+        
+        # Update LLM processor config
+        self.llm_processor.llm_model = ai_service.config.llm_model
+        self.llm_processor.temperature = ai_service.config.llm_temperature
+        
+        # 2. Tool Execution & Permission Check
+        tool_result = None
+        is_denied = False
+        if selected_tool != "general_chat":
+            # Kiểm tra quyền truy cập (sync version)
+            has_access, error_msg = async_to_sync(self._check_user_tool_access)(user_id, selected_tool)
+            
+            if not has_access:
+                tool_result = error_msg
+                is_denied = True
+            else:
+                handler = self.dispatcher.tools[selected_tool]["handler"]
+                if selected_tool == "rag_search":
+                    tool_result = handler(query, self.retriever)
+                else:
+                    tool_result = handler(query)
+
+        # 3. LLM Interaction
+        return self.llm_processor.process_sync_query(
+            query=query,
+            session_id=session_id,
+            selected_tool=selected_tool,
+            tool_result=tool_result,
+            is_denied=is_denied,
+            user_id=user_id
+        )
+
+
+# Khởi tạo service với error handling
+try:
+    print("[INIT] Initializing RAG-MCP Service...")
+    rag_mcp_service = RAGMCPService()
+    print("[OK] RAG-MCP Service initialized successfully")
+except Exception as e:
+    print(f"[FAIL] Failed to initialize RAG-MCP Service: {e}")
+    import traceback
+    traceback.print_exc()
+    # Create a minimal fallback service
+    class MinimalRAGMCPService:
+        def __init__(self):
+            self.dispatcher = MCPDispatcher()
+            self.retriever = None
+        async def process_websocket_query(self, consumer, query, session_id=None):
+            return "Xin lỗi, hệ thống AI đang gặp sự cố khởi tạo. Vui lòng thử lại sau."
+        def process_sync_query(self, query, session_id=None):
+            return "Xin lỗi, hệ thống AI đang gặp sự cố khởi tạo. Vui lòng thử lại sau.", "error"
+    rag_mcp_service = MinimalRAGMCPService()

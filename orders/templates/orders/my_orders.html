@@ -37,7 +37,7 @@
                         <div class="card border-0 shadow-sm bg-white p-3 rounded-3 mt-2">
                             <div class="d-flex align-items-center">
                                 <div class="position-relative">
-                                    {% if order.assigned_to.profile.avatar and 'default.png' not in order.assigned_to.profile.avatar.url %}
+                                    {% if order.assigned_to.profile.avatar and order.assigned_to.profile.avatar.url and 'default.png' not in order.assigned_to.profile.avatar.url %}
                                         <img src="{{ order.assigned_to.profile.avatar.url }}" class="rounded-circle border border-2 border-success shadow-sm" width="60" height="60" style="object-fit: cover;" />
                                     {% else %}
                                         <img src="{% static 'images/avatar-default.png' %}" class="rounded-circle border border-2 border-secondary shadow-sm" width="60" height="60" style="object-fit: cover;" />

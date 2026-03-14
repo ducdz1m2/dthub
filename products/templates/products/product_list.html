@@ -4,419 +4,363 @@
 {% load currency_filters %}
 
 {% block content %}
-  <div class="container my-5">
-    <div class="d-flex justify-content-between align-items-end mb-4 px-3">
-      <div>
-        <h2 class="fw-bold text-dark mb-1"><i class="bi bi-cpu text-success"></i> Hệ sinh thái giải pháp</h2>
-        <p class="text-muted mb-0">Khám phá các thiết bị IoT và giải pháp công nghệ tiên tiến nhất.</p>
-      </div>
-      {% if request.user.is_staff %}
-        <a href="{% url 'products:product_create' %}" class="btn btn-primary rounded-pill px-4 shadow-sm"><i class="bi bi-plus-circle me-1"></i> Tạo sản phẩm</a>
-      {% endif %}
+<style>
+    /* Thanh Filter dạng Kính mờ */
+    .filter-bar {
+        background: rgba(16, 24, 48, 0.65);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 243, 255, 0.2);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Nút Filter */
+    .filter-btn {
+        background: transparent;
+        color: #a0aec0;
+        border: 1px solid transparent;
+        border-radius: 30px;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.3s;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .filter-btn:hover, .filter-btn.active {
+        background: rgba(0, 243, 255, 0.1);
+        color: var(--neon-blue);
+        border-color: var(--neon-blue);
+        box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+    }
+
+    /* Card Sản phẩm dạng Dọc (Chống vỡ layout) */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+    .cyber-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--neon-blue);
+        box-shadow: 0 12px 30px rgba(0, 243, 255, 0.15);
+    }
+    .cyber-card.inactive {
+        border-color: rgba(255, 193, 7, 0.4);
+        opacity: 0.85;
+    }
+
+    /* Xử lý hình ảnh cố định tỷ lệ */
+    .product-img-wrapper {
+        height: 220px;
+        width: 100%;
+        overflow: hidden;
+        position: relative;
+        background: #02040a;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .product-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.6s ease;
+    }
+    .cyber-card:hover .product-img {
+        transform: scale(1.08);
+    }
+
+    /* Giá tiền */
+    .price-neon {
+        color: var(--neon-blue);
+        text-shadow: 0 0 5px rgba(0, 243, 255, 0.3);
+        font-weight: bold;
+        font-size: 1.3rem;
+    }
+</style>
+
+<div class="container my-5 relative z-1">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 px-2 border-bottom border-secondary pb-4" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div>
+            <h2 class="fw-bold text-white mb-1"><i class="fa-solid fa-microchip me-2" style="color: var(--neon-blue);"></i> Danh sách Sản phẩm</h2>
+            <p class="text-secondary mt-2 mb-0">Khám phá các thiết bị IoT, cảm biến và giải pháp công nghệ tiên tiến nhất.</p>
+        </div>
+        
+        {% if request.user.is_staff %}
+            <a href="{% url 'products:product_create' %}" class="btn btn-outline-info rounded-pill mt-3 mt-md-0 d-flex align-items-center gap-2 px-4">
+                <i class="fa-solid fa-plus"></i> Thêm sản phẩm
+            </a>
+        {% endif %}
     </div>
 
-    <div class="d-flex justify-content-center gap-2 mb-5 py-2 sticky-top bg-white shadow-sm rounded-pill mx-auto w-fit-content px-3" style="top: 80px; z-index: 100; max-width: fit-content;">
-      <button class="btn btn-filter active px-4 rounded-pill" data-filter="all">Tất cả</button>
-      <button class="btn btn-filter px-4 rounded-pill" data-filter="iot">Thiết bị IoT</button>
-      <button class="btn btn-filter px-4 rounded-pill" data-filter="solution">Giải pháp</button>
-      <button class="btn btn-filter px-4 rounded-pill" data-filter="sensor">Cảm biến</button>
+    <div class="filter-bar d-flex justify-content-center flex-wrap gap-2 mb-5 py-2 px-3 sticky-top rounded-pill mx-auto w-fit-content" style="top: 85px; z-index: 100;">
+        <button class="filter-btn active" data-filter="all">Tất cả</button>
+        <button class="filter-btn" data-filter="iot">Thiết bị IoT</button>
+        <button class="filter-btn" data-filter="solution">Giải pháp</button>
+        <button class="filter-btn" data-filter="sensor">Cảm biến</button>
     </div>
 
-    <div class="row g-4 product-list">
-      {% for product in products %}
-        <div class="col-12 product-item" data-category="{{ product.product_type }}">
-          <div class="card h-100 border-0 shadow-sm hover-card rounded-4 overflow-hidden {% if not product.is_active %}border-warning border-2{% endif %}">
-            <div class="row g-0">
-              <div class="col-md-4 position-relative">
-                {% if product.images.all %}
-                  <img src="{{ product.images.all.0.image.url }}" data-zoom="{{ product.images.all.0.image.url }}" class="product-img drift-img" alt="{{ product.name }}" style="position: relative; z-index: 100;" />
-                {% else %}
-                  <img src="{% static 'images/default-product.webp' %}" class="product-img" alt="default" />
-                {% endif %}
-
-                {% if not product.is_active %}
-                <div class="position-absolute top-0 start-0 m-2">
-                  <span class="badge bg-warning text-dark">
-                    <i class="bi bi-eye-slash me-1"></i>Không hoạt động
-                  </span>
-                </div>
-                {% endif %}
-
-                <a href="{% url 'products:product_detail' product.slug %}" class="stretched-link" style="z-index: 1;"></a>
-              </div>
-
-              <div class="col-md-8 p-4 d-flex flex-column">
-                <div class="mb-2">
-                  <span class="badge rounded-pill px-3 py-2 
-                                {% if product.product_type == 'iot' %}
-                      
-                      
-                      bg-success-subtle text-success
-
-
-
-                    {% elif product.product_type == 'solution' %}
-                      
-                      
-                      bg-primary-subtle text-primary
-
-
-
-                    {% elif product.product_type == 'sensor' %}
-                      
-                      
-                      bg-warning-subtle text-dark
-
-
-
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4 product-list">
+        {% for product in products %}
+        <div class="col product-item" data-category="{{ product.product_type }}">
+            <div class="cyber-card h-100 {% if not product.is_active %}inactive{% endif %}">
+                
+                <div class="product-img-wrapper">
+                    {% if product.images.all %}
+                        <img src="{{ product.images.all.0.image.url }}" class="product-img drift-img" alt="{{ product.name }}" />
                     {% else %}
-                      
-                      
-                      bg-secondary-subtle text-secondary
+                        <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-dark">
+                            <i class="fa-solid fa-box-open fs-1 text-secondary opacity-50"></i>
+                        </div>
+                    {% endif %}
 
+                    <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;">
+                        <span class="badge bg-dark border px-2 py-1
+                            {% if product.product_type == 'iot' %} border-success text-success
+                            {% elif product.product_type == 'solution' %} border-info text-info
+                            {% elif product.product_type == 'sensor' %} border-warning text-warning
+                            {% else %} border-secondary text-secondary {% endif %}" style="backdrop-filter: blur(5px); background: rgba(0,0,0,0.6) !important;">
+                            {{ product.get_product_type_display }}
+                        </span>
+                    </div>
 
-                    {% endif %}">
-                    <i class="bi bi-tag-fill me-1"></i> {{ product.get_product_type_display }}
-                  </span>
+                    {% if not product.is_active %}
+                    <div class="position-absolute top-0 start-0 m-2" style="z-index: 10;">
+                        <span class="badge bg-danger text-white shadow">
+                            <i class="fa-solid fa-eye-slash me-1"></i> Tạm ẩn
+                        </span>
+                    </div>
+                    {% endif %}
+
+                    <a href="{% url 'products:product_detail' product.slug %}" class="stretched-link" style="z-index: 5;"></a>
                 </div>
 
-                <h4 class="fw-bold mb-2">{{ product.name }}</h4>
-                <p class="text-muted small mb-4 flex-grow-1">
-                  {% if product.description %}{{ product.description|truncatewords:35 }}{% endif %}
-                </p>
+                <div class="p-4 d-flex flex-column flex-grow-1">
+                    <h5 class="text-white fw-bold mb-2">{{ product.name }}</h5>
+                    
+                    <p class="text-secondary mb-4 flex-grow-1" style="font-size: 0.95rem;">
+                        {% if product.description %}{{ product.description|truncatewords:20 }}{% else %}Chưa có thông tin mô tả chi tiết cho sản phẩm này.{% endif %}
+                    </p>
 
-                <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
-                  <div class="price-tag">
-                    {% if product.price %}
-                      <span class="text-muted small d-block">Giá giải pháp:</span>
-                      <span class="fs-4 fw-bold text-danger">{{ product.price|vnd_price }}</span>
-                    {% else %}
-                      <span class="text-muted fst-italic">Liên hệ báo giá</span>
-                    {% endif %}
-                  </div>
+                    <div class="mt-auto border-top border-secondary pt-3 d-flex flex-column gap-3" style="border-color: rgba(255,255,255,0.1) !important; position: relative; z-index: 15;">
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-secondary small">Giá bán:</span>
+                            {% if product.price %}
+                                <span class="price-neon">{{ product.price|vnd_price }}</span>
+                            {% else %}
+                                <span class="text-warning small fst-italic">Liên hệ</span>
+                            {% endif %}
+                        </div>
 
-                  <div class="actions d-flex gap-2">
-                    <a href="{% url 'products:product_detail' product.slug %}" class="btn btn-light rounded-pill px-3"><i class="bi bi-eye"></i></a>
-                    {% if product.is_active %}
-                      <a href="{% url 'orders:create_order_direct' product.id %}" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="bi bi-cart-plus-fill"></i> Mua ngay</a>
-                      <a href="{% url 'products:product_consultation' product.id %}" class="btn btn-info rounded-pill px-4 fw-bold"><i class="bi bi-chat-dots-fill"></i> Tư vấn</a>
-                    {% else %}
-                      <button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
-                        <i class="bi bi-cart-plus-fill"></i> Mua ngay
-                      </button>
-                      <button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
-                        <i class="bi bi-chat-dots-fill"></i> Tư vấn
-                      </button>
-                    {% endif %}
-                    {% if request.user.is_staff %}
-                      <a href="{% url 'products:product_edit' product.id %}" class="btn btn-outline-dark rounded-pill"><i class="bi bi-pencil"></i></a>
-                    {% endif %}
-                  </div>
+                        <div class="d-flex gap-2">
+                            {% if product.is_active %}
+                                <a href="{% url 'orders:create_order_direct' product.id %}" class="btn btn-outline-info w-100 rounded-pill"><i class="fa-solid fa-cart-plus"></i> Mua</a>
+                                <a href="{% url 'products:product_consultation' product.id %}" class="btn text-white w-100 rounded-pill" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);"><i class="fa-solid fa-headset"></i> Tư vấn</a>
+                            {% else %}
+                                <button class="btn btn-outline-secondary text-secondary w-100 rounded-pill" disabled>Ngừng kinh doanh</button>
+                            {% endif %}
+                            
+                            {% if request.user.is_staff %}
+                                <a href="{% url 'products:product_edit' product.id %}" class="btn btn-warning rounded-pill px-3"><i class="fa-solid fa-pen"></i></a>
+                            {% endif %}
+                        </div>
+                    </div>
+
                 </div>
-              </div>
             </div>
-          </div>
         </div>
-      {% empty %}
-        <div class="col-12 text-center py-5 animate-fade-in" id="empty-state">
-          <div class="display-1 text-secondary opacity-25 mb-3">
-            <i class="bi bi-box2"></i>
-          </div>
-          <h4 class="text-muted">Chưa có sản phẩm nào</h4>
-          <p class="text-secondary small">Chúng tôi đang cập nhật thêm giải pháp mới cho danh mục này.</p>
-          <button class="btn btn-outline-success rounded-pill px-4 mt-2" onclick="document.querySelector('[data-filter=\'all\']').click()">Quay lại tất cả</button>
+        {% empty %}
+        <div class="col-12 text-center py-5 cyber-card" id="empty-state">
+            <div class="display-1 text-secondary opacity-50 mb-4 mt-3">
+                <i class="fa-solid fa-box-open"></i>
+            </div>
+            <h4 class="text-white fw-bold">Chưa có sản phẩm nào</h4>
+            <p class="text-secondary">Chúng tôi đang cập nhật thêm sản phẩm cho danh mục này. Vui lòng quay lại sau.</p>
+            <button class="btn btn-outline-info rounded-pill px-4 mt-3" onclick="document.querySelector('[data-filter=\'all\']').click()">Quay lại tất cả</button>
         </div>
-      {% endfor %}
+        {% endfor %}
     </div>
     
-    <!-- Load More Button -->
     {% if has_next %}
-    <div class="text-center mt-5">
-        <button id="load-more-btn" class="btn btn-outline-success rounded-pill px-4" onclick="loadMoreProducts()">
-            <i class="bi bi-arrow-down-circle me-2"></i>Xem thêm sản phẩm
+    <div class="text-center mt-5 pt-3">
+        <button id="load-more-btn" class="btn btn-outline-info rounded-pill px-5 py-2" onclick="loadMoreProducts()">
+            <i class="fa-solid fa-arrow-down me-2"></i> Xem thêm sản phẩm
         </button>
         <div id="loading-spinner" class="d-none">
-            <div class="spinner-border text-success" role="status">
+            <div class="spinner-border text-info" role="status">
                 <span class="visually-hidden">Đang tải...</span>
             </div>
         </div>
     </div>
     {% endif %}
-  </div>
+</div>
 
-  <style>
-    /* Nâng cấp Filter Buttons */
-    .btn-filter {
-      border: none;
-      color: #6c757d;
-      background: transparent;
-      transition: all 0.3s ease;
-      font-weight: 500;
-    }
-    .btn-filter.active,
-    .btn-filter:hover {
-      background-color: #198754;
-      color: white;
-      box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
-    }
-    
-    /* Hiệu ứng Card */
-    .hover-card {
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .hover-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
-    }
-    
-    /* Hình ảnh sản phẩm */
-    .product-img {
-      width: 100%;
-      height: 100%;
-      min-height: 250px;
-      object-fit: cover;
-      transition: transform 0.5s ease;
-    }
-    .hover-card:hover .product-img {
-      transform: scale(1.05);
-    }
-    
-    /* Badge phong cách mới */
-    .bg-success-subtle {
-      background-color: #e8f5e9;
-    }
-    .bg-primary-subtle {
-      background-color: #e3f2fd;
-    }
-    .bg-warning-subtle {
-      background-color: #fff8e1;
-    }
-    
-    /* Animation cho Filter */
-    .product-item {
-      transition: all 0.4s ease-in-out;
-    }
-    .hover-card:hover .product-img.drift-img {
-    transform: none !important;
-  }
-
-  /* Làm đẹp khung soi tròn/vuông trên danh sách */
-  .drift-zoom-pane.drift-inline {
-    border-radius: 10px; /* Bo góc khung zoom cho hiện đại */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    border: 2px solid #198754; /* Màu xanh theme của bạn */
-  }
-
-  /* Đảm bảo ảnh nằm trên cái link stretched-link để nhận chuột */
-  .drift-img {
-    position: relative;
-    z-index: 10 !important;
-  }
-  </style>
-
-  <script>
+<script>
     let currentPage = parseInt('{{ current_page|default:1 }}');
     let currentFilter = '{{ current_type|default:"all" }}';
     
-    // Function to format Vietnamese currency
     function formatVND(value) {
-      try {
-        if (value === null || value === undefined) return '';
-        const num = parseInt(value);
-        return num.toLocaleString('vi-VN').replace(/\./g, '.') + '₫';
-      } catch (e) {
-        return value;
-      }
+        try {
+            if (value === null || value === undefined) return '';
+            const num = parseInt(value);
+            return num.toLocaleString('vi-VN').replace(/\./g, '.') + '₫';
+        } catch (e) {
+            return value;
+        }
     }
     
-    const filterButtons = document.querySelectorAll('[data-filter]')
-    const productItems = document.querySelectorAll('.product-item')
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const productItems = document.querySelectorAll('.product-item');
     
     filterButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        filterButtons.forEach((b) => b.classList.remove('active'))
-        btn.classList.add('active')
+        btn.addEventListener('click', () => {
+            filterButtons.forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
     
-        const filter = btn.getAttribute('data-filter')
-        currentFilter = filter;
-        currentPage = 1; // Reset page when filter changes
-        
-        // Reload products with new filter
-        loadProductsWithFilter(filter);
-      })
-    })
+            const filter = btn.getAttribute('data-filter');
+            currentFilter = filter;
+            currentPage = 1; 
+            
+            loadProductsWithFilter(filter);
+        })
+    });
     
     function loadProductsWithFilter(filter) {
-      const productList = document.querySelector('.product-list');
-      const emptyState = document.getElementById('empty-state');
-      const loadMoreBtn = document.getElementById('load-more-btn');
-      
-      // Show loading state
-      if (productList) productList.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-success" role="status"><span class="visually-hidden">Đang tải...</span></div></div>';
-      
-      // Fetch filtered products
-      fetch(`?type=${filter}&page=1`, {
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.products && data.products.length > 0) {
-          productList.innerHTML = '';
-          data.products.forEach(product => {
-            const productHtml = createProductCard(product);
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = productHtml;
-            productList.appendChild(tempDiv.firstElementChild);
-          });
-          
-          currentPage = data.current_page;
-          
-          // Update load more button
-          if (data.has_next) {
-            if (loadMoreBtn) loadMoreBtn.classList.remove('d-none');
-          } else {
-            if (loadMoreBtn) loadMoreBtn.classList.add('d-none');
-          }
-        } else {
-          productList.innerHTML = `
-            <div class="col-12 text-center py-5 animate-fade-in" id="empty-state">
-              <div class="display-1 text-secondary opacity-25 mb-3">
-                <i class="bi bi-box2"></i>
-              </div>
-              <h4 class="text-muted">Chưa có sản phẩm nào</h4>
-              <p class="text-secondary small">Chúng tôi đang cập nhật thêm giải pháp mới cho danh mục này.</p>
-              <button class="btn btn-outline-success rounded-pill px-4 mt-2" onclick="document.querySelector('[data-filter=\'all\']').click()">Quay lại tất cả</button>
-            </div>
-          `;
-          if (loadMoreBtn) loadMoreBtn.classList.add('d-none');
-        }
-      })
-      .catch(error => {
-        console.error('Error loading products:', error);
-        productList.innerHTML = '<div class="col-12 text-center py-5 text-danger">Lỗi tải sản phẩm. Vui lòng thử lại.</div>';
-      });
+        const productList = document.querySelector('.product-list');
+        const emptyState = document.getElementById('empty-state');
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        
+        if (productList) productList.innerHTML = '<div class="col-12 text-center py-5"><div class="spinner-border text-info" role="status"></div></div>';
+        
+        fetch(`?type=${filter}&page=1`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.products && data.products.length > 0) {
+                productList.innerHTML = '';
+                data.products.forEach(product => {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = createProductCard(product);
+                    productList.appendChild(tempDiv.firstElementChild);
+                });
+                currentPage = data.current_page;
+                
+                if (data.has_next) {
+                    if (loadMoreBtn) loadMoreBtn.classList.remove('d-none');
+                } else {
+                    if (loadMoreBtn) loadMoreBtn.classList.add('d-none');
+                }
+            } else {
+                productList.innerHTML = `
+                    <div class="col-12 text-center py-5 cyber-card" id="empty-state">
+                        <div class="display-1 text-secondary opacity-50 mb-4 mt-3"><i class="fa-solid fa-box-open"></i></div>
+                        <h4 class="text-white fw-bold">Chưa có sản phẩm nào</h4>
+                        <p class="text-secondary">Chúng tôi đang cập nhật thêm sản phẩm cho danh mục này. Vui lòng quay lại sau.</p>
+                        <button class="btn btn-outline-info rounded-pill px-4 mt-3" onclick="document.querySelector('[data-filter=\\'all\\']').click()">Quay lại tất cả</button>
+                    </div>`;
+                if (loadMoreBtn) loadMoreBtn.classList.add('d-none');
+            }
+        })
+        .catch(error => {
+            productList.innerHTML = '<div class="col-12 text-center py-5 text-danger">Lỗi kết nối dữ liệu. Vui lòng tải lại trang.</div>';
+        });
     }
     
     function loadMoreProducts() {
-      const loadMoreBtn = document.getElementById('load-more-btn');
-      const loadingSpinner = document.getElementById('loading-spinner');
-      const productList = document.querySelector('.product-list');
-      
-      // Show loading spinner and hide button
-      loadMoreBtn.classList.add('d-none');
-      loadingSpinner.classList.remove('d-none');
-      
-      // Fetch next page
-      fetch(`?type=${currentFilter}&page=${currentPage + 1}`, {
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.products && data.products.length > 0) {
-          // Append new products to the list
-          data.products.forEach(product => {
-            const productHtml = createProductCard(product);
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = productHtml;
-            productList.appendChild(tempDiv.firstElementChild);
-          });
-          
-          currentPage = data.current_page;
-          
-          // Update button visibility
-          if (data.has_next) {
-            loadMoreBtn.classList.remove('d-none');
-          } else {
-            loadMoreBtn.remove();
-          }
-        }
-      })
-      .catch(error => {
-        console.error('Error loading more products:', error);
-        loadMoreBtn.classList.remove('d-none');
-      })
-      .finally(() => {
-        loadingSpinner.classList.add('d-none');
-      });
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const productList = document.querySelector('.product-list');
+        
+        loadMoreBtn.classList.add('d-none');
+        loadingSpinner.classList.remove('d-none');
+        
+        fetch(`?type=${currentFilter}&page=${currentPage + 1}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.products && data.products.length > 0) {
+                data.products.forEach(product => {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = createProductCard(product);
+                    productList.appendChild(tempDiv.firstElementChild);
+                });
+                currentPage = data.current_page;
+                
+                if (data.has_next) {
+                    loadMoreBtn.classList.remove('d-none');
+                } else {
+                    loadMoreBtn.remove();
+                }
+            }
+        })
+        .finally(() => loadingSpinner.classList.add('d-none'));
     }
     
     function createProductCard(product) {
-      const badgeColors = {
-        'iot': 'bg-success-subtle text-success',
-        'solution': 'bg-primary-subtle text-primary',
-        'sensor': 'bg-warning-subtle text-dark',
-        'default': 'bg-secondary-subtle text-secondary'
-      };
-      
-      const badgeColor = badgeColors[product.product_type] || badgeColors['default'];
-      const priceDisplay = product.price ? 
-        `<span class="text-muted small d-block">Giá giải pháp:</span>
-         <span class="fs-4 fw-bold text-danger">${formatVND(product.price)}</span>` :
-        `<span class="text-muted fst-italic">Liên hệ báo giá</span>`;
-      
-      const staffActions = '{{ request.user.is_staff }}' === 'True' ? 
-        `<a href="/products/${product.id}/edit/" class="btn btn-outline-dark rounded-pill"><i class="bi bi-pencil"></i></a>` : '';
-      
-      const inactiveBadge = !product.is_active ? 
-        `<div class="position-absolute top-0 start-0 m-2">
-          <span class="badge bg-warning text-dark">
-            <i class="bi bi-eye-slash me-1"></i>Không hoạt động
-          </span>
-        </div>` : '';
-      
-      const actionButtons = product.is_active ? 
-        `<a href="${product.order_url}" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="bi bi-cart-plus-fill"></i> Mua ngay</a>
-         <a href="${product.consultation_url}" class="btn btn-info rounded-pill px-4 fw-bold"><i class="bi bi-chat-dots-fill"></i> Tư vấn</a>` :
-        `<button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
-          <i class="bi bi-cart-plus-fill"></i> Mua ngay
-        </button>
-        <button class="btn btn-secondary rounded-pill px-4 fw-bold" disabled>
-          <i class="bi bi-chat-dots-fill"></i> Tư vấn
-        </button>`;
-      
-      return `
-        <div class="col-12 product-item" data-category="${product.product_type}">
-          <div class="card h-100 border-0 shadow-sm hover-card rounded-4 overflow-hidden ${!product.is_active ? 'border-warning border-2' : ''}">
-            <div class="row g-0">
-              <div class="col-md-4 position-relative">
-                <img src="${product.image_url}" class="product-img" alt="${product.name}" />
-                ${inactiveBadge}
-                <a href="${product.detail_url}" class="stretched-link" style="z-index: 1;"></a>
-              </div>
-
-              <div class="col-md-8 p-4 d-flex flex-column">
-                <div class="mb-2">
-                  <span class="badge rounded-pill px-3 py-2 ${badgeColor}">
-                    <i class="bi bi-tag-fill me-1"></i> ${product.product_type_display}
-                  </span>
+        const badgeColors = {
+            'iot': 'border-success text-success',
+            'solution': 'border-info text-info',
+            'sensor': 'border-warning text-warning',
+            'default': 'border-secondary text-secondary'
+        };
+        const badgeColor = badgeColors[product.product_type] || badgeColors['default'];
+        
+        const priceDisplay = product.price ? 
+            `<span class="price-neon">${formatVND(product.price)}</span>` :
+            `<span class="text-warning small fst-italic">Liên hệ</span>`;
+        
+        const staffActions = '{{ request.user.is_staff }}' === 'True' ? 
+            `<a href="/products/${product.id}/edit/" class="btn btn-warning rounded-pill px-3"><i class="fa-solid fa-pen"></i></a>` : '';
+        
+        const inactiveBadge = !product.is_active ? 
+            `<div class="position-absolute top-0 start-0 m-2" style="z-index: 10;">
+                <span class="badge bg-danger text-white shadow"><i class="fa-solid fa-eye-slash me-1"></i> Tạm ẩn</span>
+            </div>` : '';
+        
+        const actionButtons = product.is_active ? 
+            `<a href="${product.order_url}" class="btn btn-outline-info w-100 rounded-pill"><i class="fa-solid fa-cart-plus"></i> Mua</a>
+             <a href="${product.consultation_url}" class="btn text-white w-100 rounded-pill" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);"><i class="fa-solid fa-headset"></i> Tư vấn</a>` :
+            `<button class="btn btn-outline-secondary text-secondary w-100 rounded-pill" disabled>Ngừng kinh doanh</button>`;
+        
+        return `
+        <div class="col product-item" data-category="${product.product_type}">
+            <div class="cyber-card h-100 ${!product.is_active ? 'inactive' : ''}">
+                <div class="product-img-wrapper">
+                    ${product.image_url ? `<img src="${product.image_url}" class="product-img" alt="${product.name}" />` : `<div class="w-100 h-100 d-flex align-items-center justify-content-center bg-dark"><i class="fa-solid fa-box-open fs-1 text-secondary opacity-50"></i></div>`}
+                    
+                    <div class="position-absolute top-0 end-0 m-2" style="z-index: 10;">
+                        <span class="badge bg-dark border px-2 py-1 ${badgeColor}" style="backdrop-filter: blur(5px); background: rgba(0,0,0,0.6) !important;">
+                            ${product.product_type_display}
+                        </span>
+                    </div>
+                    ${inactiveBadge}
+                    <a href="${product.detail_url}" class="stretched-link" style="z-index: 5;"></a>
                 </div>
 
-                <h4 class="fw-bold mb-2">${product.name}</h4>
-                <p class="text-muted small mb-4 flex-grow-1">
-                  ${product.description || ''}
-                </p>
+                <div class="p-4 d-flex flex-column flex-grow-1">
+                    <h5 class="text-white fw-bold mb-2">${product.name}</h5>
+                    <p class="text-secondary mb-4 flex-grow-1" style="font-size: 0.95rem;">
+                        ${product.description ? product.description : 'Chưa có thông tin mô tả chi tiết cho sản phẩm này.'}
+                    </p>
 
-                <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
-                  <div class="price-tag">
-                    ${priceDisplay}
-                  </div>
-
-                  <div class="actions d-flex gap-2">
-                    <a href="${product.detail_url}" class="btn btn-light rounded-pill px-3"><i class="bi bi-eye"></i></a>
-                    ${actionButtons}
-                    ${staffActions}
-                  </div>
+                    <div class="mt-auto border-top border-secondary pt-3 d-flex flex-column gap-3" style="border-color: rgba(255,255,255,0.1) !important; position: relative; z-index: 15;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-secondary small">Giá bán:</span>
+                            ${priceDisplay}
+                        </div>
+                        <div class="d-flex gap-2">
+                            ${actionButtons}
+                            ${staffActions}
+                        </div>
+                    </div>
                 </div>
-              </div>
             </div>
-          </div>
         </div>
-      `;
+        `;
     }
-  </script>
- 
+</script>
 {% endblock %}

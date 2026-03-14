@@ -1,89 +1,196 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Purge Firmware | DTHub{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-6 offset-md-3">
-            <div class="card border-danger">
-                <div class="card-header bg-danger text-white">
-                    <h4 class="mb-0">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        Xác nhận xóa Firmware
-                    </h4>
+<style>
+    /* Bố cục Thẻ Cảnh báo (Danger Card) */
+    .cyber-card-danger {
+        background: linear-gradient(135deg, rgba(30, 10, 15, 0.9), rgba(15, 5, 10, 0.98));
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(220, 53, 69, 0.3);
+        border-radius: 16px;
+        box-shadow: 0 0 40px rgba(220, 53, 69, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Vạch cảnh báo sọc chéo trên cùng */
+    .cyber-card-danger::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px;
+        background: repeating-linear-gradient(
+            45deg,
+            #dc3545,
+            #dc3545 10px,
+            #000 10px,
+            #000 20px
+        );
+        box-shadow: 0 0 15px #dc3545;
+    }
+
+    .card-header-cyber {
+        background: rgba(220, 53, 69, 0.05);
+        border-bottom: 1px solid rgba(220, 53, 69, 0.2);
+        padding: 2rem;
+    }
+
+    /* Hộp cảnh báo Cyber */
+    .alert-cyber-danger {
+        background: rgba(220, 53, 69, 0.05);
+        border: 1px dashed rgba(220, 53, 69, 0.4);
+        border-radius: 8px;
+        padding: 1.5rem;
+        position: relative;
+    }
+    .alert-cyber-danger::after {
+        content: 'CRITICAL_WARNING';
+        position: absolute; top: -10px; left: 15px;
+        background: #0f050a; color: #dc3545;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: bold;
+        padding: 0 5px; letter-spacing: 1px;
+    }
+
+    /* Key-value Data List */
+    .tech-list-item {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.8rem 1rem; border-bottom: 1px dashed rgba(255,255,255,0.05);
+        font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+        background: rgba(0,0,0,0.2);
+    }
+    .tech-list-item:nth-child(even) { background: rgba(255,255,255,0.02); }
+    .tech-list-item:last-child { border-bottom: none; border-radius: 0 0 8px 8px; }
+    .tech-list-item:first-child { border-radius: 8px 8px 0 0; }
+    
+    .tech-key { color: #6c757d; text-transform: uppercase; letter-spacing: 1px;}
+    .tech-val { color: #e0eaff; font-weight: 600; text-align: right; word-break: break-word;}
+
+    /* Nút thao tác */
+    .btn-cyber-outline {
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #a0aec0; background: rgba(255,255,255,0.05);
+        border-radius: 8px; padding: 0.8rem 2rem;
+        font-family: 'JetBrains Mono', monospace; transition: 0.3s;
+    }
+    .btn-cyber-outline:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    .btn-cyber-danger {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545; border: 1px solid #dc3545;
+        border-radius: 8px; padding: 0.8rem 2rem;
+        font-family: 'JetBrains Mono', monospace; transition: 0.3s;
+        text-transform: uppercase; font-weight: 800; letter-spacing: 1px;
+    }
+    .btn-cyber-danger:hover {
+        background: #dc3545; color: #fff;
+        box-shadow: 0 0 20px rgba(220, 53, 69, 0.6);
+        transform: scale(1.02);
+    }
+
+    .text-glow-danger { text-shadow: 0 0 15px rgba(220, 53, 69, 0.6); }
+    
+    /* Animation chớp nháy cảnh báo */
+    @keyframes pulse-danger {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    .icon-alert { animation: pulse-danger 1.5s infinite; }
+</style>
+
+<div class="container mt-5 mb-5 relative z-1">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="cyber-card-danger shadow-lg">
+                
+                <div class="card-header-cyber text-center">
+                    <i class="bi bi-exclamation-triangle-fill text-danger display-4 icon-alert mb-3 d-block text-glow-danger"></i>
+                    <h3 class="mb-0 text-danger fw-bold text-glow-danger font-monospace">DATA_PURGE_PROTOCOL</h3>
+                    <p class="mb-0 text-secondary font-monospace small mt-2">>_ Yêu cầu hủy vĩnh viễn dữ liệu Firmware khỏi máy chủ.</p>
                 </div>
-                <div class="card-body">
-                    <div class="alert alert-warning">
-                        <h5><i class="bi bi-warning me-2"></i>Bạn có chắc chắn muốn xóa firmware này?</h5>
-                        <p class="mb-0">Hành động này không thể hoàn tác và sẽ xóa vĩnh viển:</p>
-                        <ul class="mb-0 mt-2">
-                            <li>Firmware: <strong>{{ firmware.name }}</strong></li>
-                            <li>Phiên bản: <strong>{{ firmware.version }}</strong></li>
-                            <li>Loại thiết bị: <strong>{{ firmware.get_device_type_display }}</strong></li>
-                            <li>Số lần nạp: <strong>{{ firmware.flashing_sessions.count }}</strong></li>
-                        </ul>
+
+                <div class="p-4 p-md-5">
+                    
+                    <div class="alert-cyber-danger mb-4">
+                        <h6 class="text-danger font-monospace fw-bold mb-3">
+                            <i class="bi bi-shield-x me-2"></i>SYS_PROMPT: Xác nhận xóa dữ liệu?
+                        </h6>
+                        <p class="text-secondary small font-monospace mb-0">
+                            > Hành động này sẽ xóa hoàn toàn các tệp tin (.bin, .json), hình ảnh cấu trúc mạch, và cắt đứt liên kết với các thiết bị đang sử dụng phiên bản này. Quá trình này <strong class="text-white">KHÔNG THỂ HOÀN TÁC</strong>.
+                        </p>
                     </div>
 
-                    <div class="card bg-light">
-                        <div class="card-body">
-                            <h6>Thông tin chi tiết:</h6>
-                            <table class="table table-sm">
-                                <tr>
-                                    <td><strong>Tên:</strong></td>
-                                    <td>{{ firmware.name }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Phiên bản:</strong></td>
-                                    <td>{{ firmware.version }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Loại thiết bị:</strong></td>
-                                    <td>{{ firmware.get_device_type_display }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Trạng thái:</strong></td>
-                                    <td>
-                                        {% if firmware.is_active %}
-                                            <span class="badge bg-success">Kích hoạt</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Vô hiệu</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Ngày tạo:</strong></td>
-                                    <td>{{ firmware.created_at|date:"d/m/Y H:i" }}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>File .bin:</strong></td>
-                                    <td>
-                                        {% if firmware.bin_file %}
-                                            <a href="{{ firmware.bin_file.url }}" target="_blank" class="text-decoration-none">
-                                                {{ firmware.bin_file.name }}
-                                            </a>
-                                        {% else %}
-                                            <span class="text-muted">Không có</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            </table>
+                    <div class="mb-5">
+                        <div class="text-secondary font-monospace small mb-2"><i class="bi bi-hdd-network me-2"></i>TARGET_TELEMETRY:</div>
+                        
+                        <div class="border border-secondary rounded-3" style="border-color: rgba(255,255,255,0.1) !important;">
+                            <div class="tech-list-item">
+                                <span class="tech-key">DESIGNATION (TÊN)</span>
+                                <span class="tech-val text-white">{{ firmware.name|upper }}</span>
+                            </div>
+                            <div class="tech-list-item">
+                                <span class="tech-key">ARCHITECTURE (LOẠI)</span>
+                                <span class="tech-val text-info">{{ firmware.get_device_type_display }}</span>
+                            </div>
+                            <div class="tech-list-item">
+                                <span class="tech-key">VERSION (PHIÊN BẢN)</span>
+                                <span class="tech-val text-warning">v{{ firmware.version }}</span>
+                            </div>
+                            <div class="tech-list-item">
+                                <span class="tech-key">STATUS (TRẠNG THÁI)</span>
+                                <span class="tech-val">
+                                    {% if firmware.is_active %}
+                                        <span class="text-success">ACTIVE</span>
+                                    {% else %}
+                                        <span class="text-secondary">VOID</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="tech-list-item">
+                                <span class="tech-key">FLASH_SESSIONS (SỐ LẦN NẠP)</span>
+                                <span class="tech-val text-danger">{{ firmware.flashing_sessions.count }}</span>
+                            </div>
+                            <div class="tech-list-item">
+                                <span class="tech-key">CREATED_AT (NGÀY TẠO)</span>
+                                <span class="tech-val text-secondary">{{ firmware.created_at|date:"Y.m.d H:i" }}</span>
+                            </div>
+                            {% if firmware.bin_file %}
+                            <div class="tech-list-item">
+                                <span class="tech-key">TARGET_FILE</span>
+                                <span class="tech-val text-secondary font-monospace small">{{ firmware.bin_file.name|slice:"10:" }}</span>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
 
-                    <form method="post" class="mt-4">
+                    <form method="post" class="mt-4" id="delete-form">
                         {% csrf_token %}
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'firmware_manage' %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-1"></i> Hủy bỏ
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 pt-4 border-top border-secondary" style="border-color: rgba(255,255,255,0.05) !important;">
+                            <a href="{% url 'firmware_manage' %}" class="btn btn-cyber-outline w-100 w-md-auto text-center">
+                                <i class="bi bi-arrow-left me-2"></i>ABORT_OP
                             </a>
-                            <button type="submit" class="btn btn-danger">
-                                <i class="bi bi-trash me-1"></i> Xóa Firmware Vĩnh viễn
+                            <button type="submit" class="btn btn-cyber-danger w-100 w-md-auto">
+                                <i class="bi bi-trash-fill me-2"></i>CONFIRM_PURGE
                             </button>
                         </div>
                     </form>
+                    
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('delete-form');
+        form.addEventListener('submit', function() {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>DELETING_DATA...';
+            submitBtn.disabled = true;
+            submitBtn.style.background = '#dc3545';
+            submitBtn.style.color = '#fff';
+        });
+    });
+</script>
 {% endblock %}

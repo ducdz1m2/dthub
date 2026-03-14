@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Telemetry Data | DTHub{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Bố cục Cyber Card */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+    }
+    .card-header-custom {
+        background: rgba(0, 243, 255, 0.05);
+        border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+        padding: 1.25rem 1.5rem;
+        border-radius: 16px 16px 0 0;
+    }
+    
+    /* Lưới thông tin thiết bị (Tech Grid) */
+    .tech-stat-box {
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 8px;
+        padding: 1rem;
+        border-left: 3px solid var(--neon-blue);
+        transition: 0.3s;
+    }
+    .tech-stat-box:hover { background: rgba(0, 243, 255, 0.05); border-left-color: var(--neon-purple); }
+
+    /* Bảng dữ liệu Cyberpunk */
+    .cyber-table {
+        width: 100%;
+        margin-bottom: 0;
+        color: #e0eaff;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .cyber-table thead {
+        background: rgba(0, 243, 255, 0.05);
+    }
+    .cyber-table th {
+        border-bottom: 1px solid var(--neon-blue);
+        color: var(--neon-blue);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        padding: 1rem;
+        letter-spacing: 1px;
+    }
+    .cyber-table td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: transparent;
+    }
+    .cyber-table tbody tr { transition: 0.3s ease; }
+    .cyber-table tbody tr:hover { background: rgba(0, 243, 255, 0.03); }
+
+    /* Hiệu ứng Phát sáng (Glow) */
+    .text-glow-info { text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
+    .text-glow-success { text-shadow: 0 0 10px rgba(25, 135, 84, 0.5); }
+    .text-glow-warning { text-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
+    
+    .data-value {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 0 0 10px rgba(0, 243, 255, 0.8);
+    }
+
+    /* Thanh cuộn Cyberpunk */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.3); border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
+</style>
+
+<div class="container-fluid my-5 relative z-1">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 border-bottom border-secondary pb-4" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="status-dot" style="width:10px; height:10px; background:var(--neon-purple); border-radius:50%; box-shadow:0 0 8px var(--neon-purple); animation: pulse 2s infinite;"></span>
+                <span class="text-secondary font-monospace small">TELEMETRY_DATA_STREAM</span>
+            </div>
+            <h2 class="fw-bold text-white mb-0 text-glow-info">
+                <i class="fa-solid fa-satellite-dish me-2"></i> Sensor Data 
+                {% if device %} <span class="text-secondary opacity-50 mx-1">/</span> <span class="text-warning text-glow-warning" style="font-size: 1.5rem;">{{ device.name }}</span>{% endif %}
+            </h2>
+        </div>
+        
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="{% url 'ai_dashboard' %}" class="btn btn-outline-info rounded-pill px-4 font-monospace">
+                <i class="fa-solid fa-house me-1"></i> DASHBOARD
+            </a>
+            {% if device %}
+                <a href="{% url 'sensor_data' %}" class="btn text-light rounded-pill px-4 font-monospace" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);">
+                    <i class="fa-solid fa-list-ul me-1"></i> VIEW_ALL
+                </a>
+                {% if request.user.is_superuser %}
+                <form action="{% url 'clear_device_sensor_data' device.device_id %}" method="POST" onsubmit="return confirm('Bạn có chắc muốn xóa toàn bộ lịch sử dữ liệu của thiết bị này?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4 font-monospace">
+                        <i class="fa-solid fa-trash-can me-1"></i> CLEAR_NODE_LOGS
+                    </button>
+                </form>
+                {% endif %}
+            {% else %}
+                {% if request.user.is_superuser %}
+                <form action="{% url 'clear_all_sensor_data' %}" method="POST" onsubmit="return confirm('CẢNH BÁO: Thao tác này sẽ xóa toàn bộ dữ liệu cảm biến của TẤT CẢ thiết bị. Bạn có chắc chắn?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4 font-monospace">
+                        <i class="fa-solid fa-dumpster-fire me-1"></i> PURGE_ALL_DATA
+                    </button>
+                </form>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Chart Analytics -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="cyber-card">
+                <div class="card-header-custom d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-chart-area text-info me-2 fs-5"></i>
+                        <h5 class="mb-0 fw-bold text-white font-monospace">ANALYTICS_VIEW</h5>
+                    </div>
+                    <span class="badge bg-transparent border border-info text-info font-monospace">{{ chart_sensor_type|upper }} TRENDS</span>
+                </div>
+                <div class="p-4" style="height: 400px;">
+                    <canvas id="sensorHistoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if device %}
+        <div class="cyber-card shadow-lg mb-5 border-0" style="border-left: 4px solid var(--neon-blue) !important;">
+            <div class="card-header-custom d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 text-white font-monospace"><i class="fa-solid fa-fingerprint text-info me-2"></i>NODE_IDENTIFICATION</h6>
+                <span class="badge bg-transparent border border-secondary text-secondary font-monospace">ID: {{ device.device_id }}</span>
+            </div>
+            <div class="p-4">
+                <div class="row g-3">
+                    <div class="col-md-3 col-6">
+                        <div class="tech-stat-box h-100">
+                            <small class="text-secondary font-monospace d-block mb-1">DESIGNATION</small>
+                            <span class="fw-bold text-white">{{ device.name }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="tech-stat-box h-100">
+                            <small class="text-secondary font-monospace d-block mb-1">LOCATION_XYZ</small>
+                            <span class="text-info">{{ device.location|default:"Unknown Sector" }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="tech-stat-box h-100">
+                            <small class="text-secondary font-monospace d-block mb-1">SYS_STATUS</small>
+                            {% if device.is_online %}
+                                <span class="text-success text-glow-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>ONLINE</span>
+                            {% else %}
+                                <span class="text-secondary fw-bold"><i class="fa-solid fa-power-off me-1"></i>OFFLINE</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="tech-stat-box h-100">
+                            <small class="text-secondary font-monospace d-block mb-1">LAST_SYNC</small>
+                            <span class="text-white">{% if device.last_seen %}{{ device.last_seen|date:"Y-m-d H:i:s" }}{% else %}Never{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="cyber-card shadow-lg overflow-hidden">
+        <div class="p-3 bg-dark border-bottom border-secondary d-flex justify-content-between align-items-center" style="border-color: rgba(255,255,255,0.05) !important;">
+            <h6 class="mb-0 text-secondary font-monospace"><i class="fa-solid fa-database me-2"></i>RAW_TELEMETRY_LOGS</h6>
+            <div class="spinner-grow spinner-grow-sm text-info" role="status" title="Listening to datastream..."></div>
+        </div>
+        
+        <div class="card-body p-0">
+            {% if sensor_data %}
+                <div class="table-responsive custom-scrollbar" style="max-height: 600px;">
+                    <table class="cyber-table">
+                        <thead style="position: sticky; top: 0; z-index: 10;">
+                            <tr>
+                                <th><i class="fa-regular fa-clock me-1"></i> Timestamp</th>
+                                {% if not device %}
+                                    <th><i class="fa-solid fa-microchip me-1"></i> Target Node</th>
+                                {% endif %}
+                                <th><i class="fa-solid fa-wave-square me-1"></i> Sensor Type</th>
+                                <th class="text-end">Value</th>
+                                <th>Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in sensor_data %}
+                                <tr>
+                                    <td class="text-secondary small">{{ data.timestamp|date:"Y-m-d H:i:s" }}</td>
+                                    
+                                    {% if not device %}
+                                        <td>
+                                            <a href="?device={{ data.device.device_id }}" class="text-decoration-none text-info text-glow-info hover-glow">
+                                                {{ data.device.name }}
+                                            </a>
+                                        </td>
+                                    {% endif %}
+                                    
+                                    <td>
+                                        <span class="badge bg-transparent border border-secondary text-light">
+                                            {{ data.get_sensor_type_display }}
+                                        </span>
+                                    </td>
+                                    
+                                    <td class="text-end">
+                                        <span class="data-value">{{ data.value }}</span>
+                                    </td>
+                                    
+                                    <td class="text-secondary">{{ data.unit }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 my-5">
+                    <i class="fa-solid fa-radar text-secondary opacity-25 display-1 mb-4 d-block" style="animation: pulse 3s infinite;"></i>
+                    <h5 class="text-white font-monospace mb-2">NO_DATA_FOUND</h5>
+                    <p class="text-secondary font-monospace small mb-0">> Hệ thống chưa ghi nhận gói tin cảm biến nào từ trạm này.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('sensorHistoryChart').getContext('2d');
+        const labels = {{ chart_labels|safe }};
+        const values = {{ chart_values|safe }};
+        const unit = "{{ chart_unit }}";
+        const sensorType = "{{ chart_sensor_type }}";
+
+        if (labels.length > 0) {
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: sensorType + ' (' + unit + ')',
+                        data: values,
+                        borderColor: '#bc13fe',
+                        backgroundColor: 'rgba(188, 19, 254, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointBackgroundColor: '#bc13fe',
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#a0aec0', font: { family: 'monospace' } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#a0aec0', font: { family: 'monospace' } }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#fff', font: { family: 'monospace' } }
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

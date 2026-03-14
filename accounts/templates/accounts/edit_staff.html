@@ -1,48 +1,133 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="container my-5" style="max-width: 500px;">
-    <div class="card shadow-sm border-0 rounded-4">
-        <div class="card-header bg-dark text-white p-4">
-            <h4 class="mb-0">Chỉnh sửa nhân viên</h4>
-            <small class="opacity-75">Đang sửa: {{ staff.username }}</small>
-        </div>
-        <div class="card-body p-4">
-            <form method="POST">
-                {% csrf_token %}
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Tên đăng nhập</label>
-                    <input type="text" name="username" class="form-control" value="{{ staff.username }}">
+<style>
+    /* Bố cục Cyber Card */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+    }
+    
+    .cyber-card-inner {
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(0, 243, 255, 0.1);
+        border-radius: 12px;
+    }
+
+    /* Ô nhập liệu Neon */
+    .cyber-input {
+        background: rgba(0, 0, 0, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #e0eaff !important;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .cyber-input:focus {
+        border-color: var(--neon-blue) !important;
+        box-shadow: 0 0 15px rgba(0, 243, 255, 0.2) !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+    }
+
+    /* Input riêng cho vùng Đổi mật khẩu (Màu Đỏ) */
+    .cyber-input-danger {
+        border-color: rgba(220, 53, 69, 0.4) !important;
+    }
+    .cyber-input-danger:focus {
+        border-color: #dc3545 !important;
+        box-shadow: 0 0 15px rgba(220, 53, 69, 0.3) !important;
+    }
+
+    /* Labels */
+    .form-label {
+        color: #a0aec0;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    /* Vùng cảnh báo Đỏ */
+    .border-dashed-danger {
+        border: 1px dashed rgba(220, 53, 69, 0.5) !important;
+        background: rgba(220, 53, 69, 0.05);
+    }
+</style>
+
+<div class="container my-5 relative z-1">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6 col-xl-5">
+            
+            <div class="mb-4">
+                <a href="{% url 'manage_staff_list' %}" class="btn btn-outline-secondary text-light rounded-pill px-4" style="border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05);">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Trở về danh sách
+                </a>
+            </div>
+
+            <div class="cyber-card shadow-lg overflow-hidden">
+                
+                <div class="p-4 border-bottom border-secondary text-center" style="border-color: rgba(255,255,255,0.1) !important; background: rgba(0, 243, 255, 0.02);">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+                        <span class="status-dot" style="width:8px; height:8px; background:var(--neon-purple); border-radius:50%; box-shadow:0 0 8px var(--neon-purple); animation: pulse 2s infinite;"></span>
+                        <span class="text-secondary font-monospace small">EDIT_PROFILE_PROTOCOL</span>
+                    </div>
+                    <h4 class="fw-bold text-white mb-1"><i class="fa-solid fa-user-pen me-2 text-info"></i> Chỉnh sửa Quản trị viên</h4>
+                    <span class="badge bg-dark border border-secondary text-secondary font-monospace mt-2">ID ĐỊNH DANH: {{ staff.username }}</span>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Email</label>
-                    <input type="email" name="email" class="form-control" value="{{ staff.email }}">
+
+                <div class="p-4 p-md-5">
+                    <form method="POST">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label"><i class="fa-solid fa-terminal text-secondary me-2"></i>Tên đăng nhập</label>
+                            <input type="text" name="username" class="form-control cyber-input" value="{{ staff.username }}">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label"><i class="fa-solid fa-envelope text-secondary me-2"></i>Email liên hệ</label>
+                            <input type="email" name="email" class="form-control cyber-input" value="{{ staff.email }}">
+                        </div>
+
+                        <div class="mb-5 cyber-card-inner p-3 d-flex justify-content-between align-items-center border-0" style="background: rgba(0, 0, 0, 0.6);">
+                            <label class="form-label mb-0 text-secondary">Vai trò hệ thống</label>
+                            <div>
+                                {% if staff.is_superuser %}
+                                    <span class="badge bg-transparent border border-danger text-danger rounded-pill px-3 font-monospace">
+                                        <i class="fa-solid fa-shield-halved me-1"></i> Quản trị viên
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-transparent border border-info text-info rounded-pill px-3 font-monospace">
+                                        <i class="fa-solid fa-user me-1"></i> Khách hàng
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="border-dashed-danger p-4 rounded-3 mb-5">
+                            <label class="form-label fw-bold text-danger mb-3">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Cấp lại Mật khẩu (Tùy chọn)
+                            </label>
+                            <input type="password" name="new_password" class="form-control cyber-input cyber-input-danger" 
+                                   placeholder="Để trống nếu không muốn thay đổi">
+                            <div class="text-secondary small mt-2 font-monospace opacity-75">
+                                > Chỉ nhập vào ô này nếu bạn muốn ép buộc đặt lại mật khẩu cho tài khoản {{ staff.username }}.
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <a href="{% url 'manage_staff_list' %}" class="btn text-light rounded-pill py-3 w-50" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);">Hủy bỏ</a>
+                            <button type="submit" class="btn btn-neon rounded-pill py-3 fw-bold shadow-lg w-50">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> LƯU THAY ĐỔI
+                            </button>
+                        </div>
+
+                    </form>
                 </div>
-                <div class="mb-4 pt-3 border-top">
-    <label class="form-label fw-bold text-danger">
-        <i class="bi bi-shield-lock-fill me-1"></i> Đổi mật khẩu mới
-    </label>
-    <input type="password" name="new_password" class="form-control border-danger-subtle" 
-           placeholder="Để trống nếu không muốn đổi">
-    <div class="form-text mt-1">
-        <i class="bi bi-info-circle"></i> Chỉ nhập nếu bạn muốn đặt lại mật khẩu cho nhân viên này.
-    </div>
-</div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-primary">Vai trò hiện tại</label>
-                    <select name="role" class="form-select border-primary">
-                        {% for role in roles %}
-                            <option value="{{ role.id }}" 
-                                {% if role in staff.groups.all %}selected{% endif %}>
-                                {{ role.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="d-grid gap-2">
-                    <button type="submit" class="btn btn-primary rounded-pill">Lưu thay đổi</button>
-                    <a href="{% url 'manage_staff_list' %}" class="btn btn-light rounded-pill">Hủy</a>
-                </div>
-            </form>
+                
+            </div>
         </div>
     </div>
 </div>

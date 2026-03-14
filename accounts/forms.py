@@ -22,13 +22,8 @@ class ProfileUpdateForm(forms.ModelForm):
 
 User = get_user_model()
 class StaffCreationForm(forms.ModelForm):
-    # Bắt buộc nhập email và role
+    # Bắt buộc nhập email
     email = forms.EmailField(required=True)
-    role = forms.ModelChoiceField(
-        queryset=Group.objects.all(),
-        required=True,
-        empty_label="-- Chọn nhóm quyền --"
-    )
     password = forms.CharField(
         widget=forms.PasswordInput(),
         min_length=8,
@@ -38,6 +33,11 @@ class StaffCreationForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['username', 'email', 'password']
+        labels = {
+            'username': 'Tên đăng nhập',
+            'email': 'Email',
+            'password': 'Mật khẩu'
+        }
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -47,12 +47,9 @@ class StaffCreationForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.is_staff = True  # Đánh dấu là nhân viên
+        user.is_superuser = True  # Đánh dấu là quản trị viên
+        user.is_staff = True  # Admin cũng là staff
         user.set_password(self.cleaned_data["password"])
         if commit:
             user.save()
-            # Gán quyền vào Group
-            role = self.cleaned_data.get('role')
-            if role:
-                user.groups.add(role)
         return user

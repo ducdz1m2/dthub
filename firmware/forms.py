@@ -4,7 +4,7 @@ from .models import FirmwareFile
 class FirmwareFileForm(forms.ModelForm):
     class Meta:
         model = FirmwareFile
-        fields = ['name', 'device_type', 'version', 'description', 'bin_file', 'manifest_file', 'is_active']
+        fields = ['name', 'device_type', 'version', 'description', 'hardware_image', 'bin_file', 'manifest_file', 'is_active']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -19,6 +19,10 @@ class FirmwareFileForm(forms.ModelForm):
                 'class': 'form-control',
                 'rows': 4,
                 'placeholder': 'Mô tả chi tiết về firmware...'
+            }),
+            'hardware_image': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
             }),
             'bin_file': forms.FileInput(attrs={
                 'class': 'form-control',
@@ -37,6 +41,7 @@ class FirmwareFileForm(forms.ModelForm):
             'device_type': 'Loại thiết bị',
             'version': 'Phiên bản',
             'description': 'Mô tả',
+            'hardware_image': 'Hình ảnh mạch điện',
             'bin_file': 'File .bin',
             'manifest_file': 'File manifest.json (tùy chọn)',
             'is_active': 'Kích hoạt'
@@ -55,3 +60,17 @@ class FirmwareFileForm(forms.ModelForm):
             if not manifest_file.name.endswith('.json'):
                 raise forms.ValidationError('File phải có định dạng .json')
         return manifest_file
+    
+    def clean_hardware_image(self):
+        hardware_image = self.cleaned_data.get('hardware_image')
+        if hardware_image:
+            # Check file size (max 5MB)
+            if hardware_image.size > 5 * 1024 * 1024:
+                raise forms.ValidationError('Kích thước hình ảnh không được vượt quá 5MB')
+            
+            # Check file extension
+            valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            file_extension = hardware_image.name.lower().split('.')[-1]
+            if f'.{file_extension}' not in valid_extensions:
+                raise forms.ValidationError('Chỉ chấp nhận các định dạng hình ảnh: jpg, jpeg, png, gif, bmp, webp')
+        return hardware_image

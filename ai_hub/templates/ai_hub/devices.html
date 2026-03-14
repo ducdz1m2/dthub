@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Quản lý thiết bị ESP32 | DTHub{% endblock %}
+
+{% block content %}
+<style>
+    /* Bố cục Cyber Card */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+    }
+    
+    /* Bảng dữ liệu Cyberpunk */
+    .cyber-table {
+        width: 100%;
+        margin-bottom: 0;
+        color: #e0eaff;
+    }
+    .cyber-table thead {
+        background: rgba(0, 243, 255, 0.05);
+    }
+    .cyber-table th {
+        border-bottom: 1px solid var(--neon-blue);
+        color: var(--neon-blue);
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        padding: 1rem;
+        letter-spacing: 1px;
+    }
+    .cyber-table td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        background: transparent;
+    }
+    .cyber-table tbody tr { transition: 0.3s ease; }
+    .cyber-table tbody tr:hover { background: rgba(0, 243, 255, 0.03); }
+
+    /* Nút Thao tác dạng Mini */
+    .btn-action {
+        width: 35px;
+        height: 35px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: 0.3s;
+        border: 1px solid transparent;
+        background: rgba(255,255,255,0.05);
+        color: #a0aec0;
+    }
+    .btn-action.view:hover { border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,243,255,0.1); box-shadow: 0 0 10px rgba(0,243,255,0.3); }
+    .btn-action.edit:hover { border-color: #ffc107; color: #ffc107; background: rgba(255,193,7,0.1); box-shadow: 0 0 10px rgba(255,193,7,0.3); }
+    .btn-action.command:hover { border-color: var(--neon-purple); color: var(--neon-purple); background: rgba(188,19,254,0.1); box-shadow: 0 0 10px rgba(188,19,254,0.3); }
+
+    /* Tùy chỉnh Modal phong cách Cyberpunk */
+    .cyber-modal .modal-content {
+        background: linear-gradient(135deg, rgba(15, 20, 35, 0.95), rgba(5, 9, 20, 0.98));
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--neon-blue);
+        box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
+        border-radius: 16px;
+    }
+    .cyber-modal .modal-header {
+        border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+        background: rgba(0, 243, 255, 0.05);
+        border-radius: 16px 16px 0 0;
+    }
+    .cyber-modal .modal-footer { border-top: 1px solid rgba(0, 243, 255, 0.2); }
+    .cyber-modal .modal-title { color: #fff; font-weight: bold; text-shadow: 0 0 10px rgba(0,243,255,0.5); font-family: 'JetBrains Mono', monospace; }
+    .cyber-modal .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
+    
+    /* Ô nhập liệu Neon trong Modal */
+    .cyber-input {
+        background: rgba(0, 0, 0, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #e0eaff !important;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .cyber-input:focus {
+        border-color: var(--neon-blue) !important;
+        box-shadow: 0 0 15px rgba(0, 243, 255, 0.2) !important;
+    }
+    
+    /* Ô nhập JSON đặc biệt */
+    .json-input {
+        background: #02040a !important;
+        color: #a5d6ff !important;
+        border-left: 3px solid var(--neon-purple) !important;
+        font-family: 'Consolas', 'JetBrains Mono', monospace !important;
+    }
+
+    .form-label { color: #a0aec0; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; }
+    .text-glow-info { text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
+    .text-glow-success { text-shadow: 0 0 10px rgba(25, 135, 84, 0.5); }
+</style>
+
+<div class="container my-5 relative z-1">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-5 border-bottom border-secondary pb-4" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="status-dot" style="width:10px; height:10px; background:var(--neon-blue); border-radius:50%; box-shadow:0 0 8px var(--neon-blue); animation: pulse 2s infinite;"></span>
+                <span class="text-secondary font-monospace small">ĐIỀU PHỐI THIẾT BỊ</span>
+            </div>
+            <h2 class="fw-bold text-white mb-0 text-glow-info">
+                <i class="fa-solid fa-server me-2"></i> Node ESP32
+            </h2>
+        </div>
+        
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="{% url 'mcp_public_tools' %}" class="btn btn-outline-secondary rounded-pill px-4 font-monospace">
+                <i class="fa-solid fa-arrow-left me-1"></i> QUAY LẠI CÔNG CỤ
+            </a>
+            <a href="{% url 'ai_dashboard' %}" class="btn btn-outline-info rounded-pill px-4 font-monospace">
+                <i class="fa-solid fa-house me-1"></i> BẢNG ĐIỀU KHIỂN
+            </a>
+            <button class="btn btn-neon rounded-pill px-4 font-monospace" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+                <i class="fa-solid fa-plus me-1"></i> THÊM NODE
+            </button>
+        </div>
+    </div>
+
+    <div class="cyber-card shadow-lg overflow-hidden">
+        <div class="p-3 bg-dark border-bottom border-secondary d-flex justify-content-between align-items-center" style="border-color: rgba(255,255,255,0.05) !important;">
+            <h6 class="mb-0 text-secondary font-monospace"><i class="fa-solid fa-network-wired me-2"></i>DANH SÁCH NODE</h6>
+            <span class="badge bg-transparent border border-info text-info rounded-pill font-monospace">Tổng: {{ devices|length }}</span>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="cyber-table">
+                <thead>
+                    <tr>
+                        <th>Device ID</th>
+                        <th>Tên thiết bị</th>
+                        <th>Vị trí</th>
+                        <th>Trạng thái</th>
+                        <th>Last Seen</th>
+                        <th class="text-center">Điều khiển</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                        <tr>
+                            <td class="font-monospace text-info"><i class="fa-solid fa-microchip me-2 text-secondary"></i>{{ device.device_id }}</td>
+                            <td class="fw-bold text-white">{{ device.name }}</td>
+                            <td class="text-secondary"><i class="fa-solid fa-location-dot me-2"></i>{{ device.location|default:"-" }}</td>
+                            <td>
+                                {% if device.is_online %}
+                                    <span class="badge bg-transparent border border-success text-success rounded-pill px-3 font-monospace text-glow-success">
+                                        <span class="spinner-grow spinner-grow-sm me-1" style="width: 0.3rem; height: 0.3rem;"></span>ĐANG ONLINE
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-transparent border border-secondary text-secondary rounded-pill px-3 font-monospace">NGOẠI TUYẾN</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-secondary font-monospace small">
+                                {% if device.last_seen %}
+                                    <i class="fa-regular fa-clock me-1"></i>{{ device.last_seen|date:"Y-m-d H:i:s" }}
+                                {% else %}
+                                    <span class="opacity-50">Never</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <a href="{% url 'device_detail' device.device_id %}" class="btn-action view" title="Quản lý Nhãn & Chi tiết">
+                                        <i class="fa-solid fa-tags"></i>
+                                    </a>
+                                    <a href="{% url 'device_sensor_data' device.device_id %}" class="btn-action view" title="Xem Dữ Liệu Cảm Biến">
+                                        <i class="fa-solid fa-chart-pie"></i>
+                                    </a>
+                                    <button type="button" class="btn-action edit" title="Chỉnh Sửa Thông Tin"
+                                            onclick="editDevice('{{ device.device_id }}', '{{ device.name|escapejs }}', '{{ device.location|default:""|escapejs }}', {{ device.is_active|yesno:"true,false" }})">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button type="button" class="btn-action command" title="Gửi Lệnh (Terminal)"
+                                            onclick="sendCommand('{{ device.device_id }}')">
+                                        <i class="fa-solid fa-terminal"></i>
+                                    </button>
+                                    {% if request.user.is_superuser %}
+                                    <form action="{% url 'delete_device' device.device_id %}" method="POST" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn xóa thiết bị này? Dữ liệu cảm biến liên quan cũng có thể bị ảnh hưởng.');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-action text-danger border-0" style="background: rgba(220,53,69,0.1);" title="Xóa thiết bị">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <i class="fa-solid fa-link-slash text-secondary opacity-25 display-4 mb-3 d-block"></i>
+                                <p class="text-secondary font-monospace small mb-0">> Hệ thống chưa ghi nhận thiết bị ESP32 nào.</p>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade cyber-modal" id="addDeviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fa-solid fa-microchip me-2 text-info"></i>ĐĂNG KÝ THIẾT BỊ MỚI</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="addDeviceForm">
+                    <div class="mb-4">
+                        <label for="deviceId" class="form-label">Mã thiết bị (Device ID)</label>
+                        <input type="text" class="form-control cyber-input" id="deviceId" placeholder="VD: ESP32_NODE_01" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="deviceName" class="form-label">Tên thiết bị</label>
+                        <input type="text" class="form-control cyber-input" id="deviceName" placeholder="VD: Trạm đo Nhiệt độ Phòng Khách" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="deviceLocation" class="form-label">Vị trí lắp đặt</label>
+                        <input type="text" class="form-control cyber-input" id="deviceLocation" placeholder="VD: Phòng Khách, Tầng 1">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn text-light rounded-pill px-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-neon rounded-pill px-4 fw-bold" onclick="addDevice()"><i class="fa-solid fa-plus me-1"></i> XÁC NHẬN THÊM</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade cyber-modal" id="editDeviceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: rgba(255, 193, 7, 0.05); border-bottom-color: rgba(255, 193, 7, 0.2);">
+                <h5 class="modal-title" style="text-shadow: 0 0 10px rgba(255,193,7,0.5);"><i class="fa-solid fa-pen-to-square me-2 text-warning"></i>CẬP NHẬT THÔNG TIN</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="editDeviceForm">
+                    <input type="hidden" id="editDeviceId">
+                    <div class="mb-4">
+                        <label for="editDeviceName" class="form-label">Tên thiết bị</label>
+                        <input type="text" class="form-control cyber-input" id="editDeviceName" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="editDeviceLocation" class="form-label">Vị trí lắp đặt</label>
+                        <input type="text" class="form-control cyber-input" id="editDeviceLocation">
+                    </div>
+                    <div class="mb-2 p-3 rounded-3" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);">
+                        <div class="form-check form-switch d-flex align-items-center gap-2 m-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="editDeviceActive" style="width: 40px; height: 20px; cursor: pointer;">
+                            <label class="form-check-label text-white fw-bold ms-2" for="editDeviceActive" style="cursor: pointer;">Trạng thái hoạt động (Active)</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn text-light rounded-pill px-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn text-dark fw-bold rounded-pill px-4" style="background: #ffc107; box-shadow: 0 0 15px rgba(255,193,7,0.4);" onclick="updateDevice()"><i class="fa-solid fa-floppy-disk me-1"></i> LƯU THAY ĐỔI</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade cyber-modal" id="sendCommandModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: rgba(188, 19, 254, 0.05); border-bottom-color: rgba(188, 19, 254, 0.2);">
+                <h5 class="modal-title" style="text-shadow: 0 0 10px rgba(188,19,254,0.5);"><i class="fa-solid fa-terminal me-2" style="color: var(--neon-purple);"></i>BẢNG LỆNH</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="sendCommandForm">
+                    <input type="hidden" id="commandDeviceId">
+                    
+                    <div class="mb-4">
+                        <label for="commandType" class="form-label text-white">Lệnh điều khiển (Command)</label>
+                        <select class="form-select cyber-input" id="commandType" required style="cursor: pointer;">
+                            <option value="" class="text-dark">-- Chọn chỉ thị --</option>
+                            <option value="toggle_led" class="text-dark">Toggle LED (Bật/Tắt Đèn)</option>
+                            <option value="read_sensors" class="text-dark">Read Sensors (Đọc Cảm biến lập tức)</option>
+                            <option value="restart" class="text-dark">Restart Device (Khởi động lại)</option>
+                            <option value="custom" class="text-dark fw-bold">Custom Command (Lệnh Tùy chỉnh)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4" id="customCommandDiv" style="display: none;">
+                        <label for="customCommand" class="form-label text-warning"><i class="fa-solid fa-code me-1"></i>Mã lệnh tùy chỉnh</label>
+                        <input type="text" class="form-control cyber-input border-warning" id="customCommand" placeholder="VD: set_relay_1">
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="commandParams" class="form-label">Tham số Payload (Định dạng JSON)</label>
+                        <textarea class="form-control cyber-input json-input" id="commandParams" rows="4" placeholder='{&#10;  "duration": 1000,&#10;  "state": "ON"&#10;}' spellcheck="false"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn text-light rounded-pill px-4" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2);" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn fw-bold rounded-pill px-4 text-white" style="background: var(--neon-purple); box-shadow: 0 0 15px rgba(188,19,254,0.4);" onclick="sendCommandToDevice()">
+                    <i class="fa-solid fa-paper-plane me-1"></i> GỬI LỆNH
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    {{ block.super }}
+function addDevice() {
+    const deviceId = document.getElementById('deviceId').value;
+    const deviceName = document.getElementById('deviceName').value;
+    const deviceLocation = document.getElementById('deviceLocation').value;
+    
+    fetch('{% url "device_management" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            device_id: deviceId,
+            name: deviceName,
+            location: deviceLocation,
+            is_active: true
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') { location.reload(); } 
+        else { alert('Lỗi thêm thiết bị: ' + data.message); }
+    })
+    .catch(error => { console.error('Error:', error); alert('Lỗi hệ thống khi thêm thiết bị.'); });
+}
+
+function editDevice(deviceId, name, location, isActive) {
+    document.getElementById('editDeviceId').value = deviceId;
+    document.getElementById('editDeviceName').value = name;
+    document.getElementById('editDeviceLocation').value = location;
+    document.getElementById('editDeviceActive').checked = isActive;
+    
+    new bootstrap.Modal(document.getElementById('editDeviceModal')).show();
+}
+
+function updateDevice() {
+    const deviceId = document.getElementById('editDeviceId').value;
+    const name = document.getElementById('editDeviceName').value;
+    const location = document.getElementById('editDeviceLocation').value;
+    const isActive = document.getElementById('editDeviceActive').checked;
+    
+    fetch('{% url "device_management" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            device_id: deviceId,
+            name: name,
+            location: location,
+            is_active: isActive
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') { location.reload(); } 
+        else { alert('Lỗi cập nhật thiết bị: ' + data.message); }
+    })
+    .catch(error => { console.error('Error:', error); alert('Lỗi hệ thống khi cập nhật thiết bị.'); });
+}
+
+function sendCommand(deviceId) {
+    document.getElementById('commandDeviceId').value = deviceId;
+    new bootstrap.Modal(document.getElementById('sendCommandModal')).show();
+}
+
+function sendCommandToDevice() {
+    const deviceId = document.getElementById('commandDeviceId').value;
+    const commandType = document.getElementById('commandType').value;
+    const customCommand = document.getElementById('customCommand').value;
+    const commandParams = document.getElementById('commandParams').value;
+    
+    const command = commandType === 'custom' ? customCommand : commandType;
+    let parameters = {};
+    
+    if (commandParams) {
+        try {
+            parameters = JSON.parse(commandParams);
+        } catch (e) {
+            alert('Lỗi: Mã JSON trong phần Parameters không hợp lệ!');
+            return;
+        }
+    }
+    
+    fetch(`/ai/devices/${deviceId}/send-command/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ command: command, parameters: parameters })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Đã gửi lệnh thành công tới thiết bị!');
+            bootstrap.Modal.getInstance(document.getElementById('sendCommandModal')).hide();
+        } else {
+            alert('Lỗi gửi lệnh: ' + data.message);
+        }
+    })
+    .catch(error => { console.error('Error:', error); alert('Lỗi hệ thống khi gửi lệnh.'); });
+}
+
+// Ẩn/Hiện Custom Command
+document.getElementById('commandType').addEventListener('change', function() {
+    const customDiv = document.getElementById('customCommandDiv');
+    customDiv.style.display = (this.value === 'custom') ? 'block' : 'none';
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

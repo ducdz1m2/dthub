@@ -16,7 +16,8 @@ def firmware_home(request):
     firmwares = FirmwareFile.objects.filter(is_active=True).order_by('-created_at')
     
     return render(request, 'firmware/home.html', {
-        'firmwares': firmwares
+        'firmwares': firmwares,
+        'FirmwareFile': FirmwareFile
     })
 
 def firmware_detail(request, firmware_id):

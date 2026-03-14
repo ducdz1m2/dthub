@@ -164,13 +164,12 @@ def product_consultation(request, pk):
     """Xử lý tư vấn sản phẩm - chuyển đến chat với staff và gửi thông tin sản phẩm"""
     product = get_object_or_404(Product, pk=pk, is_active=True)
     
-    # Tìm staff có thể tư vấn (ProductOrderManager hoặc superuser)
-    admin_groups = ["ProductOrderManager", "ContentFeedbackManager", "AIArchitect"]
+    # Tìm admin có thể tư vấn (chỉ superuser)
     staff_users = User.objects.filter(
-        Q(groups__name__in=admin_groups) | Q(is_superuser=True)
-    ).distinct().exclude(id=request.user.id)
+        is_superuser=True
+    ).exclude(id=request.user.id)
     
-    # Nếu không tìm được staff khả dụng, gán cho admin (superuser đầu tiên)
+    # Nếu không tìm được admin khả dụng, gán cho admin khác
     if not staff_users.exists():
         admin_user = User.objects.filter(is_superuser=True).exclude(id=request.user.id).first()
         if admin_user:

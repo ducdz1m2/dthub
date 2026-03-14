@@ -1,111 +1,202 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Firmware Lab | DTHub{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="text-center mb-5">
-        <h1 class="display-4 fw-bold text-primary">
-            <i class="bi bi-cpu me-3"></i>
-            Trung tâm Nạp Firmware
-        </h1>
-        <p class="lead text-muted">
-            Nạp firmware cho thiết bị IoT của bạn một cách dễ dàng và an toàn
-        </p>
+<style>
+    /* Tổng thể Industrial Lab */
+    .lab-header {
+        position: relative;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Thiết kế Tab Filter */
+    .filter-container {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        display: inline-flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .device-filter {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: transparent;
+        color: #a0aec0;
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        transition: 0.3s;
+    }
+    .device-filter:hover {
+        border-color: var(--neon-blue);
+        color: white;
+    }
+    .device-filter.active {
+        background: rgba(0, 243, 255, 0.1) !important;
+        border-color: var(--neon-blue) !important;
+        color: var(--neon-blue) !important;
+        box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+    }
+
+    /* Thẻ Firmware Module */
+    .firmware-card {
+        background: linear-gradient(135deg, rgba(15, 20, 35, 0.8), rgba(10, 15, 25, 0.9));
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        overflow: hidden;
+        transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .firmware-card:hover {
+        transform: translateY(-10px);
+        border-color: var(--neon-blue);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-img-container {
+        background: #05070a;
+        height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        overflow: hidden;
+    }
+    .card-img-container img {
+        transition: 0.5s;
+        max-height: 140px;
+    }
+    .firmware-card:hover .card-img-container img {
+        transform: scale(1.1) rotate(2deg);
+    }
+
+    /* Badge & Text */
+    .badge-v {
+        background: rgba(255, 255, 255, 0.1);
+        color: #63b3ed;
+        border: 1px solid rgba(99, 179, 237, 0.3);
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .flash-btn {
+        background: var(--neon-blue);
+        color: #000;
+        font-weight: 800;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 25px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.8rem;
+        transition: 0.3s;
+        width: 100%;
+    }
+    .flash-btn:hover {
+        background: #fff;
+        box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+        transform: scale(1.02);
+    }
+
+    .firmware-item.hidden {
+        display: none;
+    }
+
+    /* Icon trang trí cho từng loại chip */
+    .chip-icon-bg {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,0.03);
+        border: 1px dashed rgba(255,255,255,0.1);
+    }
+</style>
+
+<div class="container mt-5 mb-5">
+    <div class="lab-header text-center mb-5">
+        <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px; border-radius: 15px; background: rgba(0, 243, 255, 0.1); border: 1px solid var(--neon-blue);">
+            <i class="bi bi-cpu-fill text-info fs-1"></i>
+        </div>
+        <h1 class="display-5 fw-bold text-white mb-2">FIRMWARE_FLASH_CENTER</h1>
+        <p class="text-secondary font-monospace">>_ Chế độ nạp phần mềm hệ thống cho các thiết bị ngoại vi.</p>
     </div>
 
-    <!-- Device Type Filter -->
-    <div class="row justify-content-center mb-4">
-        <div class="col-md-8">
-            <div class="card bg-light">
-                <div class="card-body">
-                    <div class="text-center">
-                        <button class="btn btn-outline-primary device-filter active" data-device="all">
-                            <i class="bi bi-grid-3x3-gap me-2"></i>Tất cả
-                        </button>
-                        {% for device_type, device_label in FirmwareFile.DEVICE_CHOICES %}
-                        <button class="btn btn-outline-primary device-filter" data-device="{{ device_type }}">
-                            <i class="bi bi-cpu me-2"></i>{{ device_label }}
-                        </button>
-                        {% endfor %}
-                    </div>
-                </div>
+    <div class="row justify-content-center mb-5">
+        <div class="col-auto">
+            <div class="filter-container">
+                <button class="device-filter active" data-device="all">
+                    <i class="bi bi-cpu me-2"></i>ALL_UNITS
+                </button>
+                {% for device_type, device_label in DEVICE_CHOICES %}
+                <button class="device-filter" data-device="{{ device_type }}">
+                    <i class="bi bi-chip me-2"></i>{{ device_label|upper }}
+                </button>
+                {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- Firmware List -->
-    <div class="row" id="firmware-container">
+    <div class="row g-4" id="firmware-container">
         {% for firmware in firmwares %}
         <div class="col-md-6 col-lg-4 mb-4 firmware-item" data-device="{{ firmware.device_type }}">
-            <div class="card h-100 shadow-sm hover-card">
-                <div class="card-body">
-                    <div class="text-center mb-3">
-                        <div class="device-icon">
+            <div class="firmware-card h-100 shadow-lg">
+                <div class="card-img-container">
+                    {% if firmware.hardware_image %}
+                        <img src="{{ firmware.hardware_image.url }}" alt="Hardware" class="img-fluid">
+                    {% else %}
+                        <div class="chip-icon-bg">
                             {% if firmware.device_type == 'ESP32' %}
-                                <i class="bi bi-cpu display-4 text-primary"></i>
+                                <i class="bi bi-cpu text-info display-4"></i>
                             {% elif firmware.device_type == 'ESP8266' %}
-                                <i class="bi bi-cpu display-4 text-success"></i>
-                            {% elif firmware.device_type == 'Arduino' %}
-                                <i class="bi bi-cpu display-4 text-info"></i>
-                            {% elif firmware.device_type == 'Raspberry_Pi' %}
-                                <i class="bi bi-cpu display-4 text-danger"></i>
+                                <i class="bi bi-cpu text-success display-4"></i>
                             {% else %}
-                                <i class="bi bi-cpu display-4 text-secondary"></i>
+                                <i class="bi bi-cpu text-secondary display-4"></i>
                             {% endif %}
                         </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="badge bg-transparent border border-info text-info font-monospace">{{ firmware.get_device_type_display }}</span>
+                        <span class="badge badge-v">v{{ firmware.version }}</span>
                     </div>
                     
-                    <h5 class="card-title text-center">{{ firmware.name }}</h5>
-                    <p class="text-center">
-                        <span class="badge bg-primary">{{ firmware.get_device_type_display }}</span>
-                        <span class="badge bg-secondary">v{{ firmware.version }}</span>
+                    <h5 class="fw-bold text-white mb-3 font-monospace">{{ firmware.name }}</h5>
+                    <p class="text-secondary small mb-4" style="height: 45px; overflow: hidden;">
+                        {{ firmware.description|truncatewords:12 }}
                     </p>
                     
-                    <p class="card-text text-muted small">{{ firmware.description|truncatewords:15 }}</p>
-                    
-                    <div class="text-center">
-                        <a href="{% url 'firmware_detail' firmware.id %}" class="btn btn-primary">
-                            <i class="bi bi-download me-2"></i>Nạp Firmware
+                    <div class="pt-3 border-top border-secondary" style="border-color: rgba(255,255,255,0.05) !important;">
+                        <a href="{% url 'firmware_detail' firmware.id %}" class="btn flash-btn">
+                            <i class="bi bi-lightning-charge-fill me-2"></i>Flash Now
                         </a>
                     </div>
                 </div>
-                <div class="card-footer bg-transparent text-center">
-                    <small class="text-muted">
-                        <i class="bi bi-clock me-1"></i>
-                        {{ firmware.created_at|date:"d/m/Y" }}
-                    </small>
+                
+                <div class="card-footer bg-transparent border-0 px-4 pb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-secondary font-monospace"><i class="bi bi-calendar3 me-2"></i>{{ firmware.created_at|date:"d M Y" }}</small>
+                        <i class="bi bi-shield-check text-success" title="Verified Firmware"></i>
+                    </div>
                 </div>
             </div>
         </div>
         {% empty %}
         <div class="col-12">
-            <div class="text-center py-5">
-                <i class="bi bi-inbox display-1 text-muted"></i>
-                <h4 class="mt-3 text-muted">Chưa có firmware nào</h4>
-                <p class="text-muted">Vui lòng quay lại sau hoặc liên hệ quản trị viên.</p>
+            <div class="text-center py-5 cyber-card">
+                <i class="bi bi-slash-circle display-1 text-secondary opacity-25"></i>
+                <h4 class="mt-4 text-white font-monospace">DATA_NOT_FOUND</h4>
+                <p class="text-secondary">Hiện chưa có bản firmware nào khả dụng trong cơ sở dữ liệu.</p>
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
-
-<style>
-.hover-card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-.hover-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
-}
-.device-filter.active {
-    background-color: #0d6efd !important;
-    border-color: #0d6efd !important;
-    color: white !important;
-}
-.firmware-item.hidden {
-    display: none;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -114,9 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     filterButtons.forEach(button => {
         button.addEventListener('click', function() {
-            // Remove active class from all buttons
             filterButtons.forEach(btn => btn.classList.remove('active'));
-            // Add active class to clicked button
             this.classList.add('active');
             
             const deviceType = this.dataset.device;
@@ -124,6 +213,12 @@ document.addEventListener('DOMContentLoaded', function() {
             firmwareItems.forEach(item => {
                 if (deviceType === 'all' || item.dataset.device === deviceType) {
                     item.classList.remove('hidden');
+                    // Add a small fade-in animation
+                    item.style.opacity = '0';
+                    setTimeout(() => {
+                        item.style.transition = 'opacity 0.4s';
+                        item.style.opacity = '1';
+                    }, 50);
                 } else {
                     item.classList.add('hidden');
                 }

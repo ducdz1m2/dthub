@@ -5,7 +5,19 @@ from django.dispatch import receiver
 from django.templatetags.static import static
 
 class User(AbstractUser):
+    # Chỉ còn 2 vai trò: admin (is_superuser=True) và customer (mặc định)
     is_customer = models.BooleanField(default=True)
+    
+    @property
+    def is_admin(self):
+        return self.is_superuser
+    
+    @property
+    def role_display(self):
+        if self.is_superuser:
+            return "Quản trị viên"
+        else:
+            return "Khách hàng"
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')

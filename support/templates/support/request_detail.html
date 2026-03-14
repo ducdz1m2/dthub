@@ -46,7 +46,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <strong>Nhân viên phụ trách:</strong> 
-                            {% if support_request.assigned_to.profile.avatar %}
+                            {% if support_request.assigned_to.profile.avatar and support_request.assigned_to.profile.avatar.url %}
                                 <img src="{{ support_request.assigned_to.profile.avatar.url }}" 
                                      width="25" height="25" class="rounded-circle me-1" alt="avatar">
                             {% else %}
@@ -99,7 +99,7 @@
                     <div class="border-bottom pb-3 mb-3 {% if forloop.last %}border-bottom-0{% endif %}">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="d-flex align-items-center">
-                                {% if response.author.profile.avatar %}
+                                {% if response.author.profile.avatar and response.author.profile.avatar.url %}
                                     <img src="{{ response.author.profile.avatar.url }}" 
                                          width="35" height="35" class="rounded-circle me-2" alt="avatar">
                                 {% else %}

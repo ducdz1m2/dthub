@@ -2,167 +2,771 @@
 {% load static %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
-                <!-- Header -->
-                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <div class="position-relative">
-                            {% if other_user.profile.avatar %}
-                            <img src="{{ other_user.profile.avatar.url }}" class="rounded-circle border" width="45" height="45" style="object-fit: cover" />
-                            {% else %}
-                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 45px; height: 45px">
-                                {{ other_user.username|slice:":1"|upper }}
-                            </div>
-                            {% endif %}
-                        </div>
-                        <div class="ms-3">
-                            <h6 class="mb-0 fw-bold text-dark">{{ other_user.username }}</h6>
-                            <small id="status-text" class="status-indicator bg-secondary text-white rounded-pill px-2" style="font-size: 0.6rem;" data-user-id="{{ other_user.id }}">Đang ngoại tuyến</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chat Messages -->
-                <div id="chat-log" class="card-body bg-light" style="height: 500px; overflow-y: auto; padding: 1.5rem;">
-                    <!-- Nút tải thêm tin nhắn -->
-                    <div id="load-more-container" class="text-center mb-3" style="display: none;">
-                        <button id="load-more-btn" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Tải thêm tin nhắn
-                        </button>
-                        <div id="loading-spinner" class="spinner-border spinner-border-sm text-secondary" role="status" style="display: none;">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                    
-                    <div id="messages-container">
-                        <!-- DEBUG: new_message_start_index = {{ new_message_start_index }} -->
-                        {% for msg in chat_messages %}
-                        {% if new_message_start_index is not None and forloop.counter0 == new_message_start_index %}
-                        <div class="text-center my-3">
-                            <hr class="border-success" style="border-width: 2px;">
-                            <small class="bg-success text-white px-3 py-1 rounded-pill">
-                                <i class="bi bi-arrow-down-circle me-1"></i>Tin nhắn mới
-                            </small>
-                            <hr class="border-success" style="border-width: 2px;">
-                        </div>
-                        {% endif %}
-                        <!-- DEBUG: forloop.counter0 = {{ forloop.counter0 }}, msg.id = {{ msg.id }}, sender = {{ msg.sender.username }} -->
-                        <div class="d-flex {% if msg.sender == request.user %}justify-content-end{% else %}justify-content-start{% endif %} mb-3">
-                            <div class="max-w-75">
-                                <div class="px-3 py-2 rounded-4 shadow-sm {% if msg.sender == request.user %} bg-success text-white rounded-bottom-end-0 {% else %} bg-white text-dark rounded-bottom-start-0 {% endif %}">
-                                    {% if msg.is_image %}
-                                        {% if msg.text|slice:"7" == "[IMAGE:" %}
-                                            <img src="{{ msg.text|slice:"7:-1" }}" alt="Image" style="max-width: 100%; border-radius: 8px;">
-                                        {% else %}
-                                            <div class="message-content">{{ msg.text|safe }}</div>
-                                        {% endif %}
-                                    {% else %}
-                                        <div class="message-content">{{ msg.text|safe }}</div>
-                                    {% endif %}
-                                </div>
-                                <small class="text-muted d-block mt-1 {% if msg.sender == request.user %}text-end{% endif %}" style="font-size: 0.65rem;">
-                                    {{ msg.timestamp|date:"H:i - d/m/Y" }}
-                                </small>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Input -->
-                <div class="card-footer bg-white p-3 border-top-0">
-                    <div class="d-flex gap-2 mb-2">
-                        <button id="emoji-btn" class="btn btn-outline-secondary rounded-circle p-2" type="button">
-                            <i class="bi bi-emoji-smile"></i>
-                        </button>
-                        <button id="image-btn" class="btn btn-outline-secondary rounded-circle p-2" type="button">
-                            <i class="bi bi-image"></i>
-                        </button>
-                        <input type="file" id="image-input" accept="image/*" style="display: none;">
-                    </div>
-                    <div class="input-group shadow-sm rounded-pill overflow-hidden border border-success-subtle">
-                        <input id="chat-input" type="text" class="form-control border-0 ps-4 py-2" placeholder="Nhập tin nhắn tại đây..." style="box-shadow: none" />
-                        <button id="send-btn" class="btn btn-success px-4">
-                            <i class="bi bi-send-fill"></i>
-                        </button>
-                    </div>
-                    <!-- Emoji picker -->
-                    <div id="emoji-picker" class="position-absolute bg-white border rounded-3 shadow-lg p-3" style="display: none; bottom: 100px; right: 20px; z-index: 1000;">
-                        <div class="d-flex flex-wrap gap-2" style="max-width: 300px;">
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😀">😀</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😂">😂</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="❤️">❤️</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="👍">👍</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="👎">👎</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😍">😍</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🎉">🎉</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🔥">🔥</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="💯">💯</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😊">😊</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😎">😎</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🤔">🤔</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😢">😢</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="😡">😡</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🙏">🙏</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="💪">💪</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🚀">🚀</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="✨">✨</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="🌟">🌟</button>
-                            <button class="emoji-btn-item btn btn-light rounded-circle p-2" data-emoji="💎">💎</button>
-                        </div>
-                    </div>
-                </div>
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-xl-10 col-lg-12 col-md-12">
+      <!-- Chat Room Container -->
+      <div class="glass-panel rounded-4 overflow-hidden chat-room-container">
+        <!-- Chat Header -->
+        <div class="chat-header d-flex justify-content-between align-items-center p-3 border-bottom" style="border-color: var(--glass-border) !important; background: linear-gradient(135deg, rgba(0, 243, 255, 0.1), rgba(188, 19, 254, 0.1));">
+          <div class="d-flex align-items-center">
+            <!-- Back Button -->
+            <a href="{% url 'chat_home' %}" class="btn btn-neon btn-sm me-3 d-lg-none">
+              <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            
+            <!-- User Avatar -->
+            <div class="position-relative">
+              <div class="chat-avatar">
+                {% if other_user.profile.avatar and other_user.profile.avatar.url and 'default.png' not in other_user.profile.avatar.url %}
+                  <img src="{{ other_user.profile.avatar.url }}" class="avatar-img" alt="{{ other_user.username }}" />
+                {% else %}
+                  <div class="avatar-placeholder">
+                    {{ other_user.username|slice:':1'|upper }}
+                  </div>
+                {% endif %}
+                <!-- Online Status Indicator -->
+                <span class="online-indicator online-status-{{ other_user.id }} position-absolute bottom-0 end-0" style="width: 16px; height: 16px; border: 3px solid var(--dark-bg);"></span>
+              </div>
             </div>
-
-            <div class="text-center mt-3">
-                <a href="{% url 'chat_home' %}" class="btn btn-link text-decoration-none text-muted small">
-                    <i class="bi bi-arrow-left"></i> Quay lại danh sách hội thoại
-                </a>
+            
+            <!-- User Info -->
+            <div class="ms-3">
+              <h5 class="mb-0 fw-bold text-white user-display-name">{{ other_user.username }}</h5>
+              <div class="d-flex align-items-center gap-2">
+                <span class="user-status-badge">
+                  {% if other_user.is_superuser %}
+                    <i class="fa-solid fa-crown text-warning me-1"></i>Admin
+                  {% elif other_user.is_staff %}
+                    <i class="fa-solid fa-user-tie text-info me-1"></i>Nhân viên
+                  {% else %}
+                    <i class="fa-solid fa-user text-secondary me-1"></i>Khách hàng
+                  {% endif %}
+                </span>
+                <span class="typing-indicator text-neon-blue small" id="typing-{{ other_user.id }}" style="display: none;">
+                  <i class="fa-solid fa-keyboard me-1"></i>đang gõ...
+                </span>
+              </div>
             </div>
+          </div>
+          
+          <!-- Header Actions -->
+          <div class="d-flex align-items-center gap-2">
+            <!-- Search Messages -->
+            <button class="btn btn-neon btn-sm" onclick="toggleSearch()" title="Tìm kiếm tin nhắn">
+              <i class="fa-solid fa-search"></i>
+            </button>
+            
+            <!-- More Options -->
+            <div class="dropdown">
+              <button class="btn btn-neon btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="fa-solid fa-ellipsis-v"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end glass-panel">
+                <li><a class="dropdown-item" href="#" onclick="clearChat()"><i class="fa-solid fa-trash me-2"></i>Xóa lịch sử</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportChat()"><i class="fa-solid fa-download me-2"></i>Xuất trò chuyện</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="toggleNotifications()"><i class="fa-solid fa-bell me-2"></i>Thông báo</a></li>
+              </ul>
+            </div>
+          </div>
         </div>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages-container">
+          <!-- Search Bar (Hidden by default) -->
+          <div id="message-search" class="message-search-bar p-3 border-bottom" style="display: none; border-color: var(--glass-border) !important;">
+            <div class="position-relative">
+              <input type="text" id="search-messages-input" class="form-control neon-input" placeholder="Tìm kiếm tin nhắn...">
+              <button class="btn btn-neon btn-sm position-absolute" style="right: 10px; top: 50%; transform: translateY(-50%);" onclick="toggleSearch()">
+                <i class="fa-solid fa-times"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Messages Area -->
+          <div id="chat-log" class="chat-log">
+            <!-- Load More Button -->
+            <div id="load-more-container" class="text-center mb-3" style="display: none;">
+              <button id="load-more-btn" class="btn btn-neon btn-sm">
+                <i class="fa-solid fa-arrow-clockwise me-1"></i> Tải thêm tin nhắn
+              </button>
+              <div id="loading-spinner" class="spinner-border spinner-border-sm text-neon-blue" role="status" style="display: none;">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+            
+            <div id="messages-container">
+              <!-- New Messages Divider -->
+              {% if new_message_start_index is not None %}
+              <div class="new-messages-divider text-center my-3">
+                <div class="divider-line"></div>
+                <span class="divider-text">
+                  <i class="fa-solid fa-arrow-down-circle me-1"></i>Tin nhắn mới
+                </span>
+                <div class="divider-line"></div>
+              </div>
+              {% endif %}
+              
+              <!-- Messages -->
+              {% for msg in chat_messages %}
+              <div class="message-wrapper {% if msg.sender == request.user %}sent-message{% else %}received-message{% endif %}" data-message-id="{{ msg.id }}">
+                <div class="message-bubble">
+                  <div class="message-content">
+                    {% if msg.is_image %}
+                      {% if msg.text|slice:"7" == "[IMAGE:" %}
+                        <div class="message-image">
+                          <img src="{{ msg.text|slice:"7:-1" }}" alt="Image" loading="lazy">
+                          <div class="image-overlay" onclick="viewImage('{{ msg.text|slice:"7:-1"|escapejs }}')">
+                            <i class="fa-solid fa-expand"></i>
+                          </div>
+                        </div>
+                      {% else %}
+                        <div class="message-text">{{ msg.text|safe }}</div>
+                      {% endif %}
+                    {% else %}
+                      <div class="message-text">{{ msg.text|safe }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="message-time">
+                    {{ msg.timestamp|date:"H:i - d/m/Y" }}
+                    {% if msg.sender == request.user %}
+                      <span class="message-status">
+                        <i class="fa-solid fa-check-double text-info"></i>
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="chat-input-container p-3 border-top" style="border-color: var(--glass-border) !important; background: linear-gradient(135deg, rgba(0, 243, 255, 0.05), rgba(188, 19, 254, 0.05));">
+          <!-- Action Buttons -->
+          <div class="d-flex gap-2 mb-3">
+            <button id="emoji-btn" class="btn btn-neon btn-sm action-btn" type="button" title="Emoji">
+              <i class="fa-solid fa-face-smile"></i>
+            </button>
+            <button id="image-btn" class="btn btn-neon btn-sm action-btn" type="button" title="Gửi ảnh">
+              <i class="fa-solid fa-image"></i>
+            </button>
+            <button id="file-btn" class="btn btn-neon btn-sm action-btn" type="button" title="Gửi file">
+              <i class="fa-solid fa-paperclip"></i>
+            </button>
+            <button id="voice-btn" class="btn btn-neon btn-sm action-btn" type="button" title="Ghi âm">
+              <i class="fa-solid fa-microphone"></i>
+            </button>
+            <input type="file" id="image-input" accept="image/*" style="display: none;">
+            <input type="file" id="file-input" style="display: none;">
+          </div>
+          
+          <!-- Message Input -->
+          <div class="message-input-wrapper">
+            <div class="input-group">
+              <input id="chat-input" type="text" class="form-control neon-input message-input" placeholder="Nhập tin nhắn..." />
+              <button id="send-btn" class="btn btn-neon send-btn">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Typing Status -->
+          <div class="typing-status small text-secondary mt-2" id="typing-status">
+            <i class="fa-solid fa-info-circle me-1"></i>
+            <span id="typing-text">Nhấn Enter để gửi</span>
+          </div>
+          
+          <!-- Enhanced Emoji Picker -->
+          <div id="emoji-picker" class="emoji-picker" style="display: none;">
+            <div class="emoji-categories">
+              <button class="emoji-category-btn active" data-category="smileys">😀</button>
+              <button class="emoji-category-btn" data-category="people">👋</button>
+              <button class="emoji-category-btn" data-category="animals">🐶</button>
+              <button class="emoji-category-btn" data-category="food">🍕</button>
+              <button class="emoji-category-btn" data-category="activities">⚽</button>
+              <button class="emoji-category-btn" data-category="travel">🚗</button>
+              <button class="emoji-category-btn" data-category="objects">💡</button>
+              <button class="emoji-category-btn" data-category="symbols">❤️</button>
+            </div>
+            
+            <!-- Emoji Search -->
+            <div class="emoji-search mb-2">
+              <input type="text" id="emoji-search" class="form-control neon-input" placeholder="Tìm emoji..." style="font-size: 12px; padding: 5px 10px;">
+            </div>
+            
+            <!-- Emoji Grid -->
+            <div class="emoji-grid" id="emoji-grid">
+              <!-- Emojis will be loaded dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Back Button (Desktop) -->
+      <div class="text-center mt-3 d-none d-lg-block">
+        <a href="{% url 'chat_home' %}" class="btn btn-neon">
+          <i class="fa-solid fa-arrow-left me-2"></i>Quay lại danh sách hội thoại
+        </a>
+      </div>
     </div>
+  </div>
 </div>
 
 <style>
-#chat-log::-webkit-scrollbar {
-    width: 6px;
+/* Chat Room Styles */
+.chat-room-container {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
 }
-#chat-log::-webkit-scrollbar-track {
-    background: transparent;
+
+/* Header Styles */
+.chat-header {
+  backdrop-filter: blur(10px);
 }
-#chat-log::-webkit-scrollbar-thumb {
-    background: #dee2e6;
-    border-radius: 10px;
+
+.chat-avatar .avatar-img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  transition: all 0.3s ease;
 }
-.max-w-75 {
-    max-width: 75%;
+
+.chat-avatar .avatar-placeholder {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  border: 2px solid var(--glass-border);
+  transition: all 0.3s ease;
+}
+
+.online-indicator {
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.online-indicator.online {
+  background: #198754;
+  box-shadow: 0 0 8px #198754;
+  animation: online-pulse 2s infinite;
+}
+
+.online-indicator.offline {
+  background: #6c757d;
+}
+
+.user-status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+}
+
+.typing-indicator {
+  animation: typing-blink 1.5s infinite;
+}
+
+@keyframes typing-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Messages Container */
+.chat-messages-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-log {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  background: rgba(10, 15, 30, 0.3);
+  min-height: 400px;
+}
+
+/* New Messages Divider */
+.new-messages-divider {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.divider-line {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+}
+
+.divider-text {
+  background: var(--glass-bg);
+  color: var(--neon-blue);
+  padding: 5px 15px;
+  border-radius: 20px;
+  border: 1px solid var(--neon-blue);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Message Styles */
+.message-wrapper {
+  margin-bottom: 20px;
+  display: flex;
+  animation: messageSlideIn 0.3s ease;
+}
+
+@keyframes messageSlideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sent-message {
+  justify-content: flex-end;
+}
+
+.received-message {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 70%;
+  min-width: 100px;
+}
+
+.sent-message .message-bubble {
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  color: white;
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 4px 15px rgba(0, 243, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.received-message .message-bubble {
+  background: var(--glass-bg);
+  color: #e0eaff;
+  border-radius: 18px 18px 18px 4px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+}
+
+.message-content {
+  padding: 12px 16px;
+  word-wrap: break-word;
+}
+
+.message-text {
+  line-height: 1.4;
+}
+
+.message-image {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.message-image img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  display: block;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.message-image:hover .image-overlay {
+  opacity: 1;
+}
+
+.image-overlay i {
+  color: white;
+  font-size: 24px;
+}
+
+.message-time {
+  padding: 4px 16px;
+  font-size: 11px;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sent-message .message-time {
+  justify-content: flex-end;
+}
+
+.received-message .message-time {
+  justify-content: flex-start;
+}
+
+.message-status {
+  display: flex;
+  align-items: center;
+}
+
+/* Input Container */
+.chat-input-container {
+  border-top: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+}
+
+.action-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+}
+
+.message-input {
+  border-radius: 25px;
+  padding: 12px 20px;
+  font-size: 14px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e0eaff;
+  transition: all 0.3s ease;
+}
+
+.message-input:focus {
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.message-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.send-btn {
+  border-radius: 0 25px 25px 0;
+  padding: 0 20px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.send-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+}
+
+/* Emoji Picker */
+.emoji-picker {
+  position: absolute;
+  bottom: 100px;
+  right: 20px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 15px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(16px);
+  z-index: 1000;
+  max-width: 350px;
+}
+
+.emoji-categories {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 10px;
+}
+
+.emoji-category-btn {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: #e0eaff;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.emoji-category-btn:hover,
+.emoji-category-btn.active {
+  background: var(--neon-blue);
+  border-color: var(--neon-blue);
+  color: #000;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.emoji-item {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-item:hover {
+  background: rgba(0, 243, 255, 0.1);
+  transform: scale(1.2);
+}
+
+/* Search */
+.message-search-bar {
+  background: rgba(0, 243, 255, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+/* Scrollbar */
+.chat-log::-webkit-scrollbar,
+.emoji-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-log::-webkit-scrollbar-track,
+.emoji-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-log::-webkit-scrollbar-thumb,
+.emoji-grid::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 3px;
+}
+
+.chat-log::-webkit-scrollbar-thumb:hover,
+.emoji-grid::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-blue);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .chat-log {
+    padding: 15px;
+  }
+  
+  .message-bubble {
+    max-width: 85%;
+  }
+  
+  .emoji-picker {
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+  
+  .emoji-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Loading Animation */
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon-blue);
+  animation: loading-bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes loading-bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
 }
 </style>
 
 <script>
+// Enhanced Chat Room JavaScript
 const otherId = "{{ other_user.id }}";
 const currentUserId = "{{ request.user.id }}";
 const conversationId = "{{ conversation_id }}";
 const consultationProductInfo = "{{ consultation_product_info|safe }}";
 
+// DOM Elements
 const chatLog = document.querySelector("#chat-log");
 const inputField = document.querySelector("#chat-input");
 const sendBtn = document.querySelector("#send-btn");
 const emojiBtn = document.querySelector("#emoji-btn");
 const imageBtn = document.querySelector("#image-btn");
+const fileBtn = document.querySelector("#file-btn");
+const voiceBtn = document.querySelector("#voice-btn");
 const imageInput = document.querySelector("#image-input");
+const fileInput = document.querySelector("#file-input");
 const emojiPicker = document.querySelector("#emoji-picker");
+const emojiSearch = document.querySelector("#emoji-search");
+const emojiGrid = document.querySelector("#emoji-grid");
 const loadMoreBtn = document.querySelector("#load-more-btn");
 const loadMoreContainer = document.querySelector("#load-more-container");
 const loadingSpinner = document.querySelector("#loading-spinner");
 const messagesContainer = document.querySelector("#messages-container");
+const typingStatus = document.querySelector("#typing-status");
+const typingText = document.querySelector("#typing-text");
 
-let currentOffset = 50; // Bắt đầu từ 50 vì đã load 50 tin nhắn đầu tiên
+// State Variables
+let currentOffset = 50;
 let isLoading = false;
 let hasMoreMessages = true;
+let isTyping = false;
+let typingTimer = null;
+let socketReady = false;
+let currentEmojiCategory = 'smileys';
+
+// Emoji Data
+const emojiData = {
+  smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐'],
+  people: ['👋', '🤚', '🖐', '✋', '🖖', '👌', '🤌', '🤏', '✌', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁', '👅', '👄'],
+  animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🐣', '🐥', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦟', '🦗', '🕷', '🕸', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠'],
+  food: ['🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶', '🌽', '🥕', '🥔', '🍠', '🥐', '🍯', '🥞', '🧇', '🥓', '🥩', '🍗', '🍖', '🦴', '🌭', '🍔', '🍟', '🍕', '🥪', '🥙', '🧆', '🌮', '🌯', '🥗', '🥘', '🥫'],
+  activities: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', '⛳', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸', '🥌', '🎿', '⛷', '🏂', '🏋️', '🤼', '🤸', '🤺', '🤾', '🏌️', '🏇', '🧘'],
+  travel: ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🏍', '🛵', '🚲', '🛵', '🚔', '🚍', '🚘', '🚖', '🚡', '🚠', '🚟', '🚃', '🚋', '🚞', '🚝', '🚄', '🚅', '🚈', '🚂', '🚆', '🚇', '🚊', '🚉', '✅', '🚳', '🚲', '🚴', '🚵', '🚤', '🚢', '⚓', '🚡', '🗿', '🗽', '🗼', '🏰', '🏯', '🏟', '🎡'],
+  objects: ['⌚', '📱', '📲', '💻', '⌨️', '🖥', '🖨', '🖱', '🖲', '🕹', '🗜', '💽', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽', '🎞', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙', '🎚', '🎛', '🧭', '⏱', '⏲', '⏰', '🕰', '⌛', '⏳', '📡', '🔋', '🔌', '💡', '🔦', '🕯', '🪔', '🔥', '💧', '🫧'],
+  symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈯', '🈳', '🈺', '🈸', '🉐', '🈹', '🈴', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '⛔', '📛', '🚫', '💯', '💢', '💥', '💫', '💦', '💨', '🕳', '💣', '💬', '👁️‍🗨️', '🗨', '🗯', '💭', '💤']
+};
+
+// Initialize Emoji Picker
+function initEmojiPicker() {
+  loadEmojis(currentEmojiCategory);
+  
+  // Category buttons
+  document.querySelectorAll('.emoji-category-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('.emoji-category-btn.active').classList.remove('active');
+      btn.classList.add('active');
+      currentEmojiCategory = btn.dataset.category;
+      loadEmojis(currentEmojiCategory);
+    });
+  });
+  
+  // Emoji search
+  emojiSearch.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    searchEmojis(searchTerm);
+  });
+}
+
+// Load Emojis by Category
+function loadEmojis(category) {
+  const emojis = emojiData[category] || [];
+  emojiGrid.innerHTML = '';
+  
+  emojis.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-item';
+    btn.textContent = emoji;
+    btn.onclick = () => addEmojiToInput(emoji);
+    emojiGrid.appendChild(btn);
+  });
+}
+
+// Search Emojis
+function searchEmojis(searchTerm) {
+  if (!searchTerm) {
+    loadEmojis(currentEmojiCategory);
+    return;
+  }
+  
+  const allEmojis = Object.values(emojiData).flat();
+  const filtered = allEmojis.filter(emoji => 
+    emoji.includes(searchTerm) || emoji === searchTerm
+  );
+  
+  emojiGrid.innerHTML = '';
+  filtered.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className = 'emoji-item';
+    btn.textContent = emoji;
+    btn.onclick = () => addEmojiToInput(emoji);
+    emojiGrid.appendChild(btn);
+  });
+}
+
+// Add Emoji to Input
+function addEmojiToInput(emoji) {
+  inputField.value += emoji;
+  inputField.focus();
+  emojiPicker.style.display = 'none';
+}
+
+// Toggle Emoji Picker
+emojiBtn.addEventListener('click', () => {
+  const isVisible = emojiPicker.style.display === 'block';
+  emojiPicker.style.display = isVisible ? 'none' : 'block';
+  if (!isVisible) {
+    emojiSearch.value = '';
+    loadEmojis(currentEmojiCategory);
+  }
+});
+
+// Close emoji picker when clicking outside
+document.addEventListener('click', (e) => {
+  if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+    emojiPicker.style.display = 'none';
+  }
+});
 
 // Scroll to bottom after all images are loaded
 function scrollToBottomAfterImagesLoad() {
@@ -643,6 +1247,292 @@ function sendMessage() {
 
 sendBtn.onclick = sendMessage;
 inputField.onkeyup = (e) => { if (e.keyCode === 13) sendMessage(); };
+// Initialize everything when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    initEmojiPicker();
+    initTypingIndicator();
+    initSearchMessages();
+    initUtilityFunctions();
+    
+    // Scroll to bottom after images load
+    scrollToBottomAfterImagesLoad();
+    
+    // Check for more messages
+    checkHasMoreMessages();
+    
+    // Initialize WebSocket
+    initWebSocket();
+});
+
+// Typing Indicator
+function initTypingIndicator() {
+    let typingTimeout;
+    
+    inputField.addEventListener('input', () => {
+        if (!isTyping) {
+            isTyping = true;
+            sendTypingStatus(true);
+        }
+        
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            isTyping = false;
+            sendTypingStatus(false);
+        }, 1000);
+        
+        updateTypingStatus();
+    });
+    
+    inputField.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            isTyping = false;
+            sendTypingStatus(false);
+            sendMessage();
+        }
+    });
+}
+
+function sendTypingStatus(isTyping) {
+    if (socketReady && chatSocket) {
+        chatSocket.send(JSON.stringify({
+            type: 'typing',
+            is_typing: isTyping
+        }));
+    }
+}
+
+function updateTypingStatus() {
+    if (inputField.value.trim()) {
+        typingText.textContent = 'Nhấn Shift+Enter để xuống dòng, Enter để gửi';
+    } else {
+        typingText.textContent = 'Nhấn Enter để gửi';
+    }
+}
+
+// Message Search
+function initSearchMessages() {
+    const searchInput = document.getElementById('search-messages-input');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            searchMessagesInChat(searchTerm);
+        });
+    }
+}
+
+function toggleSearch() {
+    const searchBar = document.getElementById('message-search');
+    const isVisible = searchBar.style.display === 'block';
+    searchBar.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible) {
+        document.getElementById('search-messages-input').focus();
+    }
+}
+
+function searchMessagesInChat(searchTerm) {
+    const messages = document.querySelectorAll('.message-wrapper');
+    
+    messages.forEach(msg => {
+        const text = msg.textContent.toLowerCase();
+        const shouldShow = text.includes(searchTerm);
+        
+        msg.style.display = shouldShow ? 'flex' : 'none';
+        
+        if (shouldShow && searchTerm) {
+            msg.classList.add('search-highlight');
+            msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            msg.classList.remove('search-highlight');
+        }
+    });
+}
+
+// Utility Functions
+function initUtilityFunctions() {
+    // Image upload
+    imageBtn.addEventListener('click', () => imageInput.click());
+    imageInput.addEventListener('change', handleImageUpload);
+    
+    // File upload (placeholder)
+    fileBtn.addEventListener('click', () => {
+        alert('Tính năng gửi file sẽ được cập nhật sau!');
+    });
+    
+    // Voice recording (placeholder)
+    voiceBtn.addEventListener('click', () => {
+        alert('Tính năng ghi âm sẽ được cập nhật sau!');
+    });
+    
+    // Send button
+    sendBtn.addEventListener('click', sendMessage);
+}
+
+function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+        if (file.size > 2 * 1024 * 1024) {
+            showNotification('Ảnh quá lớn! Vui lòng chọn ảnh nhỏ hơn 2MB.', 'error');
+            return;
+        }
+        
+        if (!file.type.startsWith('image/')) {
+            showNotification('Vui lòng chọn file ảnh!', 'error');
+            return;
+        }
+        
+        uploadImageToServer(file);
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `chat-notification ${type}`;
+    notification.innerHTML = `
+        <i class="fa-solid fa-${type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+        ${message}
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+function clearChat() {
+    if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử trò chuyện?')) {
+        showNotification('Tính năng xóa lịch sử sẽ được cập nhật sau!', 'info');
+    }
+}
+
+function exportChat() {
+    showNotification('Tính năng xuất trò chuyện sẽ được cập nhật sau!', 'info');
+}
+
+function toggleNotifications() {
+    showNotification('Tính năng thông báo sẽ được cập nhật sau!', 'info');
+}
+
+function viewImage(imageUrl) {
+    // Create modal for image viewing
+    const modal = document.createElement('div');
+    modal.className = 'image-modal';
+    modal.innerHTML = `
+        <div class="modal-backdrop" onclick="this.parentElement.remove()"></div>
+        <div class="modal-content">
+            <img src="${imageUrl}" alt="Full size image">
+            <button class="modal-close" onclick="this.parentElement.parentElement.remove()">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Add modal styles
+const modalStyles = `
+<style>
+.image-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.modal-content img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.chat-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: #e0eaff;
+    padding: 15px 20px;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    z-index: 9999;
+    animation: slideInRight 0.3s ease;
+    max-width: 300px;
+}
+
+.chat-notification.error {
+    border-color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.search-highlight {
+    background: rgba(0, 243, 255, 0.2);
+    border: 1px solid var(--neon-blue);
+    border-radius: 8px;
+}
+</style>
+`;
+
+document.head.insertAdjacentHTML('beforeend', modalStyles);
+
 </script>
 
 {% endblock %}

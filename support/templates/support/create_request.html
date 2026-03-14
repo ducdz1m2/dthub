@@ -1,90 +1,215 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Create Support Ticket | DTHub{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">
-                        <i class="bi bi-headset me-2"></i>
-                        Tạo yêu cầu hỗ trợ
-                    </h4>
+<style>
+    /* Container & Card */
+    .cyber-card {
+        background: linear-gradient(135deg, rgba(10, 15, 30, 0.9), rgba(5, 9, 20, 0.98));
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(0, 243, 255, 0.2);
+        border-radius: 16px;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        overflow: hidden;
+    }
+
+    .card-header-cyber {
+        background: rgba(0, 243, 255, 0.05);
+        border-bottom: 1px solid rgba(0, 243, 255, 0.2);
+        padding: 2rem;
+    }
+
+    /* Form Styling */
+    .form-label {
+        font-family: 'JetBrains Mono', monospace;
+        color: #a0aec0;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Override Django Widgets */
+    .form-control, .form-select {
+        background: rgba(0, 0, 0, 0.4) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: #e0eaff !important;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-family: 'JetBrains Mono', monospace;
+        transition: 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--neon-blue) !important;
+        box-shadow: 0 0 15px rgba(0, 243, 255, 0.2) !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+    }
+    
+    /* Textarea specific */
+    textarea.form-control {
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    /* Custom File Input */
+    input[type="file"] {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+    input[type="file"]::-webkit-file-upload-button {
+        background: rgba(0, 243, 255, 0.1);
+        color: var(--neon-blue);
+        border: 1px solid var(--neon-blue);
+        border-radius: 4px;
+        padding: 0.3rem 0.8rem;
+        margin-right: 1rem;
+        cursor: pointer;
+        font-family: 'JetBrains Mono', monospace;
+        transition: 0.3s;
+    }
+    input[type="file"]::-webkit-file-upload-button:hover {
+        background: var(--neon-blue);
+        color: #000;
+    }
+
+    /* Attachments Area */
+    .attachment-zone {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    /* Buttons */
+    .btn-cyber-outline {
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #a0aec0;
+        background: rgba(255,255,255,0.05);
+        border-radius: 8px;
+        padding: 0.8rem 2rem;
+        font-family: 'JetBrains Mono', monospace;
+        transition: 0.3s;
+    }
+    .btn-cyber-outline:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+    
+    .btn-cyber-primary {
+        background: rgba(0, 243, 255, 0.1);
+        color: var(--neon-blue);
+        border: 1px solid var(--neon-blue);
+        border-radius: 8px;
+        padding: 0.8rem 2rem;
+        font-family: 'JetBrains Mono', monospace;
+        transition: 0.3s;
+        text-transform: uppercase;
+        font-weight: bold;
+    }
+    .btn-cyber-primary:hover {
+        background: var(--neon-blue);
+        color: #000;
+        box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+    }
+    
+    .btn-add-file {
+        background: rgba(255,255,255,0.05);
+        color: #a0aec0;
+        border: 1px solid rgba(255,255,255,0.1);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        transition: 0.3s;
+    }
+    .btn-add-file:hover {
+        background: rgba(0, 243, 255, 0.1);
+        color: var(--neon-blue);
+        border-color: var(--neon-blue);
+    }
+
+    .text-glow-info { text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
+</style>
+
+<div class="container mt-5 mb-5 relative z-1">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="cyber-card">
+                
+                <div class="card-header-cyber">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="flex-shrink-0" style="width: 50px; height: 50px; background: rgba(0, 243, 255, 0.1); border: 1px solid var(--neon-blue); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-headset text-info fs-3"></i>
+                        </div>
+                        <div>
+                            <h3 class="mb-0 text-white fw-bold text-glow-info font-monospace">INITIATE_SUPPORT_TICKET</h3>
+                            <p class="mb-0 text-secondary font-monospace small">>_ Mở kênh liên lạc trực tiếp với đội ngũ kỹ thuật DTHub.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post" enctype="multipart/form-data">
+
+                <div class="p-4 p-md-5">
+                    <form method="post" enctype="multipart/form-data" id="support-form">
                         {% csrf_token %}
                         
-                        <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label fw-bold">
-                                {{ form.title.label }} <span class="text-danger">*</span>
+                        <div class="mb-4">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">
+                                <i class="bi bi-chat-square-text me-2"></i>{{ form.title.label }} <span class="text-info">*</span>
                             </label>
                             {{ form.title }}
-                            {% if form.title.errors %}
-                                <div class="text-danger small">{{ form.title.errors }}</div>
-                            {% endif %}
+                            <div class="text-danger small font-monospace mt-1">{{ form.title.errors }}</div>
                         </div>
 
-                        <div class="row">
+                        <div class="row g-4 mb-4">
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.category.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.category.label }}
-                                    </label>
-                                    {{ form.category }}
-                                    {% if form.category.errors %}
-                                        <div class="text-danger small">{{ form.category.errors }}</div>
-                                    {% endif %}
-                                </div>
+                                <label for="{{ form.category.id_for_label }}" class="form-label">
+                                    <i class="bi bi-folder2-open me-2"></i>{{ form.category.label }}
+                                </label>
+                                {{ form.category }}
+                                <div class="text-danger small font-monospace mt-1">{{ form.category.errors }}</div>
                             </div>
                             <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="{{ form.priority.id_for_label }}" class="form-label fw-bold">
-                                        {{ form.priority.label }}
-                                    </label>
-                                    {{ form.priority }}
-                                    {% if form.priority.errors %}
-                                        <div class="text-danger small">{{ form.priority.errors }}</div>
-                                    {% endif %}
-                                </div>
+                                <label for="{{ form.priority.id_for_label }}" class="form-label">
+                                    <i class="bi bi-exclamation-circle me-2"></i>{{ form.priority.label }}
+                                </label>
+                                {{ form.priority }}
+                                <div class="text-danger small font-monospace mt-1">{{ form.priority.errors }}</div>
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="{{ form.description.id_for_label }}" class="form-label fw-bold">
-                                {{ form.description.label }} <span class="text-danger">*</span>
+                        <div class="mb-4">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">
+                                <i class="bi bi-text-paragraph me-2"></i>{{ form.description.label }} <span class="text-info">*</span>
                             </label>
                             {{ form.description }}
-                            {% if form.description.errors %}
-                                <div class="text-danger small">{{ form.description.errors }}</div>
-                            {% endif %}
+                            <div class="text-danger small font-monospace mt-1">{{ form.description.errors }}</div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">File đính kèm</label>
-                            {{ formset.management_form }}
-                            <div id="formset-container">
-                                {% for form in formset %}
-                                    <div class="formset-row mb-2">
-                                        {{ form.file }}
-                                        {% if form.file.errors %}
-                                            <div class="text-danger small">{{ form.file.errors }}</div>
-                                        {% endif %}
-                                    </div>
-                                {% endfor %}
+                        <div class="mb-4">
+                            <label class="form-label"><i class="bi bi-paperclip me-2"></i>ATTACHED_DATA (FILES)</label>
+                            <div class="attachment-zone">
+                                {{ formset.management_form }}
+                                <div id="formset-container">
+                                    {% for form in formset %}
+                                        <div class="formset-row mb-3">
+                                            {{ form.file }}
+                                            <div class="text-danger small font-monospace mt-1">{{ form.file.errors }}</div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="button" class="btn btn-add-file mt-2 px-3 py-2" id="add-form">
+                                    <i class="bi bi-plus-circle me-2"></i>ADD_ADDITIONAL_FILE
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="add-form">
-                                <i class="bi bi-plus-circle me-1"></i> Thêm file
-                            </button>
+                            <small class="text-secondary font-monospace d-block mt-2">>_ Hỗ trợ các định dạng: .pdf, .doc, .docx, .jpg, .png, .gif, .txt</small>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="{% url 'my_support_requests' %}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-1"></i> Quay lại
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 pt-4 border-top border-secondary" style="border-color: rgba(255,255,255,0.05) !important;">
+                            <a href="{% url 'my_support_requests' %}" class="btn btn-cyber-outline w-100 w-md-auto text-center">
+                                <i class="bi bi-arrow-left me-2"></i>ABORT_REQUEST
                             </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-send me-1"></i> Gửi yêu cầu
+                            <button type="submit" class="btn btn-cyber-primary w-100 w-md-auto">
+                                <i class="bi bi-send-fill me-2"></i>TRANSMIT_TICKET
                             </button>
                         </div>
                     </form>
@@ -100,10 +225,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const addButton = document.getElementById('add-form');
     const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
     
+    // Xử lý nút Submit
+    const form = document.getElementById('support-form');
+    form.addEventListener('submit', function() {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>TRANSMITTING...';
+        submitBtn.disabled = true;
+    });
+    
+    // Thêm Input file mới
     addButton.addEventListener('click', function() {
         const totalForms = parseInt(totalFormsInput.value);
         const newFormRow = document.createElement('div');
-        newFormRow.className = 'formset-row mb-2';
+        newFormRow.className = 'formset-row mb-3';
         
         const newInput = document.createElement('input');
         newInput.type = 'file';
@@ -113,6 +247,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         newFormRow.appendChild(newInput);
         formsetContainer.appendChild(newFormRow);
+        
+        // Thêm một chút hiệu ứng highlight cho file mới
+        newInput.style.borderColor = 'var(--neon-blue)';
+        setTimeout(() => { newInput.style.borderColor = ''; }, 1000);
         
         totalFormsInput.value = totalForms + 1;
     });

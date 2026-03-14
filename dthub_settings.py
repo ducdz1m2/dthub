@@ -11,3 +11,9 @@ SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000')
 
 # CSRF Trusted Origins for ngrok
 CSRF_TRUSTED_ORIGINS = [os.getenv('CSRF_TRUSTED_ORIGINS')] if os.getenv('CSRF_TRUSTED_ORIGINS') else []
+
+# MQTT Configuration
+MQTT_HOST = os.getenv('MQTT_HOST', 'localhost')
+MQTT_PORT = int(os.getenv('MQTT_PORT', 1883))
+MQTT_USERNAME = os.getenv('MQTT_USERNAME', '')
+MQTT_PASSWORD = os.getenv('MQTT_PASSWORD', '')

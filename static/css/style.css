@@ -3,6 +3,7 @@
   --dt-gradient: linear-gradient(45deg, #006514, #7e017e, #18a6b0);
 }
 
+/* LOGO TÙY CHỈNH */
 .logo {
   font-weight: bold;
   font-size: 1.8rem;
@@ -22,6 +23,7 @@
   filter: drop-shadow(2px 2px 5px #00000055);
 }
 
+/* CAROUSEL (Dành cho các trang cũ nếu còn dùng) */
 .carousel-item { position: relative; }
 
 #carouselExampleIndicators,
@@ -45,7 +47,6 @@
 }
 
 .carousel-caption { z-index: 2; }
-
 .carousel-caption h5,
 .carousel-caption p {
   text-shadow: 0 2px 6px rgba(0,0,0,.8);
@@ -58,44 +59,18 @@
   filter: invert(1);
 }
 
+/* SUMMARY & UTILITIES */
 .summary {
   padding: 20px;
   background-color: antiquewhite;
   border-radius: 15px;
 }
+.ls-1 { letter-spacing: 1px; }
 
-.product-item, .post-item {
-  transition: opacity 0.25s ease, max-height 0.25s ease, transform 0.35s ease, box-shadow 0.35s ease;
-  opacity: 1;
-  overflow: hidden;
-}
-
-.product-item { max-height: 1000px; }
-.post-item { max-height: 800px; }
-
-.product-item.is-hidden, .post-item.is-hidden, .product-item.hide {
-  opacity: 0;
-  pointer-events: none;
-  max-height: 0;
-}
-
-.product-item:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 40px rgba(0,0,0,.15);
-}
-
-.product-item img { transition: transform .35s ease; }
-
-.product-item:hover img:not(.drift-img) { transform: scale(1.05); }
-
-.card .stretched-link { pointer-events: auto; }
-
-.card .btn {
-  position: relative;
-  z-index: 1;
-}
-
-.bg-success {
+/* ĐÃ SỬA: Chuyển hiệu ứng nhịp đập từ class mặc định .bg-success 
+  sang một class riêng biệt (.status-pulse) để không làm vỡ layout Bootstrap 
+*/
+.status-pulse {
   box-shadow: 0 0 0 0 rgba(25, 135, 84, 1);
   animation: pulse-green 2s infinite;
 }
@@ -106,6 +81,19 @@
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
 }
 
+/* ĐÃ XÓA: Các class .product-item { overflow: hidden; max-height: ... } 
+  để nhường quyền điều khiển layout cho Bootstrap Grid và Cyber-Card.
+*/
+.post-item {
+  transition: opacity 0.25s ease, transform 0.35s ease;
+}
+.post-item.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  display: none !important;
+}
+
+/* HIỆU ỨNG DRIFT ZOOM (Kính lúp) */
 .drift-img {
   position: relative;
   z-index: 10 !important;
@@ -154,8 +142,7 @@
   border-color: var(--primary-green) !important;
 }
 
-.ls-1 { letter-spacing: 1px; }
-
+/* BADGES & BUTTONS */
 .bg-success-subtle {
   background-color: #e8f5e9 !important;
   color: var(--primary-green) !important;
@@ -166,7 +153,6 @@
   background: #f8f9fa;
   transition: all 0.3s ease;
 }
-
 .btn-filter.active {
   background: var(--primary-green);
   color: white;
