@@ -30,3 +30,14 @@ env/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Large model files
+models/
+*.faiss
+*.pkl
+*.mdl
+*.fst
+
+# Media files with large sizes
+media/tts/
+media/chat_images/
