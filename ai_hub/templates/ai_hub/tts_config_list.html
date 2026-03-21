@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}DTHub | Cấu hình TTS{% endblock %}
+{% block content %}
+<style>
+.cyber-card { background:linear-gradient(135deg,rgba(10,15,30,.8),rgba(5,9,20,.95)); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.06); border-radius:16px; }
+.card-header-custom { background:rgba(0,243,255,.04); border-bottom:1px solid rgba(0,243,255,.15); padding:1rem 1.5rem; border-radius:16px 16px 0 0; }
+.cfg-card { background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.06); border-radius:12px; transition:.25s; overflow:hidden; }
+.cfg-card:hover { border-color:rgba(25,135,84,.3); box-shadow:0 4px 20px rgba(25,135,84,.07); }
+.cfg-card.is-active { border-left:3px solid #198754; }
+.cfg-card.is-inactive { opacity:.5; }
+.chip { display:flex; flex-direction:column; background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:.5rem .75rem; }
+.chip-lbl { font-size:.6rem; color:#6c757d; letter-spacing:.5px; text-transform:uppercase; font-family:monospace; margin-bottom:.15rem; }
+.chip-val { font-size:.82rem; color:#e2e8f0; font-weight:600; }
+.act-btn { display:inline-flex; align-items:center; gap:.3rem; padding:.3rem .7rem; border-radius:8px; font-size:.78rem; font-weight:600; border:1px solid; text-decoration:none; transition:.2s; background:transparent; }
+.act-btn:hover { transform:translateY(-1px); }
+.act-edit { border-color:rgba(0,243,255,.5); color:#00f3ff; }
+.act-edit:hover { background:rgba(0,243,255,.12); color:#00f3ff; }
+.act-del  { border-color:rgba(220,53,69,.5); color:#dc3545; }
+.act-del:hover  { background:rgba(220,53,69,.12); color:#dc3545; }
+.act-new  { border-color:rgba(25,135,84,.6); color:#198754; }
+.act-new:hover  { background:rgba(25,135,84,.1); color:#198754; }
+</style>
+
+<div class="container mt-4 mb-5">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,.08)">
+        <div>
+            <span class="text-secondary font-monospace d-block mb-1" style="font-size:.72rem;"><i class="fa-solid fa-volume-high me-1 text-success"></i>TTS_CONFIGURATION</span>
+            <h3 class="fw-bold text-white mb-0">Cấu hình Đọc Văn bản</h3>
+        </div>
+        <div class="d-flex gap-2 mt-3 mt-md-0">
+            <a href="{% url 'ai_config_list' %}" class="act-btn act-edit"><i class="fa-solid fa-arrow-left"></i>Quay lại</a>
+            <a href="{% url 'tts_config_create' %}" class="act-btn act-new"><i class="fa-solid fa-plus"></i>Tạo mới</a>
+        </div>
+    </div>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }} alert-dismissible fade show mb-3 rounded-3">{{ m }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}{% endif %}
+
+    <div class="cyber-card">
+        <div class="card-header-custom d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2"><i class="fa-solid fa-volume-high text-success"></i><h5 class="mb-0 fw-bold text-white font-monospace">TTS Configurations</h5></div>
+            <span class="badge bg-transparent border border-success text-success font-monospace px-3">{{ config_count }}</span>
+        </div>
+        <div class="p-4">
+            {% if configs %}
+            <div class="row g-3">
+            {% for config in configs %}
+                <div class="col-md-6 col-xl-4">
+                    <div class="cfg-card {% if config.is_active %}is-active{% else %}is-inactive{% endif %} p-3 h-100 d-flex flex-column gap-3">
+                        <div class="d-flex align-items-start justify-content-between gap-2">
+                            <div>
+                                <div class="fw-bold text-white mb-1">{{ config.name }}</div>
+                                {% if config.is_active %}
+                                    <span style="font-size:.65rem;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(25,135,84,.6);color:#198754;background:rgba(25,135,84,.08);">ACTIVE</span>
+                                {% else %}
+                                    <span style="font-size:.65rem;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(108,117,125,.4);color:#6c757d;background:rgba(108,117,125,.08);">INACTIVE</span>
+                                {% endif %}
+                            </div>
+                            <div class="d-flex gap-1 flex-shrink-0">
+                                <a href="{% url 'tts_config_edit' config.pk %}" class="act-btn act-edit" style="padding:.25rem .55rem;"><i class="fa-solid fa-pen"></i></a>
+                                <a href="{% url 'tts_config_delete' config.pk %}" class="act-btn act-del" style="padding:.25rem .55rem;"><i class="fa-solid fa-trash"></i></a>
+                            </div>
+                        </div>
+                        <div class="row g-2 flex-grow-1">
+                            <div class="col-6"><div class="chip"><span class="chip-lbl">Engine</span><span class="chip-val text-success">{{ config.get_engine_display }}</span></div></div>
+                            <div class="col-6"><div class="chip"><span class="chip-lbl">Ngôn ngữ</span><span class="chip-val text-info">{{ config.get_language_display }}</span></div></div>
+                            <div class="col-4"><div class="chip"><span class="chip-lbl">Speed</span><span class="chip-val text-warning">{{ config.speed }}</span></div></div>
+                            <div class="col-4"><div class="chip"><span class="chip-lbl">Pitch</span><span class="chip-val">{{ config.pitch }}</span></div></div>
+                            <div class="col-4"><div class="chip"><span class="chip-lbl">Volume</span><span class="chip-val">{{ config.volume }}</span></div></div>
+                            {% if config.voice_id %}
+                            <div class="col-12"><div class="chip"><span class="chip-lbl">Voice ID</span><span class="chip-val">{{ config.voice_id }}</span></div></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fa-solid fa-volume-high text-secondary opacity-25 display-4 mb-3 d-block"></i>
+                <p class="text-secondary font-monospace small mb-3">Chưa có cấu hình TTS nào.</p>
+                <a href="{% url 'tts_config_create' %}" class="act-btn act-new mx-auto"><i class="fa-solid fa-plus"></i>Tạo mới</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -14,11 +14,15 @@ def assign_default_tools_to_new_user(sender, instance, created, **kwargs):
     if created:
         try:
             from .models import MCPTool, UserMCPTool
+            from django.db.models import Q
             
-            # Get all enabled tools
-            default_tools = MCPTool.objects.filter(is_enabled=True)
+            # Chỉ gán các tool public từ server thực (không gán built-in)
+            default_tools = MCPTool.objects.filter(
+                is_enabled=True,
+                is_public=True,
+                source_server__isnull=False,
+            )
             
-            # Create UserMCPTool for each default tool
             for tool in default_tools:
                 UserMCPTool.objects.get_or_create(
                     user=instance,

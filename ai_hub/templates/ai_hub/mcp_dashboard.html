@@ -64,8 +64,10 @@
         border-top: 4px solid var(--neon-blue);
     }
     .mcp-node-card.public { border-top-color: #ffc107; }
+    .mcp-node-card.disabled { border-top-color: #6c757d; opacity: 0.55; filter: grayscale(0.4); }
     .mcp-node-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,243,255,0.15); }
     .mcp-node-card.public:hover { box-shadow: 0 10px 30px rgba(255,193,7,0.15); }
+    .mcp-node-card.disabled:hover { transform: none; box-shadow: none; }
 
     .server-status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px currentColor; }
     .server-status-dot.online { background-color: #20c997; color: #20c997; animation: pulse 2s infinite; }
@@ -89,6 +91,7 @@
     .btn-mini-action:hover { border-color: var(--neon-blue); color: var(--neon-blue); background: rgba(0,243,255,0.1); }
     .btn-mini-action.danger:hover { border-color: #dc3545; color: #dc3545; background: rgba(220,53,69,0.1); }
     .btn-mini-action.success:hover { border-color: #20c997; color: #20c997; background: rgba(32,201,151,0.1); }
+    .btn-mini-action.warning:hover { border-color: #ffc107; color: #ffc107; background: rgba(255,193,7,0.1); }
 
     /* Glow Text */
     .text-glow-info { text-shadow: 0 0 10px rgba(0, 243, 255, 0.5); }
@@ -125,18 +128,18 @@
             </h2>
         </div>
         
-        <div class="d-flex gap-2 mt-3 mt-md-0">
-            <a href="{% url 'ai_dashboard' %}" class="btn btn-outline-info rounded-pill px-4 font-monospace">
-                <i class="fa-solid fa-house me-1"></i> BẢNG ĐIỀU KHIỂN
+        <div class="d-flex gap-2 mt-3 mt-md-0 flex-wrap">
+            <a href="{% url 'ai_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3 font-monospace">
+                <i class="fa-solid fa-house me-1"></i> Dashboard
             </a>
+            <a href="{% url 'mcp_public_tools' %}" class="btn btn-outline-warning rounded-pill px-3 font-monospace">
+                <i class="fa-solid fa-toolbox me-1"></i> Thư viện
+            </a>
+            <button onclick="syncAll(this)" class="btn btn-outline-info rounded-pill px-4 font-monospace" title="Quét node mới + kiểm tra sức khoẻ tất cả node đã đăng ký">
+                <i class="bi bi-arrow-repeat me-1"></i> Đồng bộ
+            </button>
             <a href="{% url 'create_mcp_server' %}" class="btn btn-neon rounded-pill px-4 font-monospace">
-                <i class="fa-solid fa-plus me-1"></i> THÊM NODE
-            </a>
-            <a href="{% url 'mcp_discover_servers' %}" class="btn btn-neon rounded-pill px-4 font-monospace">
-                <i class="fa-solid fa-magnifying-glass me-1"></i> QUÉT NODE
-            </a>
-            <a href="{% url 'mcp_public_tools' %}" class="btn btn-outline-warning rounded-pill px-4 font-monospace">
-                <i class="fa-solid fa-toolbox me-1"></i> THƯ VIỆN CÔNG CỤ
+                <i class="fa-solid fa-plus me-1"></i> Thêm node
             </a>
         </div>
     </div>
@@ -156,35 +159,23 @@
         </div>
         <div class="col-md-3 col-6">
             <div class="tech-stat-box text-center h-100" style="border-left-color: var(--neon-purple);">
-                <div class="stat-number" style="color: #e0eaff; text-shadow: 0 0 15px var(--neon-purple);" id="toolsCount">{{ tools|length }}</div>
+                <div class="stat-number" style="color: #e0eaff; text-shadow: 0 0 15px var(--neon-purple);" id="toolsCount">{{ total_tools_count }}</div>
                 <div class="stat-label">TOOLS SẴN CÓ</div>
             </div>
         </div>
         <div class="col-md-3 col-6">
             <div class="tech-stat-box text-center h-100" style="border-left-color: #ffc107;">
-                <div class="stat-number text-warning text-glow-warning" id="resourcesCount">{{ resources|length }}</div>
+                <div class="stat-number text-warning text-glow-warning" id="resourcesCount">{{ total_resources_count }}</div>
                 <div class="stat-label">TÀI NGUYÊN</div>
             </div>
-        </div>
-    </div>
-
-    <div class="cyber-card p-4 mb-5 shadow-lg">
-        <h6 class="mb-3 text-secondary font-monospace"><i class="bi bi-terminal-fill me-2"></i>BẢNG LỆNH NHANH</h6>
-        <div class="d-flex flex-wrap gap-3">
-            <button onclick="discoverServers()" class="btn btn-cmd">
-                <i class="bi bi-radar text-info me-2"></i>>_ chạy: quét_mạng
-            </button>
-            <button onclick="healthCheck()" class="btn btn-cmd success">
-                <i class="bi bi-heart-pulse text-success me-2"></i>>_ chạy: kiểm_tra_sức_khỏe
-            </button>
         </div>
     </div>
 
     {% if discovered_count > 0 %}
     <div class="discovered-alert mb-5 d-flex justify-content-between align-items-center">
         <div>
-            <h6 class="mb-1 text-warning fw-bold font-monospace"><i class="bi bi-exclamation-triangle-fill me-2"></i>PHÁT HIỆN NODE MỚI</h6>
-            <p class="mb-0 text-secondary small font-monospace">> Phát hiện {{ discovered_count }} MCP servers mới trong dải mạng nội bộ.</p>
+            <h6 class="mb-1 text-warning fw-bold font-monospace"><i class="bi bi-exclamation-triangle-fill me-2"></i>Phát hiện node mới</h6>
+            <p class="mb-0 text-secondary small font-monospace">Phát hiện {{ discovered_count }} MCP server mới trong mạng nội bộ.</p>
         </div>
         <span class="badge bg-warning text-dark font-monospace fs-6 px-3 py-2 rounded-pill shadow-sm" style="animation: pulse 2s infinite;">+{{ discovered_count }}</span>
     </div>
@@ -194,19 +185,21 @@
         {% if servers %}
             {% for server in servers %}
             <div class="col-xl-4 col-lg-6 mb-2">
-                <div class="cyber-card mcp-node-card h-100 d-flex flex-column {% if server.is_public %}public{% endif %}" data-device-id="{{ server.device_id }}">
+                <div class="cyber-card mcp-node-card h-100 d-flex flex-column {% if server.is_public %}public{% endif %}{% if not server.db_is_active %} disabled{% endif %}" data-device-id="{{ server.device_id }}">
                     <div class="card-header-custom d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-server {% if server.is_public %}text-warning{% else %}text-info{% endif %} fs-5"></i>
                             <h6 class="mb-0 fw-bold text-white font-monospace text-truncate" style="max-width: 180px;">{{ server.name }}</h6>
                         </div>
                         <div class="d-flex align-items-center gap-3">
-                            {% if server.is_public %}
+                            {% if not server.db_is_active %}
+                                <span class="badge bg-secondary font-monospace" style="font-size: 0.65rem;">DISABLED</span>
+                            {% elif server.is_public %}
                                 <span class="badge bg-transparent border border-warning text-warning font-monospace" style="font-size: 0.65rem;">CÔNG KHAI</span>
                             {% else %}
                                 <span class="badge bg-transparent border border-info text-info font-monospace" style="font-size: 0.65rem;">RIÊNG TƯ</span>
                             {% endif %}
-                            <div class="server-status-dot {% if server.is_online %}online{% else %}offline{% endif %}" title="{% if server.is_online %}Đang online{% else %}Offline{% endif %}"></div>
+                            <div class="server-status-dot {% if server.db_is_active and server.is_online %}online{% else %}offline{% endif %}" title="{% if server.db_is_active and server.is_online %}Đang online{% elif not server.db_is_active %}Disabled{% else %}Offline{% endif %}"></div>
                         </div>
                     </div>
                     
@@ -216,8 +209,8 @@
                             <span class="tech-val text-info text-truncate ms-3" style="max-width: 150px;" title="{{ server.device_id }}">{{ server.device_id }}</span>
                         </div>
                         <div class="tech-list-item">
-                            <span class="tech-key"><i class="bi bi-ethernet me-2"></i>IP:PORT</span>
-                            <span class="tech-val">{{ server.ip_address }}:{{ server.port }}</span>
+                            <span class="tech-key"><i class="bi bi-ethernet me-2"></i>ENDPOINT</span>
+                            <span class="tech-val">{{ server.endpoint|default:"-" }}</span>
                         </div>
                         <div class="tech-list-item">
                             <span class="tech-key"><i class="bi bi-wrench me-2"></i>MODULES</span>
@@ -247,6 +240,9 @@
                                 <i class="bi bi-arrow-clockwise"></i>
                             </button>
                             {% if request.user.is_superuser %}
+                            <button onclick="toggleServer('{{ server.device_id }}', this)" class="btn-mini-action {% if server.db_is_active %}warning{% else %}success{% endif %}" title="{% if server.db_is_active %}Disable server{% else %}Enable server{% endif %}">
+                                <i class="bi {% if server.db_is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
+                            </button>
                             <button onclick="deleteServer('{{ server.device_id }}')" class="btn-mini-action danger" title="Xóa node">
                                 <i class="bi bi-trash"></i>
                             </button>
@@ -260,11 +256,11 @@
             <div class="col-12">
                 <div class="cyber-card p-5 text-center">
                     <i class="bi bi-router text-secondary opacity-25 mb-4 d-block" style="font-size: 5rem;"></i>
-                    <h4 class="text-white font-monospace mb-3 text-glow-info">CHƯA CÓ NODE</h4>
-                    <p class="text-secondary font-monospace mb-4">> Chưa có bất kỳ MCP Server nào được cấu hình trong mạng lõi.</p>
+                    <h4 class="text-white font-monospace mb-3 text-glow-info">Chưa có node nào</h4>
+                    <p class="text-secondary font-monospace mb-4">Chưa có MCP Server nào được cấu hình trong hệ thống.</p>
                     <div class="d-flex gap-3 justify-content-center">
-                        <button onclick="discoverServers()" class="btn btn-outline-info rounded-pill px-4 font-monospace">
-                            <i class="bi bi-radar me-2"></i>QUÉT MẠNG
+                        <button onclick="syncAll(this)" class="btn btn-outline-info rounded-pill px-4 font-monospace">
+                            <i class="bi bi-arrow-repeat me-2"></i>Đồng bộ
                         </button>
                         <a href="{% url 'create_mcp_server' %}" class="btn btn-neon rounded-pill px-4 fw-bold shadow-lg">
                             <i class="bi bi-plus-lg me-2"></i>THIẾT LẬP THỦ CÔNG
@@ -320,41 +316,55 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() { refreshAllServers(); }, 30000);
 });
 
-async function discoverServers() {
-    showToast('>_ đang quét mạng...', 'info');
-    try {
-        const response = await fetch('/ai/mcp/discover/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }
-        });
-        const result = await response.json();
-        
-        if (result.status === 'success') {
-            showToast(`[OK] Đã phát hiện ${result.discovered_count} node mới.`, 'success');
-            if (result.discovered_count > 0) setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast('[LỖI] Quét mạng thất bại: ' + result.message, 'error');
-        }
-    } catch (error) { showToast('[LỖI] Lỗi mạng: ' + error.message, 'error'); }
-}
+// Gộp quét node mới + ping/refresh từng node (dùng đúng logic nút Refresh) vào 1 nút
+async function syncAll(btn) {
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Đang đồng bộ...'; }
+    const headers = { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') };
 
-async function healthCheck() {
-    showToast('>_ đang kiểm tra toàn bộ node...', 'info');
     try {
-        const response = await fetch('/ai/mcp/health/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }
-        });
-        const result = await response.json();
-        
-        if (result.status === 'success') {
-            const summary = result.summary;
-            showToast(`[OK] Trạng thái: ${summary.online_servers}/${summary.total_servers} node đang hoạt động.`, 'success');
-            setTimeout(() => location.reload(), 1500);
-        } else {
-            showToast('[LỖI] Kiểm tra sức khỏe thất bại.', 'error');
+        // Bước 1: quét node mới
+        const discoverRes = await fetch('/ai/mcp/discover/', { method: 'POST', headers });
+        const discoverData = await discoverRes.json();
+        if (discoverData.status === 'success' && discoverData.discovered_count > 0) {
+            showToast(`[OK] Phát hiện ${discoverData.discovered_count} node mới.`, 'success');
         }
-    } catch (error) { showToast('[LỖI] Lỗi mạng: ' + error.message, 'error'); }
+
+        // Bước 2: ping + load tools/resources cho tất cả node — dùng đúng endpoint của nút Refresh
+        const cards = document.querySelectorAll('[data-device-id]');
+        const deviceIds = [...new Set([...cards].map(c => c.dataset.deviceId).filter(Boolean))];
+
+        if (deviceIds.length > 0) {
+            const results = await Promise.allSettled(
+                deviceIds.map(deviceId =>
+                    fetch(`/ai/mcp/server/${deviceId}/refresh/`, { method: 'POST', headers })
+                        .then(r => r.json())
+                        .then(data => ({ deviceId, ...data }))
+                        .catch(() => ({ deviceId, status: 'error' }))
+                )
+            );
+
+            let online = 0;
+            results.forEach(r => {
+                const val = r.value || {};
+                const card = document.querySelector(`[data-device-id="${val.deviceId}"]`);
+                const dot = card?.querySelector('.server-status-dot');
+                if (val.status === 'success') {
+                    online++;
+                    if (dot) { dot.className = 'server-status-dot online'; dot.title = 'Đang online'; }
+                } else {
+                    if (dot) { dot.className = 'server-status-dot offline'; dot.title = 'Offline'; }
+                }
+            });
+
+            showToast(`[OK] ${online}/${deviceIds.length} node online, tools đã được load.`, 'success');
+            updateStats();
+        }
+
+        setTimeout(() => location.reload(), 1500);
+    } catch (error) {
+        showToast('[LỖI] Đồng bộ thất bại: ' + error.message, 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đồng bộ'; }
+    }
 }
 
 async function viewServer(deviceId) {
@@ -366,13 +376,29 @@ async function viewServer(deviceId) {
     } catch (error) { showToast('[LỖI] Không thể tải chi tiết node.', 'error'); }
 }
 
+async function toggleServer(deviceId, btn) {
+    try {
+        const res = await fetch(`/ai/mcp/server/${deviceId}/toggle/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showToast(data.is_active ? `[OK] Server ${deviceId.substring(0,8)}... đã bật.` : `[OK] Server ${deviceId.substring(0,8)}... đã tắt.`, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast('[LỖI] ' + (data.error || 'Toggle thất bại'), 'error');
+        }
+    } catch (e) { showToast('[LỖI] ' + e.message, 'error'); }
+}
+
 async function refreshServer(deviceId, callback) {
     const card = document.querySelector(`[data-device-id="${deviceId}"]`);
     const btn = card?.querySelector('button[onclick*="refreshServer"]');
     if (btn) btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
     
     try {
-        const response = await fetch(`/ai/mcp/refresh/${deviceId}/`, {
+        const response = await fetch(`/ai/mcp/server/${deviceId}/refresh/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }
         });
@@ -400,8 +426,8 @@ async function showToolsModal(deviceId) {
     
     try {
         const [toolsRes, resourcesRes] = await Promise.all([
-            fetch(`/ai/mcp/tools/${deviceId}/`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') } }),
-            fetch(`/ai/mcp/resources/${deviceId}/`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') } })
+            fetch(`/ai/mcp/server/${deviceId}/tools/`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') } }),
+            fetch(`/ai/mcp/server/${deviceId}/resources/`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') } })
         ]);
         
         const toolsResult = await toolsRes.json();
@@ -589,7 +615,7 @@ async function executeTool(toolName) {
     
     showToast(`>_ đang chạy ${toolName}...`, 'info');
     try {
-        const response = await fetch(`/ai/mcp/call/${currentServerId}/`, {
+        const response = await fetch(`/ai/mcp/server/${currentServerId}/call/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify({ tool_name: toolName, arguments: args, use_mqtt: false })
@@ -610,7 +636,7 @@ async function executeTool(toolName) {
 async function deleteServer(deviceId) {
     if (!confirm('CẢNH BÁO: Xóa MCP Server này khỏi mạng lưới? Thao tác không thể hoàn tác.')) return;
     try {
-        const response = await fetch(`/ai/mcp/unregister/${deviceId}/`, {
+        const response = await fetch(`/ai/mcp/server/${deviceId}/unregister/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }
         });

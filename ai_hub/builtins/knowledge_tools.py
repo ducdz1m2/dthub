@@ -9,7 +9,16 @@ def tools() -> List[Dict[str, Any]]:
     return [
         {
             "name": "wiki_search",
-            "description": "Tìm bài viết Wikipedia theo từ khóa.",
+            "description": "Tìm kiếm và tra cứu thông tin về nhân vật, sự kiện lịch sử, khái niệm khoa học, địa danh, tổ chức qua Wikipedia.",
+            "keywords": [
+                "là ai", "là gì", "là người", "là nhà", "là tổ chức",
+                "nhân vật", "người nổi tiếng", "nhà khoa học", "nhà phát minh",
+                "lịch sử", "sự kiện", "chiến tranh", "cách mạng",
+                "khoa học", "phát minh", "khám phá", "lý thuyết",
+                "địa danh", "quốc gia", "thành phố", "châu lục",
+                "wikipedia", "wiki", "tìm kiếm", "tra cứu",
+                "cho tôi biết về", "giới thiệu về", "thông tin về",
+            ],
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -22,7 +31,11 @@ def tools() -> List[Dict[str, Any]]:
         },
         {
             "name": "wiki_summary",
-            "description": "Lấy tóm tắt Wikipedia theo tiêu đề trang.",
+            "description": "Lấy tóm tắt chi tiết về một chủ đề, nhân vật, sự kiện từ Wikipedia.",
+            "keywords": [
+                "tóm tắt", "tóm lược", "mô tả", "giới thiệu",
+                "wiki summary", "wikipedia", "nội dung về", "thông tin về",
+            ],
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -53,6 +66,12 @@ def _wiki_base(lang: str) -> str:
     return f"https://{lang}.wikipedia.org"
 
 
+_WIKI_HEADERS = {
+    "User-Agent": "DTHub-Assistant/1.0 (https://github.com/dthub; contact@dthub.io) python-requests/2.x",
+    "Accept": "application/json",
+}
+
+
 def call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     args = arguments or {}
 
@@ -80,6 +99,7 @@ def call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
                 "utf8": 1,
                 "srlimit": limit_n,
             },
+            headers=_WIKI_HEADERS,
             timeout=7,
         )
         r.raise_for_status()
@@ -96,6 +116,27 @@ def call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
                         "url": f"{base}/wiki/{title.replace(' ', '_')}",
                     }
                 )
+
+        if not results:
+            return {"query": query, "lang": lang, "results": [], "summary": None}
+
+        # Tự động lấy summary của kết quả đầu tiên
+        top_title = results[0]["title"]
+        try:
+            sum_url = f"{base}/api/rest_v1/page/summary/{top_title.replace(' ', '_')}"
+            sr = requests.get(sum_url, timeout=7, headers=_WIKI_HEADERS)
+            if sr.status_code == 200:
+                sd = sr.json()
+                summary = sd.get("extract", "")
+                page_url = (sd.get("content_urls") or {}).get("desktop", {}).get("page", results[0]["url"])
+                return {
+                    "query": query, "lang": lang,
+                    "title": top_title, "summary": summary, "url": page_url,
+                    "other_results": [r["title"] for r in results[1:3]],
+                }
+        except Exception:
+            pass
+
         return {"query": query, "lang": lang, "results": results}
 
     if tool_name == "wiki_summary":
@@ -105,7 +146,7 @@ def call(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         lang = (args.get("lang") or "").strip() or "vi"
         base = _wiki_base(lang)
         url = f"{base}/api/rest_v1/page/summary/{title.replace(' ', '_')}"
-        r = requests.get(url, timeout=7, headers={"Accept": "application/json"})
+        r = requests.get(url, timeout=7, headers=_WIKI_HEADERS)
         if r.status_code == 404:
             return {"title": title, "lang": lang, "found": False}
         r.raise_for_status()

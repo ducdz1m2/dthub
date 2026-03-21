@@ -41,3 +41,45 @@ models/
 # Media files with large sizes
 media/tts/
 media/chat_images/
+media/rag_documents/
+
+# Hypothesis test artifacts
+.hypothesis/
+
+# Temp/debug/test scripts at root level
+check_*.py
+debug_*.py
+test_*.py
+create_default_configs.py
+find_emojis.py
+test_builtins.py
+test_kin.py
+test_patterns.py
+test_tools.py
+
+# Output/log text files
+check_out.txt
+score_err.txt
+test_out.txt
+routing_output.txt
+tool_descriptions.txt
+tool_status.txt
+tools_final.txt
+tools_list.txt
+tools_output*.txt
+test_japanese.txt
+
+# One-off scripts
+fix_llm_column.py
+debug_ca.py
+voice_service.py
+run_services.bat
+
+# Services directory (managed separately outside repo)
+services/
+
+# mcp_servers (managed separately outside repo)
+mcp_servers/
+
+# mcp_samples
+mcp_samples/

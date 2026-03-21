@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Knowledge Base - DTHub{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 640px;">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{% url 'kb_list' %}" class="btn btn-outline-secondary font-monospace btn-sm">
+            <i class="fa-solid fa-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold text-white font-monospace mb-0">
+            <i class="fa-solid fa-database text-warning me-2"></i>{{ action }} Knowledge Base
+        </h2>
+    </div>
+
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-danger alert-dismissible fade show font-monospace" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="cyber-card p-4">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label text-secondary font-monospace small">Tên bộ tri thức *</label>
+                <input type="text" name="name" class="form-control bg-transparent text-white border-secondary font-monospace"
+                       value="{{ kb.name|default:'' }}" placeholder="VD: Lịch sử Việt Nam" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-secondary font-monospace small">
+                    Namespace * {% if kb %}<span class="text-warning">(không thể đổi sau khi tạo)</span>{% endif %}
+                </label>
+                <input type="text" name="namespace" class="form-control bg-transparent text-white border-secondary font-monospace"
+                       value="{{ kb.namespace|default:'' }}" placeholder="VD: kb_history"
+                       {% if kb %}readonly style="opacity:0.6;"{% else %}required{% endif %}>
+                <div class="form-text text-secondary font-monospace" style="font-size:0.75rem;">
+                    Chỉ dùng chữ thường, số và dấu gạch dưới. VD: kb_physics, kb_history
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label text-secondary font-monospace small">Mô tả</label>
+                <textarea name="description" class="form-control bg-transparent text-white border-secondary font-monospace"
+                          rows="3" placeholder="Mô tả nội dung bộ tri thức này...">{{ kb.description|default:'' }}</textarea>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <label class="form-label text-secondary font-monospace small">Danh mục</label>
+                    <input type="text" name="category" class="form-control bg-transparent text-white border-secondary font-monospace"
+                           value="{{ kb.category|default:'General' }}" placeholder="General">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-secondary font-monospace small">Icon (Font Awesome)</label>
+                    <input type="text" name="icon" class="form-control bg-transparent text-white border-secondary font-monospace"
+                           value="{{ kb.icon|default:'fa-book' }}" placeholder="fa-book">
+                </div>
+            </div>
+            <div class="d-flex gap-4 mb-4">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="is_public" id="isPublic"
+                           {% if kb.is_public or not kb %}checked{% endif %}>
+                    <label class="form-check-label text-secondary font-monospace small" for="isPublic">
+                        Công khai (user có thể thêm)
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="is_system" id="isSystem"
+                           {% if kb.is_system %}checked{% endif %}>
+                    <label class="form-check-label text-secondary font-monospace small" for="isSystem">
+                        System (tự động áp dụng cho mọi user)
+                    </label>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning font-monospace">
+                    <i class="fa-solid fa-save me-2"></i>Lưu
+                </button>
+                <a href="{% url 'kb_list' %}" class="btn btn-outline-secondary font-monospace">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+<style>
+.cyber-card { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+.form-control:focus { border-color: #ffc107 !important; box-shadow: 0 0 0 0.2rem rgba(255,193,7,0.15); }
+</style>
+{% endblock %}

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ESP32Device, SensorData, DeviceCommand, ChatSession, ChatMessage
+from .models import ESP32Device, SensorData, DeviceCommand, ChatSession, ChatMessage, LLMConfiguration
 
 
 @admin.register(ESP32Device)
@@ -15,7 +15,7 @@ class ESP32DeviceAdmin(admin.ModelAdmin):
             'fields': ('device_id', 'name', 'device_type')
         }),
         ('Network', {
-            'fields': ('ip_address', 'mqtt_topic')
+            'fields': ('ip_address',)
         }),
         ('Status', {
             'fields': ('location', 'is_active', 'last_seen')
@@ -66,3 +66,16 @@ class ChatMessageAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('session')
+
+
+@admin.register(LLMConfiguration)
+class LLMConfigurationAdmin(admin.ModelAdmin):
+    list_display = ['name', 'model', 'router_model', 'router_timeout', 'is_active']
+    fieldsets = (
+        ('Model Configuration', {
+            'fields': ('name', 'model', 'temperature', 'max_tokens', 'response_language', 'system_prompt', 'is_active')
+        }),
+        ('Router Configuration', {
+            'fields': ('router_model', 'router_timeout')
+        }),
+    )

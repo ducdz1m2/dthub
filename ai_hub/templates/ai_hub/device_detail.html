@@ -32,7 +32,7 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="status-dot" style="width:10px; height:10px; background:var(--neon-blue); border-radius:50%; box-shadow:0 0 8px var(--neon-blue); animation: pulse 2s infinite;"></span>
-                <span class="text-secondary font-monospace small">DEVICE_SPECIFIC_CONFIGURATION</span>
+                <span class="text-secondary font-monospace small">Cấu hình thiết bị</span>
             </div>
             <h2 class="fw-bold text-white mb-0 text-glow-info">
                 <i class="fa-solid fa-microchip me-2"></i> {{ device.name }} 
@@ -41,10 +41,10 @@
         
         <div class="d-flex gap-2 mt-3 mt-md-0">
             <a href="{% url 'device_management' %}" class="btn btn-outline-secondary rounded-pill px-4 font-monospace">
-                <i class="fa-solid fa-arrow-left me-1"></i> BACK_TO_NODES
+                <i class="fa-solid fa-arrow-left me-1"></i> Quay lại
             </a>
             <a href="{% url 'ai_dashboard' %}" class="btn btn-outline-info rounded-pill px-4 font-monospace">
-                <i class="fa-solid fa-house me-1"></i> DASHBOARD
+                <i class="fa-solid fa-house me-1"></i> Bảng điều khiển
             </a>
         </div>
     </div>
@@ -86,6 +86,9 @@
                 </div>
                 <hr class="border-secondary opacity-25">
                 <div class="d-grid gap-2">
+                    <button onclick="pingDevice('{{ device.device_id }}')" class="btn btn-outline-success rounded-pill" id="pingBtn">
+                        <i class="fa-solid fa-satellite-dish me-2"></i>Kiểm tra kết nối
+                    </button>
                     <a href="{% url 'device_sensor_data' device.device_id %}" class="btn btn-outline-info rounded-pill">
                         <i class="fa-solid fa-chart-line me-2"></i>Xem dữ liệu cảm biến
                     </a>
@@ -95,11 +98,50 @@
 
         <!-- Quản lý nhãn điều khiển -->
         <div class="col-lg-8">
+            <div class="cyber-card mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="text-white fw-bold mb-0 text-glow-info"><i class="fa-solid fa-sliders me-2 text-warning"></i>Điều khiển thiết bị</h4>
+                    {% if device.ip_address %}
+                        <span class="badge bg-transparent border border-success text-success font-monospace">{{ device.ip_address }}</span>
+                    {% else %}
+                        <span class="badge bg-transparent border border-danger text-danger font-monospace">Chưa có IP</span>
+                    {% endif %}
+                </div>
+
+                {% if labels %}
+                <div class="row g-3 mb-2" id="controlPanel">
+                    {% for label in labels %}
+                    {% if label.is_active %}
+                    <div class="col-sm-6 col-md-4">
+                        <div class="p-3 rounded-3 text-center" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08);">
+                            <div class="text-secondary small font-monospace mb-1">{{ label.channel }}</div>
+                            <div class="text-white fw-bold mb-3">{{ label.label }}</div>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <button class="btn btn-sm btn-outline-success rounded-pill px-3 font-monospace"
+                                        onclick="controlDevice('{{ device.device_id }}', '{{ label.channel }}', 'on', this)">
+                                    <i class="fa-solid fa-power-off me-1"></i>Bật
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger rounded-pill px-3 font-monospace"
+                                        onclick="controlDevice('{{ device.device_id }}', '{{ label.channel }}', 'off', this)">
+                                    <i class="fa-solid fa-power-off me-1"></i>Tắt
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div id="controlResult" class="mt-2 font-monospace small text-secondary"></div>
+                {% else %}
+                <p class="text-secondary font-monospace small">Chưa có nhãn nào — thêm nhãn bên dưới để điều khiển.</p>
+                {% endif %}
+            </div>
+
             <div class="cyber-card">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="text-white fw-bold mb-0 text-glow-info"><i class="fa-solid fa-tags me-2 text-info"></i>Nhãn điều khiển (Relays/GPIO)</h4>
                     <button class="btn btn-neon btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addLabelModal">
-                        <i class="fa-solid fa-plus me-1"></i> THÊM NHÃN MỚI
+                        <i class="fa-solid fa-plus me-1"></i> Thêm nhãn
                     </button>
                 </div>
 
@@ -112,9 +154,9 @@
                             </div>
                             <div class="d-flex align-items-center gap-3">
                                 {% if label.is_active %}
-                                    <span class="text-success small font-monospace"><i class="fa-solid fa-circle-check me-1"></i>ACTIVE</span>
+                                    <span class="text-success small font-monospace"><i class="fa-solid fa-circle-check me-1"></i>Đang bật</span>
                                 {% else %}
-                                    <span class="text-secondary small font-monospace"><i class="fa-solid fa-circle-xmark me-1"></i>INACTIVE</span>
+                                    <span class="text-secondary small font-monospace"><i class="fa-solid fa-circle-xmark me-1"></i>Tắt</span>
                                 {% endif %}
                                 <a href="{% url 'delete_device_label' label.pk %}" class="btn btn-outline-danger btn-sm border-0" onclick="return confirm('Bạn có chắc chắn muốn xóa nhãn này?')">
                                     <i class="fa-solid fa-trash-can"></i>
@@ -125,7 +167,7 @@
                         <div class="text-center py-5 opacity-50">
                             <i class="fa-solid fa-tag fs-1 mb-3"></i>
                             <p>Thiết bị này chưa có nhãn điều khiển nào.</p>
-                            <p class="small">Hãy thêm nhãn (VD: relay1 -> Quạt) để AI có thể điều khiển bằng giọng nói.</p>
+                            <p class="small">Hãy thêm nhãn (VD: relay1 → Quạt) để AI có thể điều khiển bằng giọng nói.</p>
                         </div>
                     {% endfor %}
                 </div>
@@ -142,19 +184,19 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background: #0a0f1e; border: 1px solid var(--neon-blue);">
             <div class="modal-header border-bottom border-secondary">
-                <h5 class="modal-title text-white"><i class="fa-solid fa-tag me-2 text-info"></i>THÊM NHÃN ĐIỀU KHIỂN</h5>
+                <h5 class="modal-title text-white"><i class="fa-solid fa-tag me-2 text-info"></i>Thêm nhãn điều khiển</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{% url 'add_device_label' device.device_id %}" method="POST">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label text-secondary small">MÃ KÊNH (VD: relay1, relay2, gpio13)</label>
+                        <label class="form-label text-secondary small">Mã kênh (VD: relay1, relay2, gpio13)</label>
                         {{ form.channel }}
                         <div class="form-text text-muted small">Mã lệnh thực tế mà ESP8266 nhận (VD: relay1_on).</div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label text-secondary small">TÊN NHÃN (VD: Quạt trần, Đèn chùm)</label>
+                        <label class="form-label text-secondary small">Tên nhãn (VD: Quạt trần, Đèn chùm)</label>
                         {{ form.label }}
                         <div class="form-text text-muted small">Tên bạn sẽ dùng để gọi chatbot điều khiển.</div>
                     </div>
@@ -164,11 +206,82 @@
                     </div>
                 </div>
                 <div class="modal-footer border-top border-secondary">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">HỦY</button>
-                    <button type="submit" class="btn btn-neon rounded-pill px-4">LƯU NHÃN</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-neon rounded-pill px-4">Lưu nhãn</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function pingDevice(deviceId) {
+    const btn = document.getElementById('pingBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang kiểm tra...';
+    try {
+        const resp = await fetch(`/ai/devices/${deviceId}/ping/`, {
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const data = await resp.json();
+        const result = document.getElementById('controlResult');
+        if (data.status === 'success') {
+            result.innerHTML = `<span class="text-success"><i class="fa-solid fa-check me-1"></i>${data.message}</span>`;
+        } else {
+            result.innerHTML = `<span class="text-danger"><i class="fa-solid fa-xmark me-1"></i>${data.message}</span>`;
+        }
+    } catch (e) {
+        document.getElementById('controlResult').innerHTML = `<span class="text-danger">Lỗi kết nối: ${e.message}</span>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+    }
+}
+
+async function controlDevice(deviceId, channel, action, btn) {
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    try {
+        const response = await fetch(`/ai/devices/${deviceId}/command/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ command: `${channel}_${action}`, parameters: {} })
+        });
+        const data = await response.json();
+        const result = document.getElementById('controlResult');
+        if (data.status === 'success') {
+            result.innerHTML = `<span class="text-success"><i class="fa-solid fa-check me-1"></i>Đã gửi lệnh ${action === 'on' ? 'bật' : 'tắt'} ${channel}</span>`;
+        } else {
+            result.innerHTML = `<span class="text-danger"><i class="fa-solid fa-xmark me-1"></i>${data.message || 'Lỗi gửi lệnh'}</span>`;
+        }
+    } catch (e) {
+        document.getElementById('controlResult').innerHTML = `<span class="text-danger">Lỗi kết nối: ${e.message}</span>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        for (const cookie of document.cookie.split(';')) {
+            const c = cookie.trim();
+            if (c.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(c.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
 {% endblock %}

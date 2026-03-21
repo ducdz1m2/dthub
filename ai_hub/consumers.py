@@ -327,57 +327,6 @@ class VoiceStreamConsumer(AsyncWebsocketConsumer):
             print(f"[FAIL] WAV creation failed: {e}")
             return None
     
-    async def process_with_llm(self, text):
-        """Process text với LLM"""
-        try:
-            # Import here để avoid circular import
-            from .rag_mcp_integration import rag_mcp_service
-            
-            # Smart routing
-            try:
-                selected_tool, confidence = rag_mcp_service.dispatcher.smart_route(text)
-            except Exception as e:
-                print(f"[FAIL] Smart routing failed: {e}")
-                selected_tool = "default"
-                confidence = 0.5
-            
-            if selected_tool in rag_mcp_service.dispatcher.tools:
-                handler = rag_mcp_service.dispatcher.tools[selected_tool]["handler"]
-                
-                try:
-                    if selected_tool == "rag_search":
-                        if rag_mcp_service.retriever:
-                            prompt = handler(text, rag_mcp_service.retriever)
-                        else:
-                            prompt = "Xin lỗi, database tìm kiếm chưa được tải."
-                    else:
-                        prompt = handler(text)
-                except Exception as e:
-                    print(f"[FAIL] Handler error: {e}")
-                    prompt = text
-            else:
-                prompt = text
-            
-            # Generate response
-            try:
-                import ollama
-                stream = ollama.chat(
-                    model="qwen2.5:1.5b",
-                    messages=[{"role": "user", "content": prompt}],
-                    stream=False,
-                    options={"temperature": 0.1, "num_predict": 250}
-                )
-                response = stream['message']['content']
-            except Exception as e:
-                print(f"[FAIL] LLM error: {e}")
-                response = f"Xin chào! Tôi đã nghe thấy bạn nói: {text}"
-            
-            return response
-            
-        except Exception as e:
-            print(f"[FAIL] Process LLM error: {e}")
-            return f"Xin chào! Tôi đã nghe thấy bạn nói: {text}"
-    
     async def text_to_speech_stream(self, text):
         """Convert text to speech, chuyển sang RAW PCM và stream về ESP32"""
         try:
@@ -469,39 +418,15 @@ class VoiceStreamConsumer(AsyncWebsocketConsumer):
                 # Gửi tín hiệu kết thúc stream
                 await self.send(text_data="END_STREAM")
                 print("[OK] Đã stream xong audio về ESP32")
-                
+
+                # Xóa file MP3 tạm
+                if os.path.exists(output_path):
+                    os.unlink(output_path)
+
             except Exception as pydub_err:
                 print(f"[FAIL] Lỗi convert audio: {pydub_err}")
                 await self.send(text_data=f"ERROR: Audio conversion failed - {str(pydub_err)}")
-                await self.send(text_data="ERROR: Audio conversion failed")
                 return
-            
-            # 3. Stream từng cục RAW PCM xuống ESP32
-            try:
-                chunk_size = 1024
-                total_chunks = (len(raw_pcm_data) - 1) // chunk_size + 1
-                
-                for i in range(0, len(raw_pcm_data), chunk_size):
-                    chunk = raw_pcm_data[i:i+chunk_size]
-                    
-                    # Log nhẹ nhàng để đỡ rối màn hình
-                    if (i // chunk_size) % 10 == 0:
-                        print(f"[AUDIO] Đang gửi chunk {i//chunk_size + 1}/{total_chunks}")
-                    
-                    # Dùng bytes() để ép kiểu an toàn nhất cho Django Channels
-                    await self.send(bytes_data=bytes(chunk))
-                    await asyncio.sleep(0.01)  # Tránh làm ngập buffer của mạch
-                
-                print("[OK] Đã phát xong, gửi cờ ngắt kết nối.")
-                await self.send(text_data="END_STREAM")
-                
-                # Xóa file MP3 rác
-                if os.path.exists(output_path):
-                    os.unlink(output_path)
-                
-            except Exception as stream_error:
-                print(f"[FAIL] Lỗi truyền stream: {stream_error}")
-                await self.send(text_data=f"ERROR: Stream failed - {str(stream_error)}")
             
         except Exception as e:
             print(f"[FAIL] Lỗi tổng quát TTS: {e}")

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}DTHub | Xóa TTS Configuration{% endblock %}
+{% block content %}
+<style>
+.cyber-card { background:linear-gradient(135deg,rgba(10,15,30,.8),rgba(5,9,20,.95)); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.06); border-radius:16px; }
+.info-chip { background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.6rem .9rem; }
+.chip-lbl { font-size:.62rem; color:#6c757d; letter-spacing:.5px; text-transform:uppercase; font-family:monospace; }
+.chip-val { font-size:.85rem; color:#e2e8f0; font-weight:600; }
+.act-btn { display:inline-flex; align-items:center; gap:.35rem; padding:.4rem .9rem; border-radius:8px; font-size:.82rem; font-weight:600; border:1px solid; text-decoration:none; transition:.2s; background:transparent; cursor:pointer; }
+.act-cancel { border-color:rgba(255,255,255,.2); color:#a0aec0; }
+.act-cancel:hover { border-color:rgba(255,255,255,.4); color:#fff; }
+.act-del { border-color:rgba(220,53,69,.6); color:#dc3545; background:rgba(220,53,69,.08); }
+.act-del:hover { background:rgba(220,53,69,.18); box-shadow:0 0 15px rgba(220,53,69,.2); }
+</style>
+<div class="container mt-4 mb-5" style="max-width:560px">
+    <div class="d-flex align-items-center mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="width:44px;height:44px;border-radius:10px;background:rgba(220,53,69,.1);border:1px solid rgba(220,53,69,.3);display:flex;align-items:center;justify-content:center;margin-right:1rem;flex-shrink:0;">
+            <i class="fa-solid fa-trash text-danger"></i>
+        </div>
+        <div>
+            <span class="text-secondary font-monospace d-block" style="font-size:.7rem;">DELETE_CONFIRMATION</span>
+            <h4 class="mb-0 text-white fw-bold">Xóa TTS Configuration</h4>
+        </div>
+    </div>
+
+    <div class="p-3 rounded-3 mb-4" style="background:rgba(220,53,69,.08);border:1px solid rgba(220,53,69,.3);">
+        <div class="d-flex align-items-center gap-2 text-danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span style="font-size:.9rem;">Bạn có chắc muốn xóa <strong>"{{ config.name }}"</strong>? Không thể hoàn tác.</span>
+        </div>
+    </div>
+
+    <div class="cyber-card p-4 mb-4">
+        <div class="row g-2">
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">Engine</div><div class="chip-val text-success">{{ config.get_engine_display }}</div></div></div>
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">Ngôn ngữ</div><div class="chip-val text-info">{{ config.get_language_display }}</div></div></div>
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">Voice ID</div><div class="chip-val">{{ config.voice_id|default:"Mặc định" }}</div></div></div>
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">Speed</div><div class="chip-val text-warning">{{ config.speed }}</div></div></div>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'tts_config_list' %}" class="act-btn act-cancel"><i class="fa-solid fa-times"></i>Hủy</a>
+            <button type="submit" class="act-btn act-del"><i class="fa-solid fa-trash"></i>Xóa vĩnh viễn</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

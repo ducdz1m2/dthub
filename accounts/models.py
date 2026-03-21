@@ -42,10 +42,23 @@ class Profile(models.Model):
     def __str__(self):
         return f"Profile of {self.user.username}"
 
-# --- SIGNALS: Tự động tạo Profile khi tạo User ---
+# --- SIGNALS: Tự động tạo Profile + gán tool mặc định khi tạo User ---
 @receiver(post_save, sender=User)
 def user_profile_handler(sender, instance, created, **kwargs):
     if created:
         Profile.objects.get_or_create(user=instance)
+        _assign_system_tools(instance)
     else:
         Profile.objects.get_or_create(user=instance)
+
+
+def _assign_system_tools(user):
+    """Gán các tool is_system=True cho user mới tạo"""
+    try:
+        from ai_hub.models import MCPTool, UserMCPTool
+        system_tools = MCPTool.objects.filter(is_system=True, is_enabled=True)
+        for tool in system_tools:
+            UserMCPTool.objects.get_or_create(user=user, tool=tool, defaults={'is_active': True})
+    except Exception:
+        # Bỏ qua nếu app chưa sẵn sàng (VD: migrate lần đầu)
+        pass

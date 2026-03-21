@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Master Firmware Control | DTHub{% endblock %}
+{% block title %}Quản lý Firmware | DTHub{% endblock %}
 
 {% block content %}
 <style>
@@ -120,18 +120,18 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="status-dot" style="width:10px; height:10px; background:var(--neon-purple); border-radius:50%; box-shadow:0 0 8px var(--neon-purple); animation: pulse 2s infinite;"></span>
-                <span class="text-secondary font-monospace small">FIRMWARE_MASTER_CONTROL</span>
+                <span class="text-secondary font-monospace small">Quản lý kho firmware</span>
             </div>
-            <h2 class="fw-bold text-white mb-0 text-glow-info"><i class="bi bi-cpu me-2"></i> Firmware Repository</h2>
+            <h2 class="fw-bold text-white mb-0 text-glow-info"><i class="bi bi-cpu me-2"></i> Kho Firmware</h2>
             <p class="text-secondary font-monospace mt-2 mb-0">>_ Quản trị kho lưu trữ, phiên bản và module hệ thống.</p>
         </div>
         
         <div class="d-flex gap-3 mt-4 mt-md-0">
             <a href="{% url 'firmware_stats' %}" class="btn btn-outline-cyber rounded-pill px-4 font-monospace small" style="border: 1px solid rgba(255,255,255,0.2); color: #fff;">
-                <i class="bi bi-graph-up me-2"></i> ANALYTICS
+                <i class="bi bi-graph-up me-2"></i> Thống kê
             </a>
             <a href="{% url 'firmware_create' %}" class="btn btn-neon rounded-pill px-4 fw-bold shadow-lg">
-                <i class="bi bi-plus-lg me-2"></i> ADD_NODE_BINARY
+                <i class="bi bi-plus-lg me-2"></i> Thêm firmware
             </a>
         </div>
     </div>
@@ -146,7 +146,7 @@
                         <h5 class="mb-0 fw-bold text-white font-monospace text-truncate" style="max-width: 80%;">
                             <i class="bi bi-file-earmark-binary text-info me-2"></i>{{ firmware.name|upper }}
                         </h5>
-                        <div class="status-indicator {% if firmware.is_active %}online{% else %}offline{% endif %}" title="{% if firmware.is_active %}Active{% else %}Void{% endif %}"></div>
+                        <div class="status-indicator {% if firmware.is_active %}online{% else %}offline{% endif %}" title="{% if firmware.is_active %}Đang hoạt động{% else %}Không hoạt động{% endif %}"></div>
                     </div>
                     
                     <div class="p-4 flex-grow-1">
@@ -161,21 +161,21 @@
                         </div>
 
                         <div class="tech-list-item">
-                            <span class="tech-key">TYPE</span>
+                            <span class="tech-key">Loại</span>
                             <span class="tech-val">
                                 <span class="badge bg-transparent border border-secondary font-monospace">{{ firmware.get_device_type_display }}</span>
                             </span>
                         </div>
                         <div class="tech-list-item">
-                            <span class="tech-key">VERSION</span>
+                            <span class="tech-key">Phiên bản</span>
                             <span class="tech-val text-info">v{{ firmware.version }}</span>
                         </div>
                         <div class="tech-list-item">
-                            <span class="tech-key">SESSIONS</span>
+                            <span class="tech-key">Lần nạp</span>
                             <span class="tech-val text-warning text-glow-warning">{{ firmware.flashing_sessions.count|stringformat:"02d" }}</span>
                         </div>
                         <div class="tech-list-item">
-                            <span class="tech-key">CREATED</span>
+                            <span class="tech-key">Ngày tạo</span>
                             <span class="tech-val text-secondary fw-normal">{{ firmware.created_at|date:"Y.m.d" }}</span>
                         </div>
 
@@ -187,13 +187,13 @@
                     </div>
                     
                     <div class="p-3 border-top border-secondary d-flex gap-2" style="border-color: rgba(255,255,255,0.05) !important; background: rgba(0,0,0,0.2);">
-                        <a href="{% url 'firmware_detail' firmware.id %}" class="btn-cyber-action flex-fill" title="Deep View">
+                        <a href="{% url 'firmware_detail' firmware.id %}" class="btn-cyber-action flex-fill" title="Xem chi tiết">
                             <i class="bi bi-eye"></i>
                         </a>
-                        <a href="{% url 'firmware_edit' firmware.id %}" class="btn-cyber-action edit flex-fill" title="Modify Config">
+                        <a href="{% url 'firmware_edit' firmware.id %}" class="btn-cyber-action edit flex-fill" title="Chỉnh sửa">
                             <i class="bi bi-pencil-square"></i>
                         </a>
-                        <a href="{% url 'firmware_delete' firmware.id %}" class="btn-cyber-action danger flex-fill" title="Terminate Node">
+                        <a href="{% url 'firmware_delete' firmware.id %}" class="btn-cyber-action danger flex-fill" title="Xoá">
                             <i class="bi bi-trash"></i>
                         </a>
                     </div>
@@ -208,17 +208,17 @@
                 <h2 class="mb-1 text-info text-glow-info font-monospace fw-bold">
                     <i class="bi bi-hdd-stack me-2"></i>{{ firmwares.count|stringformat:"02d" }}
                 </h2>
-                <p class="mb-0 text-secondary font-monospace small" style="letter-spacing: 2px;">TOTAL_BINARY_HASHES</p>
+                <p class="mb-0 text-secondary font-monospace small" style="letter-spacing: 2px;">Tổng firmware</p>
             </div>
         </div>
         
     {% else %}
         <div class="cyber-empty-state">
             <div class="opacity-25 mb-4"><i class="bi bi-database-x display-1 text-info"></i></div>
-            <h3 class="text-white font-monospace mb-2 text-glow-info">NO_FIRMWARE_INSTANCES_DETECTED</h3>
+            <h3 class="text-white font-monospace mb-2 text-glow-info">Chưa có firmware nào</h3>
             <p class="mb-4 text-secondary font-monospace">> Kho lưu trữ hiện đang trống. Vui lòng thêm bản đóng gói đầu tiên.</p>
             <a href="{% url 'firmware_create' %}" class="btn btn-neon rounded-pill px-5 fw-bold shadow-lg">
-                <i class="bi bi-plus-lg me-2"></i>CREATE_FIRST_ENTRY
+                <i class="bi bi-plus-lg me-2"></i>Thêm firmware đầu tiên
             </a>
         </div>
     {% endif %}

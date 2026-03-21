@@ -5,6 +5,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DTHub - Hệ sinh thái IoT</title>
+    <link rel="icon" type="image/png" href="{% static 'images/brain.png' %}" />
+    <link rel="shortcut icon" type="image/png" href="{% static 'images/brain.png' %}" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -73,9 +75,17 @@
         background: var(--glass-bg);
         backdrop-filter: blur(16px);
         border: 1px solid var(--glass-border);
-        border-radius: 50px; /* Bo tròn hoàn toàn tạo kiểu phi thuyền */
+        border-radius: 50px;
         padding: 0.5rem 1.5rem;
         box-shadow: 0 0 20px rgba(0, 243, 255, 0.1);
+        flex-wrap: wrap;
+      }
+
+      @media (max-width: 991.98px) {
+        .navbar-glass {
+          border-radius: 16px;
+          padding: 0.5rem 1rem;
+        }
       }
 
       .nav-link {
@@ -320,8 +330,8 @@
             <i class="bi bi-list fs-1" style="color: var(--neon-blue);"></i>
           </button>
 
-          <div class="collapse navbar-collapse justify-content-center" id="navbarSupportedContent">
-            <ul class="navbar-nav gap-3">
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mx-auto gap-3">
               <li class="nav-item">
                 <a class="nav-link d-flex align-items-center gap-2" href="/products">
                   <i class="fa-solid fa-microchip"></i> Giải pháp
@@ -344,8 +354,49 @@
                 </ul>
               </li>
             </ul>
+
+            <!-- Avatar/Auth hiển thị trong menu mobile (ẩn trên desktop) -->
+            <div class="d-lg-none mt-3 pt-3 border-top" style="border-color: rgba(0,243,255,0.2) !important;">
+              {% if request.user.is_authenticated %}
+                <div class="dropdown">
+                  <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown">
+                    <div class="position-relative">
+                      {% if request.user.profile.avatar and request.user.profile.avatar.url and 'default.png' not in request.user.profile.avatar.url %}
+                        <img src="{{ request.user.profile.avatar.url }}" width="36" height="36" class="rounded-circle border border-2 border-info" alt="avatar" style="object-fit: cover" />
+                      {% else %}
+                        <img src="{% static 'images/avatar-default.png' %}" width="36" height="36" class="rounded-circle border border-2 border-secondary" alt="avatar" />
+                      {% endif %}
+                    </div>
+                    <span class="text-white fw-bold">{{ request.user.username }}</span>
+                  </a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item d-flex align-items-center py-2" href="{% url 'profile' %}"><i class="bi bi-person-bounding-box me-3"></i> Hồ sơ hệ thống</a></li>
+                    <li><a class="dropdown-item d-flex align-items-center py-2" href="{% url 'orders:my_orders' %}"><i class="bi bi-cart-check me-3"></i> Đơn hàng của tôi</a></li>
+                    {% if request.user.is_superuser %}
+                      <li><hr class="dropdown-divider my-2" /></li>
+                      <li><a class="dropdown-item py-2" href="{% url 'manage_staff_list' %}"><i class="bi bi-people me-2"></i> Nhân sự</a></li>
+                      <li><a class="dropdown-item py-2" href="{% url 'orders:order_manage_view' %}"><i class="bi bi-kanban me-2"></i> Đơn hàng</a></li>
+                    {% endif %}
+                    <li><hr class="dropdown-divider mt-2 mb-1" /></li>
+                    <li>
+                      <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button class="dropdown-item py-2 text-danger fw-bold d-flex align-items-center">
+                          <i class="bi bi-power me-3 fs-5"></i> Ngắt kết nối
+                        </button>
+                      </form>
+                    </li>
+                  </ul>
+                </div>
+              {% else %}
+                <a class="btn btn-neon px-4 py-2 w-100" href="{% url 'auth' %}">
+                  <i class="bi bi-fingerprint fs-5 me-1"></i> Xác thực
+                </a>
+              {% endif %}
+            </div>
           </div>
 
+          <!-- Avatar/Auth chỉ hiển thị trên desktop -->
           <div class="d-none d-lg-flex align-items-center">
             {% if request.user.is_authenticated %}
               <div class="dropdown">

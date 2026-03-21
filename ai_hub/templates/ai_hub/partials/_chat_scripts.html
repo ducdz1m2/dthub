@@ -1,0 +1,600 @@
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<script>
+marked.setOptions({ breaks: true, gfm: true });
+
+let messageCount = 0;
+let responseTimes = [];
+let sessionId = localStorage.getItem('dthub_chat_session');
+
+if (!sessionId) {
+    sessionId = 'chat-session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('dthub_chat_session', sessionId);
+}
+
+function startNewSession() {
+    localStorage.removeItem('dthub_chat_session');
+    location.reload();
+}
+
+function confirmClearHistory(e) {
+    if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử trò chuyện của mình?')) {
+        e.preventDefault();
+        return false;
+    }
+    document.getElementById('clear-session-id-input').value = sessionId || '';
+    localStorage.removeItem('dthub_chat_session');
+    return true;
+}
+
+function removeEmptyState() {
+    const emptyState = document.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = wsProtocol + '//' + window.location.host + '/ws/ai-chat/';
+
+let reconnectAttempts = 0;
+const MAX_RECONNECTS = 5;
+let reconnectTimer = null;
+
+function chatSocket_onmessage(e) {
+    const data = JSON.parse(e.data);
+    if (['response','chunk','error','thinking'].includes(data.type)) handleWebSocketResponse(data);
+}
+
+function connectWebSocket() {
+    const ws = new WebSocket(wsUrl);
+    ws.onopen = function() {
+        reconnectAttempts = 0;
+        if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+        const el = document.getElementById('config-status');
+        if (el) el.className = 'status-indicator status-online';
+    };
+    ws.onclose = function() {
+        const el = document.getElementById('config-status');
+        if (el) el.className = 'status-indicator status-offline';
+        if (reconnectAttempts < MAX_RECONNECTS) {
+            reconnectAttempts++;
+            const delay = Math.min(3000 * reconnectAttempts, 15000);
+            reconnectTimer = setTimeout(() => { window.chatSocket = connectWebSocket(); }, delay);
+        } else {
+            const el2 = document.getElementById('config-status');
+            if (el2) el2.innerHTML = '<span style="color:#ef4444;">Mất kết nối — <a href="#" onclick="location.reload()" style="color:#fff;text-decoration:underline;">Tải lại</a></span>';
+        }
+    };
+    ws.onerror = function(e) { console.error('[FAIL] SYS_LINK:', e); };
+    ws.onmessage = chatSocket_onmessage;
+    return ws;
+}
+window.chatSocket = connectWebSocket();
+</script>
+
+<script>
+// ── Tool badge colors ──────────────────────────────────────────────────────
+function getToolBadgeColor(toolUsed) {
+    if (window.toolBadgeColors && window.toolBadgeColors[toolUsed]) return window.toolBadgeColors[toolUsed];
+    const map = {
+        'rag_search':'border-info text-info','wiki_search':'border-info text-info',
+        'wiki_summary':'border-info text-info','english_define':'border-success text-success',
+        'japanese_lookup':'border-danger text-danger','physics_calculation':'border-warning text-warning',
+        'chemistry_calculation':'border-warning text-warning','device_control':'border-primary text-primary',
+        'list_devices':'border-primary text-primary','system_info':'border-purple text-purple',
+        'weather_info':'border-purple text-purple','help_info':'border-light text-light',
+        'general_chat':'border-light text-light','tool_metadata':'border-secondary text-secondary'
+    };
+    return map[toolUsed] || 'border-secondary text-secondary';
+}
+
+// ── WebSocket response handler ─────────────────────────────────────────────
+function handleWebSocketResponse(data) {
+    let botDiv = document.querySelector('[data-streaming="true"]');
+    if (data.type === 'thinking') {
+        if (botDiv) { const d = botDiv.querySelector('.debug-info'); if (d) d.textContent = 'Đang xử lý...'; }
+        return;
+    }
+    if (data.type === 'error' || data.error) {
+        if (!botDiv) botDiv = createStreamingMessage();
+        const re = botDiv.querySelector('.response-content');
+        const de = botDiv.querySelector('.debug-info');
+        if (data.error && de) de.textContent = 'Lỗi';
+        if (re) re.textContent = data.full_response || data.error || '';
+        botDiv.removeAttribute('data-streaming');
+        return;
+    }
+    if (!botDiv) botDiv = createStreamingMessage();
+    const re = botDiv.querySelector('.response-content');
+    const de = botDiv.querySelector('.debug-info');
+    if (data.debug && de) de.textContent = data.debug;
+    if (data.chunk && re) {
+        if (re.style.display === 'none') {
+            re.style.display = '';
+            const dots = botDiv.querySelector('.typing-dots');
+            if (dots) dots.style.display = 'none';
+        }
+        re.dataset.raw = (re.dataset.raw || '') + data.chunk;
+        re.innerHTML = (typeof marked !== 'undefined') ? marked.parse(re.dataset.raw) : re.dataset.raw;
+        document.getElementById('chat-messages').scrollTop = 99999;
+    }
+    if (data.done) { finalizeStreamingMessage(botDiv, data); updateStats(data.response_time || 0); incrementMessageCount(); }
+}
+
+function createStreamingMessage() {
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'd-flex justify-content-start mb-4';
+    div.setAttribute('data-streaming', 'true');
+    const id = 'streaming-' + Date.now();
+    div.innerHTML = `
+        <div class="chat-avatar" style="background:rgba(188,19,254,0.1);border:1px solid var(--neon-purple);">
+            <i class="fa-solid fa-microchip text-white text-glow-purple"></i>
+        </div>
+        <div class="chat-bubble bot-bubble">
+            <div class="d-flex align-items-center gap-2 mb-2 font-monospace">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span class="debug-info text-secondary" style="font-size:0.75rem;">Đang xử lý</span>
+                <small class="text-secondary streaming-timer ms-auto">0.0s</small>
+            </div>
+            <div class="response-content" id="${id}" style="display:none;"></div>
+        </div>`;
+    container.appendChild(div);
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+        const el = div.querySelector('.streaming-timer');
+        if (el && div.hasAttribute('data-streaming')) el.textContent = ((Date.now()-t0)/1000).toFixed(1)+'s';
+        else clearInterval(iv);
+    }, 100);
+    div.dataset.timerInterval = iv;
+    container.scrollTop = 99999;
+    return div;
+}
+
+function finalizeStreamingMessage(div, data) {
+    if (!div) return;
+    if (div.dataset.timerInterval) clearInterval(parseInt(div.dataset.timerInterval));
+    div.removeAttribute('data-streaming');
+    const toolBadge = data.tool_used ? `<span class="badge bg-transparent border ${getToolBadgeColor(data.tool_used)} rounded-pill px-2 me-2 font-monospace"><i class="fa-solid fa-terminal me-1"></i>${data.tool_used}</span>` : '';
+    const timeText = (data.response_time||0) > 0 ? `<i class="fa-solid fa-stopwatch me-1"></i>${data.response_time.toFixed(2)}s` : '';
+    const raw = data.full_response || div.querySelector('.response-content')?.dataset.raw || '';
+    const content = (typeof marked !== 'undefined') ? marked.parse(raw) : raw.replace(/\n/g,'<br>');
+    div.innerHTML = `
+        <div class="chat-avatar" style="background:rgba(188,19,254,0.2);border:1px solid var(--neon-purple);box-shadow:0 0 10px rgba(188,19,254,0.3);">
+            <i class="fa-solid fa-microchip text-white text-glow-purple"></i>
+        </div>
+        <div class="chat-bubble bot-bubble">
+            ${toolBadge ? `<div class="mb-2">${toolBadge}</div>` : ''}
+            <div class="mb-1 bot-response-text markdown-body">${content}</div>
+            <div class="d-flex align-items-center gap-3 mt-3 pt-2 border-top border-secondary font-monospace" style="border-color:rgba(255,255,255,0.1)!important;">
+                <small class="text-secondary" style="font-size:0.75rem;">${timeText}</small>
+                <div class="d-flex gap-2 ms-auto">
+                    <button class="copy-btn" onclick="copyText(this)" title="Sao chép"><i class="fa-regular fa-copy"></i></button>
+                    <button class="copy-btn tts-speak-btn" onclick="speakMessage(this)" title="Đọc phản hồi"><i class="fa-solid fa-volume-high"></i></button>
+                </div>
+            </div>
+        </div>`;
+}
+</script>
+
+<script>
+// ── Send / Display ─────────────────────────────────────────────────────────
+function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    if (!message) return;
+    if (window.chatSocket.readyState === WebSocket.CONNECTING) {
+        input.disabled = true; input.placeholder = 'Đang kết nối...';
+        setTimeout(() => {
+            input.disabled = false; input.placeholder = 'Nhập câu hỏi, tài liệu hoặc lệnh thiết bị...';
+            if (window.chatSocket.readyState === WebSocket.OPEN) sendMessage();
+            else alert('Không thể kết nối. Vui lòng chờ vài giây và thử lại.');
+        }, 2000);
+        return;
+    }
+    if (window.chatSocket.readyState !== WebSocket.OPEN) {
+        input.disabled = true; input.placeholder = 'Mất kết nối - F5 để tải lại';
+        alert('Không thể kết nối đến server AI. Vui lòng tải lại trang (F5).');
+        return;
+    }
+    removeEmptyState();
+    displayMessage(message, 'user');
+    input.value = '';
+    createStreamingMessage();
+    window.chatSocket.send(JSON.stringify({ 'query': message, 'session_id': sessionId }));
+}
+
+function quickQuery(q) { document.getElementById('chat-input').value = q; sendMessage(); }
+function insertQuickCommand(cmd) { const i = document.getElementById('chat-input'); i.value = cmd; i.focus(); }
+
+function displayMessage(message, sender) {
+    const container = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    if (sender === 'user') {
+        div.className = 'd-flex justify-content-end mb-4';
+        div.innerHTML = `
+            <div class="chat-bubble user-bubble">${message}</div>
+            <div class="chat-avatar ms-3" style="background:rgba(0,243,255,0.1);border:1px solid var(--neon-blue);">
+                <i class="fa-solid fa-user text-info"></i>
+            </div>`;
+        incrementMessageCount();
+    }
+    container.appendChild(div);
+    container.scrollTop = 99999;
+}
+
+function incrementMessageCount() { messageCount++; }
+function updateStats(t) {
+    responseTimes.push(t);
+    const avg = responseTimes.reduce((a,b)=>a+b,0)/responseTimes.length;
+    const el = document.getElementById('avg-response-time');
+    if (el) el.textContent = avg.toFixed(2);
+}
+
+// ── Chat history ───────────────────────────────────────────────────────────
+function getCookie(name) {
+    let v = null;
+    if (document.cookie) {
+        document.cookie.split(';').forEach(c => {
+            c = c.trim();
+            if (c.startsWith(name+'=')) v = decodeURIComponent(c.substring(name.length+1));
+        });
+    }
+    return v;
+}
+
+function loadChatHistory() {
+    if (!sessionId) return;
+    fetch(`/ai/chat/history/${sessionId}/`)
+        .then(res => {
+            if (res.status === 403) {
+                sessionId = 'chat-session-' + Date.now() + '-' + Math.random().toString(36).substr(2,9);
+                localStorage.setItem('dthub_chat_session', sessionId);
+                document.getElementById('chat-messages').innerHTML = '';
+                return { success: false, data: [] };
+            }
+            return res.json();
+        })
+        .then(data => {
+            if (!data.success || !data.data.length) return;
+            removeEmptyState();
+            const container = document.getElementById('chat-messages');
+            data.data.forEach(item => {
+                const uDiv = document.createElement('div');
+                uDiv.className = 'd-flex justify-content-end mb-4';
+                uDiv.innerHTML = `<div class="chat-bubble user-bubble">${item.query}</div>
+                    <div class="chat-avatar ms-3" style="background:rgba(0,243,255,0.1);border:1px solid var(--neon-blue);">
+                        <i class="fa-solid fa-user text-info"></i></div>`;
+                container.appendChild(uDiv);
+                const bDiv = document.createElement('div');
+                bDiv.className = 'd-flex mb-4';
+                const tb = item.tool_used ? `<span class="badge bg-transparent border ${getToolBadgeColor(item.tool_used)} rounded-pill px-2 me-2 font-monospace"><i class="fa-solid fa-terminal me-1"></i>${item.tool_used}</span>` : '';
+                const tt = item.response_time > 0 ? `<i class="fa-solid fa-stopwatch me-1"></i>${item.response_time.toFixed(2)}s` : '';
+                bDiv.innerHTML = `
+                    <div class="chat-avatar" style="background:rgba(188,19,254,0.2);border:1px solid var(--neon-purple);box-shadow:0 0 10px rgba(188,19,254,0.3);">
+                        <i class="fa-solid fa-microchip text-white text-glow-purple"></i></div>
+                    <div class="chat-bubble bot-bubble">
+                        ${tb ? `<div class="mb-2">${tb}</div>` : ''}
+                        <div class="mb-1 bot-response-text markdown-body">${(typeof marked!=='undefined')?marked.parse(item.response):item.response.replace(/\n/g,'<br>')}</div>
+                        <div class="d-flex align-items-center gap-3 mt-3 pt-2 border-top border-secondary font-monospace" style="border-color:rgba(255,255,255,0.1)!important;">
+                            <small class="text-secondary" style="font-size:0.75rem;">${tt}</small>
+                            <small class="text-secondary" style="font-size:0.7rem;">${new Date(item.timestamp).toLocaleTimeString()}</small>
+                            <div class="d-flex gap-2 ms-auto">
+                                <button class="copy-btn" onclick="copyText(this)" title="Sao chép"><i class="fa-regular fa-copy"></i></button>
+                                <button class="copy-btn tts-speak-btn" onclick="speakMessage(this)" title="Đọc phản hồi"><i class="fa-solid fa-volume-high"></i></button>
+                            </div>
+                        </div>
+                    </div>`;
+                container.appendChild(bDiv);
+                incrementMessageCount();
+            });
+            container.scrollTop = 99999;
+        }).catch(err => console.error(err));
+}
+
+document.addEventListener('DOMContentLoaded', () => { setTimeout(loadChatHistory, 100); document.getElementById('chat-input').focus(); });
+</script>
+
+<script>
+// ── AI Config ──────────────────────────────────────────────────────────────
+function loadAIConfigStatus() {
+    fetch('/ai/config/active/')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const c = data.config;
+                document.getElementById('config-name').textContent = c.name || 'Default';
+                document.getElementById('config-status').className = 'status-indicator status-online';
+                let stt = c.stt_engine || '--';
+                if (c.stt_custom_url && c.stt_engine.toLowerCase().includes('custom')) stt = `<span title="${c.stt_custom_url}">Custom API</span>`;
+                document.getElementById('stt-engine').innerHTML = stt;
+                let tts = c.tts_engine || '--';
+                if (c.tts_custom_url && c.tts_engine.toLowerCase().includes('custom')) tts = `<span title="${c.tts_custom_url}">Custom API</span>`;
+                document.getElementById('tts-engine').innerHTML = tts;
+                ttsSpeed = c.tts_speed || 0.85;
+                document.getElementById('llm-model').textContent = c.llm_model || 'qwen2.5:1.5b';
+                const vi = document.getElementById('tts-voice-item');
+                if (c.tts_engine.toLowerCase().includes('google')) { vi.style.display='flex'; document.getElementById('tts-voice').textContent = c.tts_voice||'vi'; }
+                else vi.style.display = 'none';
+                document.getElementById('response-language').textContent = c.response_language || 'Tiếng Việt';
+                document.getElementById('llm-temperature').textContent = c.llm_temperature || '0.1';
+                document.getElementById('ai-config-status').classList.add('border-success');
+            } else {
+                document.getElementById('config-name').textContent = 'No Config';
+                document.getElementById('config-status').className = 'status-indicator status-offline';
+                ['stt-engine','llm-model','tts-voice','stt-language','llm-temperature'].forEach(id => { document.getElementById(id).textContent = '--'; });
+            }
+        }).catch(() => {
+            document.getElementById('config-name').textContent = 'Error';
+            document.getElementById('config-status').className = 'status-indicator status-offline';
+        });
+}
+document.addEventListener('DOMContentLoaded', () => { loadAIConfigStatus(); setInterval(loadAIConfigStatus, 30000); });
+
+// ── MCP Tools ──────────────────────────────────────────────────────────────
+function loadMCPTools() {
+    fetch('/ai/api/tools/')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            const cap = document.getElementById('capabilities-container');
+            if (cap) {
+                const seen = new Map();
+                data.tools.forEach(t => { const b = t.name.replace(/^local-mcp-[^_]+_/,''); if (!seen.has(b)) seen.set(b,{...t,_baseName:b}); });
+                let html = '';
+                seen.forEach(t => {
+                    const cc = t.color_class||'border-secondary text-secondary';
+                    const cs = cc.includes('purple') ? 'border-color:#bc13fe!important;color:#bc13fe!important;' : '';
+                    const label = t.display_name||t._baseName;
+                    const cmd = (t.quick_command||'').replace(/'/g,"\\'");
+                    const click = cmd ? `onclick="insertQuickCommand('${cmd}')" style="font-size:0.72rem;${cs}cursor:pointer;"` : `style="font-size:0.72rem;${cs}cursor:default;"`;
+                    html += `<span class="tool-badge-wrap"><span class="badge bg-transparent border ${cc} rounded-pill px-2 py-1 tool-cap-badge" ${click}>${label}</span><span class="tool-tip">${(t.description||'').replace(/</g,'&lt;')}</span></span>`;
+                });
+                cap.innerHTML = html || '<span class="text-secondary" style="font-size:0.75rem;">>_ No tools</span>';
+            }
+            window.toolBadgeColors = {};
+            data.tools.forEach(t => { window.toolBadgeColors[t.name] = t.color_class; });
+        }).catch(err => console.error('Error loading MCP tools:', err));
+}
+
+let _activeTip = null;
+document.addEventListener('mouseover', e => {
+    const w = e.target.closest('.tool-badge-wrap'); if (!w) return;
+    const tip = w.querySelector('.tool-tip'); if (!tip) return;
+    _activeTip = tip; tip.style.visibility='visible'; tip.style.opacity='1'; _positionTip(tip,e);
+});
+document.addEventListener('mouseout', e => {
+    const w = e.target.closest('.tool-badge-wrap'); if (!w) return;
+    const tip = w.querySelector('.tool-tip'); if (!tip) return;
+    tip.style.visibility='hidden'; tip.style.opacity='0'; _activeTip=null;
+});
+document.addEventListener('mousemove', e => { if (_activeTip) _positionTip(_activeTip,e); });
+function _positionTip(tip,e) {
+    const GAP=12, tw=tip.offsetWidth||280, th=tip.offsetHeight||60;
+    let x=e.clientX-tw/2, y=e.clientY-th-GAP;
+    x=Math.max(8,Math.min(x,window.innerWidth-tw-8));
+    if(y<8) y=e.clientY+GAP;
+    tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+document.addEventListener('DOMContentLoaded', () => { loadMCPTools(); setInterval(loadMCPTools, 60000); });
+</script>
+
+<script>
+// ── Knowledge Bases ────────────────────────────────────────────────────────
+function loadUserKBs() {
+    fetch('/ai/kb/user/list/')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('kb-list-container');
+            const loading = document.getElementById('kb-loading');
+            const empty = document.getElementById('kb-empty-state');
+            if (!data.success) { loading.style.display='none'; empty.style.display='block'; return; }
+            const all = [...(data.system_kbs||[]),...(data.user_kbs||[])];
+            loading.style.display = 'none';
+            if (!all.length) { empty.style.display='block'; return; }
+            container.style.display = 'block';
+            container.innerHTML = all.map(kb => {
+                const icon = kb.icon||'fa-book';
+                const cc = (kb.color_class||'border-info text-info').split(' ');
+                const tc = cc.find(c=>c.startsWith('text-'))||'text-info';
+                const isSys = data.system_kbs.some(s=>s.id===kb.id);
+                const badge = isSys ? `<span class="badge bg-transparent border border-warning text-warning rounded-pill px-1 font-monospace" style="font-size:0.6rem;">SYS</span>` : '';
+                return `<div class="d-flex align-items-center gap-2 py-2" style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <div class="d-flex align-items-center justify-content-center rounded" style="width:30px;height:30px;background:rgba(0,243,255,0.07);flex-shrink:0;">
+                        <i class="fa-solid ${icon} ${tc}" style="font-size:0.8rem;"></i></div>
+                    <div class="overflow-hidden flex-grow-1">
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-white font-monospace" style="font-size:0.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;" title="${kb.name}">${kb.name}</span>
+                            ${badge}</div>
+                        <div class="text-secondary font-monospace" style="font-size:0.65rem;">${kb.namespace}</div>
+                    </div>
+                    <a href="/ai/kb/${kb.id}/remove/" class="btn p-0 text-secondary" style="font-size:0.7rem;" title="Gỡ KB này"
+                       onclick="removeKB(event,${kb.id},this)" ${isSys?'style="display:none"':''}>
+                        <i class="fa-solid fa-xmark"></i></a>
+                </div>`;
+            }).join('');
+        }).catch(() => { document.getElementById('kb-loading').style.display='none'; document.getElementById('kb-empty-state').style.display='block'; });
+}
+
+function removeKB(e, kbId, btn) {
+    e.preventDefault();
+    if (!confirm('Gỡ kho tri thức này khỏi chat?')) return;
+    fetch(`/ai/kb/${kbId}/remove/`, { method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken'),'X-Requested-With':'XMLHttpRequest'} })
+        .then(r=>r.json()).then(d=>{ if(d.success) loadUserKBs(); });
+}
+document.addEventListener('DOMContentLoaded', loadUserKBs);
+
+// ── STT ────────────────────────────────────────────────────────────────────
+let mediaRecorder=null, audioChunks=[], isRecording=false, micStream=null, _vadCtx=null, _vadTimer=null;
+const VAD_SILENCE_MS=1500, VAD_THRESHOLD=0.015;
+
+async function toggleMic() { isRecording ? stopRecording() : await startRecording(); }
+
+async function startRecording() {
+    try { micStream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+    catch(e) { document.getElementById('stt-status-label').textContent='Cần cấp quyền mic'; return; }
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(micStream);
+    mediaRecorder.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = sendAudioToSTT;
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('mic-btn').classList.add('recording');
+    document.getElementById('mic-icon').className = 'fa-solid fa-stop';
+    document.getElementById('stt-status-label').textContent = '>_ Đang ghi âm...';
+    document.getElementById('chat-input').placeholder = 'Đang ghi âm...';
+    _startVAD(micStream);
+}
+
+function _startVAD(stream) {
+    try {
+        _vadCtx = new AudioContext();
+        const src = _vadCtx.createMediaStreamSource(stream);
+        const an = _vadCtx.createAnalyser(); an.fftSize=512; src.connect(an);
+        const buf = new Float32Array(an.fftSize); let lastSpeech=Date.now();
+        function _check() {
+            if(!isRecording) return;
+            an.getFloatTimeDomainData(buf);
+            const rms=Math.sqrt(buf.reduce((s,v)=>s+v*v,0)/buf.length);
+            if(rms>VAD_THRESHOLD) lastSpeech=Date.now();
+            if(Date.now()-lastSpeech>VAD_SILENCE_MS) { stopRecording(); return; }
+            _vadTimer=requestAnimationFrame(_check);
+        }
+        _vadTimer=requestAnimationFrame(_check);
+    } catch(e) {}
+}
+
+function _stopVAD() { if(_vadTimer){cancelAnimationFrame(_vadTimer);_vadTimer=null;} if(_vadCtx){_vadCtx.close().catch(()=>{});_vadCtx=null;} }
+
+function stopRecording() {
+    _stopVAD();
+    if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
+    if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}
+    isRecording=false;
+    document.getElementById('mic-btn').classList.remove('recording');
+    document.getElementById('mic-icon').className='fa-solid fa-microphone';
+    document.getElementById('stt-status-label').textContent='>_ Đang nhận dạng...';
+    document.getElementById('chat-input').placeholder='Đang nhận dạng giọng nói...';
+}
+
+async function sendAudioToSTT() {
+    const blob=new Blob(audioChunks,{type:'audio/webm'});
+    const form=new FormData(); form.append('audio',blob,'recording.webm');
+    try {
+        const res=await fetch('/ai/speech/stt/',{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')},body:form});
+        const data=await res.json();
+        const inp=document.getElementById('chat-input');
+        const lbl=document.getElementById('stt-status-label');
+        if(data.text){inp.value=data.text;inp.focus();lbl.textContent='';inp.placeholder='Nhập câu hỏi, tài liệu hoặc lệnh thiết bị...';}
+        else{lbl.textContent=data.error||'Không nhận dạng được';inp.placeholder='Nhập câu hỏi, tài liệu hoặc lệnh thiết bị...';}
+    } catch(e) { document.getElementById('stt-status-label').textContent='Lỗi kết nối speech service'; }
+}
+
+// ── TTS ────────────────────────────────────────────────────────────────────
+let ttsAudio=null, ttsSpeed=0.85;
+
+function speakMessage(btn) {
+    const bubble=btn.closest('.bot-bubble');
+    const text=bubble?bubble.querySelector('.bot-response-text')?.innerText:'';
+    if(!text) return;
+    if(btn.classList.contains('speaking')){if(ttsAudio){ttsAudio.pause();ttsAudio=null;}_resetSpeakBtn(btn);return;}
+    if(ttsAudio){ttsAudio.pause();ttsAudio=null;}
+    document.querySelectorAll('.tts-speak-btn.speaking').forEach(_resetSpeakBtn);
+    btn.classList.add('speaking'); btn.innerHTML='<i class="fa-solid fa-volume-high tts-speaking-anim"></i>';
+    speakText(text,btn);
+}
+function _resetSpeakBtn(btn){btn.classList.remove('speaking');btn.innerHTML='<i class="fa-solid fa-volume-high"></i>';}
+
+async function speakText(text,btn) {
+    const clean=text.replace(/<[^>]+>/g,'').replace(/[*_`#>]/g,'').trim();
+    if(!clean) return;
+    try {
+        const res=await fetch('/ai/speech/tts/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({text:clean,speed:ttsSpeed})});
+        if(!res.ok){if(btn)_resetSpeakBtn(btn);return;}
+        const url=URL.createObjectURL(await res.blob());
+        ttsAudio=new Audio(url);
+        ttsAudio.onended=()=>{URL.revokeObjectURL(url);if(btn)_resetSpeakBtn(btn);};
+        ttsAudio.onerror=()=>{if(btn)_resetSpeakBtn(btn);};
+        ttsAudio.play();
+    } catch(e){if(btn)_resetSpeakBtn(btn);}
+}
+
+// ── Copy ───────────────────────────────────────────────────────────────────
+function copyText(btn) {
+    const text=btn.closest('.bot-bubble')?.querySelector('.bot-response-text')?.innerText||'';
+    const ok=()=>{btn.classList.add('copied');btn.innerHTML='<i class="fa-solid fa-check"></i>';setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML='<i class="fa-regular fa-copy"></i>';},2000);};
+    if(navigator.clipboard) navigator.clipboard.writeText(text).then(ok).catch(()=>_copyFallback(text,ok));
+    else _copyFallback(text,ok);
+}
+function _copyFallback(text,cb){const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');cb();}catch(e){}document.body.removeChild(ta);}
+
+// ── RAG ────────────────────────────────────────────────────────────────────
+function loadRagDocs() {
+    fetch('/ai/rag/documents/list/')
+        .then(r=>r.json())
+        .then(data=>{
+            const grid=document.getElementById('rag-doc-grid');
+            const empty=document.getElementById('rag-empty-state');
+            const count=document.getElementById('rag-doc-count');
+            if(!data.success||!data.documents.length){grid.innerHTML='';empty.style.display='block';count.textContent='0 tài liệu';return;}
+            empty.style.display='none'; count.textContent=`${data.documents.length} tài liệu`;
+            const iconMap={pdf:'fa-file-pdf',txt:'fa-file-lines',docx:'fa-file-word',md:'fa-file-code'};
+            const colorMap={pdf:{bg:'rgba(220,53,69,0.12)',color:'#ef4444'},txt:{bg:'rgba(0,243,255,0.10)',color:'#00f3ff'},docx:{bg:'rgba(13,110,253,0.12)',color:'#3b82f6'},md:{bg:'rgba(188,19,254,0.12)',color:'#bc13fe'}};
+            const stMap={success:{cls:'text-info',icon:'fa-circle-check',label:'Sẵn sàng'},pending:{cls:'text-warning',icon:'fa-spinner fa-spin',label:'Đang xử lý'},failed:{cls:'text-danger',icon:'fa-circle-xmark',label:'Thất bại'}};
+            grid.innerHTML=data.documents.map(doc=>{
+                const ext=doc.file_type||'txt', ic=iconMap[ext]||'fa-file', cl=colorMap[ext]||{bg:'rgba(255,255,255,0.06)',color:'#a0aec0'}, st=stMap[doc.status]||stMap.pending;
+                const sz=doc.file_size?(doc.file_size/1024).toFixed(1)+' KB':'';
+                return `<div class="col-6 col-md-4 col-lg-3"><div class="rag-doc-card h-100">
+                    <button class="delete-doc-btn" onclick="deleteRagDoc(${doc.id})" title="Xóa tài liệu"><i class="fa-solid fa-xmark"></i></button>
+                    <div class="d-flex align-items-start gap-2 mb-2">
+                        <div class="doc-icon" style="background:${cl.bg};color:${cl.color};"><i class="fa-solid ${ic}"></i></div>
+                        <div class="overflow-hidden flex-grow-1"><div class="doc-name" title="${doc.filename}">${doc.filename}</div><div class="doc-meta mt-1">${sz}</div></div>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.06);">
+                        <span class="doc-meta ${st.cls}"><i class="fa-solid ${st.icon} me-1"></i>${st.label}</span>
+                        ${doc.chunk_count?`<span class="doc-meta">${doc.chunk_count} chunks</span>`:''}
+                    </div>
+                    <div class="doc-meta mt-1">${doc.uploaded_at}</div>
+                </div></div>`;
+            }).join('');
+        }).catch(()=>{document.getElementById('rag-empty-state').style.display='block';document.getElementById('rag-doc-count').textContent='0 tài liệu';});
+}
+
+async function uploadRagDoc(input) {
+    const file=input.files[0]; if(!file) return;
+    const status=document.getElementById('rag-upload-status');
+    const label=input.closest('label'); if(label) label.style.pointerEvents='none';
+    status.style.display='block'; status.style.color='#a0aec0';
+    status.innerHTML=`<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang upload <strong>${file.name}</strong>...`;
+    const form=new FormData(); form.append('file',file);
+    try {
+        const res=await fetch('/ai/rag/documents/upload/',{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')},body:form});
+        const data=await res.json();
+        if(data.success){status.style.color='#20c997';status.innerHTML=`<i class="fa-solid fa-circle-check me-2"></i><strong>${file.name}</strong> — đã ingest ${data.chunks} chunks thành công`;loadRagDocs();}
+        else{status.style.color='#ef4444';status.innerHTML=`<i class="fa-solid fa-circle-xmark me-2"></i>Lỗi: ${data.error}`;}
+    } catch(e){status.style.color='#ef4444';status.innerHTML='<i class="fa-solid fa-circle-xmark me-2"></i>Lỗi kết nối';}
+    input.value=''; if(label) label.style.pointerEvents='';
+    setTimeout(()=>{status.style.display='none';},5000);
+}
+
+async function deleteRagDoc(docId) {
+    if(!confirm('Xóa tài liệu này?')) return;
+    try { const r=await fetch(`/ai/rag/documents/${docId}/delete/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}}); const d=await r.json(); if(d.success) loadRagDocs(); } catch(e){}
+}
+
+async function reindexRagDocs() {
+    const btn=document.getElementById('rag-reindex-btn');
+    const status=document.getElementById('rag-upload-status');
+    btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin me-1"></i>Đang re-ingest...';
+    status.style.display='block'; status.style.color='#a0aec0';
+    status.innerHTML='<i class="fa-solid fa-spinner fa-spin me-2"></i>Đang re-ingest tất cả tài liệu...';
+    try {
+        const res=await fetch('/ai/rag/documents/reindex/',{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')}});
+        const data=await res.json();
+        if(data.success){status.style.color='#20c997';const fm=data.failed.length?` (${data.failed.length} thất bại)`:'';status.innerHTML=`<i class="fa-solid fa-circle-check me-2"></i>Re-ingest xong ${data.reindexed} tài liệu${fm}`;loadRagDocs();}
+        else{status.style.color='#ef4444';status.innerHTML=`<i class="fa-solid fa-circle-xmark me-2"></i>${data.error}`;}
+    } catch(e){status.style.color='#ef4444';status.innerHTML='<i class="fa-solid fa-circle-xmark me-2"></i>Lỗi kết nối';}
+    btn.disabled=false; btn.innerHTML='<i class="fa-solid fa-rotate me-1"></i>Cập nhật';
+    setTimeout(()=>{status.style.display='none';},6000);
+}
+document.addEventListener('DOMContentLoaded', loadRagDocs);
+</script>

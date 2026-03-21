@@ -1,5 +1,5 @@
 from django import forms
-from .models import MCPServer, AIConfiguration, DeviceControlLabel
+from .models import ESP32Device, MCPServer, AIConfiguration, STTConfiguration, LLMConfiguration, TTSConfiguration, DeviceControlLabel
 
 class DeviceControlLabelForm(forms.ModelForm):
     class Meta:
@@ -17,87 +17,71 @@ class DeviceControlLabelForm(forms.ModelForm):
         }
 
 class MCPServerForm(forms.ModelForm):
-    builtin_kind = forms.ChoiceField(
-        required=False,
-        choices=[("", "Không dùng node tích hợp")],
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        label="Node tích hợp",
-    )
-
     class Meta:
         model = MCPServer
-        fields = ['name', 'device_id', 'server_type', 'domain', 'description', 'location']
+        fields = ['name', 'device_id', 'domain', 'description', 'location', 'is_active']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'device_id': forms.TextInput(attrs={'class': 'form-control'}),
-            'server_type': forms.Select(attrs={'class': 'form-select'}),
-            'domain': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'http://127.0.0.1:9101 hoặc mcp.example.com'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: My Local MCP'}),
+            'device_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: local-mcp-01'}),
+            'domain': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'http://localhost:8001 hoặc mcp.example.com'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'location': forms.TextInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
             'name': 'Tên Server',
-            'device_id': 'Device ID',
-            'server_type': 'Loại Server',
-            'domain': 'Domain',
+            'device_id': 'Device ID (Duy nhất)',
+            'domain': 'URL của MCP Server',
             'description': 'Mô tả',
             'location': 'Vị trí',
+            'is_active': 'Kích hoạt',
         }
     
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.user = user
-        from .builtin_mcp import builtin_choices
-        self.fields['builtin_kind'].choices = builtin_choices(include_none=True)
-        
-        # Admin có thể tạo public server
-        if user and user.is_superuser:
-            self.fields['server_type'].choices = [
-                ('private', 'Private Server'),
-                ('public', 'Public Server - Global'),
-            ]
-        else:
-            # Khách hàng chỉ tạo private server
-            self.fields['server_type'].choices = [
-                ('private', 'Private Server'),
-            ]
     
     def clean_device_id(self):
         device_id = self.cleaned_data['device_id']
-        # Kiểm tra trùng lặp
         if MCPServer.objects.filter(device_id=device_id).exclude(pk=self.instance.pk if self.instance else None).exists():
             raise forms.ValidationError("Device ID này đã tồn tại!")
         return device_id
 
-class AIConfigurationForm(forms.ModelForm):
-    """Form để quản lý AI Configuration (đơn giản hóa)"""
+class STTConfigurationForm(forms.ModelForm):
+    """Form cho STT Configuration"""
     
-    llm_model = forms.ChoiceField(
-        choices=[],
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        label="Model AI (Ollama)"
-    )
-
     class Meta:
-        model = AIConfiguration
-        fields = [
-            'name', 'is_default', 'is_active',
-            'response_language',
-            'stt_engine', 'stt_language', 'stt_custom_url',
-            'llm_model', 'llm_temperature', 'llm_max_tokens',
-            'tts_engine', 'tts_voice', 'tts_speed', 'tts_custom_url',
-            'custom_stt_port'
-        ]
+        model = STTConfiguration
+        fields = ['name', 'engine', 'language', 'model_size', 'custom_url', 'is_active']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: Cấu hình Tiếng Việt'}),
-            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: STT Tiếng Việt'}),
+            'engine': forms.Select(attrs={'class': 'form-select', 'id': 'id_stt_engine'}),
+            'language': forms.Select(attrs={'class': 'form-select'}),
+            'model_size': forms.Select(attrs={'class': 'form-select'}),
+            'custom_url': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'http://localhost:5000/stt'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'response_language': forms.Select(attrs={'class': 'form-select'}),
-            'stt_engine': forms.Select(attrs={'class': 'form-select', 'id': 'id_stt_engine'}),
-            'stt_language': forms.Select(attrs={'class': 'form-select'}),
-            'stt_custom_url': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'http://localhost:8000/transcribe'}),
-            'llm_temperature': forms.NumberInput(attrs={
+        }
+        labels = {
+            'name': 'Tên cấu hình STT',
+            'engine': 'Engine STT',
+            'language': 'Ngôn ngữ nhận diện',
+            'model_size': 'Kích thước model',
+            'custom_url': 'Custom API URL',
+            'is_active': 'Hoạt động',
+        }
+
+
+class LLMConfigurationForm(forms.ModelForm):
+    """Form cho LLM Configuration"""
+    
+    class Meta:
+        model = LLMConfiguration
+        fields = ['name', 'model', 'temperature', 'max_tokens', 'response_language', 'system_prompt', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: LLM Qwen2.5 1.5B'}),
+            'model': forms.Select(attrs={'class': 'form-select'}),
+            'temperature': forms.NumberInput(attrs={
                 'class': 'form-range', 
                 'type': 'range', 
                 'min': '0', 
@@ -105,61 +89,105 @@ class AIConfigurationForm(forms.ModelForm):
                 'step': '0.1',
                 'oninput': 'this.nextElementSibling.value = this.value'
             }),
-            'llm_max_tokens': forms.NumberInput(attrs={'class': 'form-control', 'min': 10, 'max': 4096}),
-            'tts_engine': forms.Select(attrs={'class': 'form-select', 'id': 'id_tts_engine'}),
-            'tts_voice': forms.Select(attrs={'class': 'form-select'}),
-            'tts_speed': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '0.5', 'max': '2.0'}),
-            'tts_custom_url': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'http://localhost:8001/synthesize'}),
-            'custom_stt_port': forms.NumberInput(attrs={'class': 'form-control'}),
+            'max_tokens': forms.NumberInput(attrs={'class': 'form-control', 'min': 10, 'max': 4096}),
+            'response_language': forms.Select(attrs={'class': 'form-select'}),
+            'system_prompt': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'router_model': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: qwen2.5:0.5b'}),
+            'router_timeout': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 30}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
-            'name': 'Tên cấu hình',
-            'is_default': 'Đặt làm mặc định',
-            'is_active': 'Kích hoạt',
-            'response_language': 'Ngôn ngữ phản hồi (AI)',
-            'stt_engine': 'STT Engine',
-            'stt_language': 'Ngôn ngữ nhận dạng (STT)',
-            'stt_custom_url': 'URL API STT Tùy Chỉnh',
-            'llm_model': 'Model LLM (Ollama)',
-            'llm_temperature': 'Độ sáng tạo (Temperature)',
-            'llm_max_tokens': 'Độ dài tối đa (Tokens)',
-            'tts_engine': 'TTS Engine (Local/API)',
-            'tts_voice': 'Ngôn ngữ đọc (Local TTS)',
-            'tts_speed': 'Tốc độ đọc',
-            'tts_custom_url': 'URL API TTS Tùy Chỉnh',
-            'custom_stt_port': 'Port STT (Legacy)',
+            'name': 'Tên cấu hình LLM',
+            'model': 'Model AI (Qwen2.5)',
+            'temperature': 'Độ sáng tạo',
+            'max_tokens': 'Token tối đa',
+            'response_language': 'Ngôn ngữ phản hồi',
+            'system_prompt': 'System Prompt',
+            'router_model': 'Model Router (AI Router)',
+            'router_timeout': 'Router Timeout (giây)',
+            'is_active': 'Hoạt động',
         }
 
+
+class TTSConfigurationForm(forms.ModelForm):
+    """Form cho TTS Configuration"""
+    
+    class Meta:
+        model = TTSConfiguration
+        fields = ['name', 'engine', 'language', 'voice_id', 'speed', 'pitch', 'volume', 'custom_url', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: TTS Tiếng Việt'}),
+            'engine': forms.Select(attrs={'class': 'form-select', 'id': 'id_tts_engine'}),
+            'language': forms.Select(attrs={'class': 'form-select'}),
+            'voice_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Để trống dùng mặc định'}),
+            'speed': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '0.5', 'max': '2.0'}),
+            'pitch': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '0.5', 'max': '2.0'}),
+            'volume': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '0.1', 'max': '2.0'}),
+            'custom_url': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'http://localhost:5000/tts'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        labels = {
+            'name': 'Tên cấu hình TTS',
+            'engine': 'Engine TTS',
+            'language': 'Ngôn ngữ đọc',
+            'voice_id': 'Voice ID',
+            'speed': 'Tốc độ đọc',
+            'pitch': 'Tông giọng',
+            'volume': 'Âm lượng',
+            'custom_url': 'Custom API URL',
+            'is_active': 'Hoạt động',
+        }
+
+
+class AIConfigurationForm(forms.ModelForm):
+    """Form cho AI Configuration tổng hợp"""
+    
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.user = user
         
-        # Lấy danh sách model từ Ollama thực tế
-        import ollama
-        try:
-            models_data = ollama.list()
-            model_choices = []
-            
-            # Xử lý cả ListResponse object (bản mới) và dict (bản cũ)
-            if hasattr(models_data, 'models'):
-                # ListResponse object
-                for m in models_data.models:
-                    name = getattr(m, 'model', getattr(m, 'name', ''))
-                    if name:
-                        model_choices.append((name, name))
-            elif isinstance(models_data, dict):
-                # Dict response
-                for m in models_data.get('models', []):
-                    name = m.get('name') or m.get('model')
-                    if name:
-                        model_choices.append((name, name))
-            
-            if not model_choices:
-                model_choices = [('qwen2.5:1.5b', 'qwen2.5:1.5b (Default)')]
-            
-            self.fields['llm_model'].choices = model_choices
-        except Exception as e:
-            print(f"Error fetching Ollama models: {e}")
-            # Fallback nếu không kết nối được Ollama
-            self.fields['llm_model'].choices = [('qwen2.5:1.5b', 'qwen2.5:1.5b (Default)')]
+        # Lọc các cấu hình đang hoạt động
+        if user and not user.is_superuser:
+            # User thường chỉ thấy các config của mình và config mặc định
+            self.fields['stt_config'].queryset = STTConfiguration.objects.filter(
+                is_active=True
+            )
+            self.fields['llm_config'].queryset = LLMConfiguration.objects.filter(
+                is_active=True
+            )
+            self.fields['tts_config'].queryset = TTSConfiguration.objects.filter(
+                is_active=True
+            )
+        else:
+            # Superuser thấy tất cả
+            self.fields['stt_config'].queryset = STTConfiguration.objects.filter(
+                is_active=True
+            )
+            self.fields['llm_config'].queryset = LLMConfiguration.objects.filter(
+                is_active=True
+            )
+            self.fields['tts_config'].queryset = TTSConfiguration.objects.filter(
+                is_active=True
+            )
+    
+    class Meta:
+        model = AIConfiguration
+        fields = ['name', 'stt_config', 'llm_config', 'tts_config', 'is_default', 'is_active', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'VD: Cấu hình AI Tiếng Việt'}),
+            'stt_config': forms.Select(attrs={'class': 'form-select'}),
+            'llm_config': forms.Select(attrs={'class': 'form-select'}),
+            'tts_config': forms.Select(attrs={'class': 'form-select'}),
+            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Mô tả về cấu hình AI này...'}),
+        }
+        labels = {
+            'name': 'Tên cấu hình AI',
+            'stt_config': 'Cấu hình STT',
+            'llm_config': 'Cấu hình LLM',
+            'tts_config': 'Cấu hình TTS',
+            'is_default': 'Đặt làm mặc định',
+            'is_active': 'Kích hoạt',
+            'description': 'Mô tả',
+        }

@@ -8,34 +8,21 @@
     .card-header-custom {
         background: rgba(0, 243, 255, 0.05);
         border-bottom: 1px solid rgba(0, 243, 255, 0.2);
-        padding: 1.25rem 1.5rem;
+        padding: 1rem 1.25rem;
         border-radius: 16px 16px 0 0;
     }
     .kv-item {
         display: flex;
         justify-content: space-between;
         gap: 1rem;
-        padding: 0.6rem 0;
-        border-bottom: 1px dashed rgba(255,255,255,0.1);
+        padding: 0.55rem 0;
+        border-bottom: 1px dashed rgba(255,255,255,0.08);
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.85rem;
     }
     .kv-item:last-child { border-bottom: none; }
-    .kv-key { color: #6c757d; text-transform: uppercase; letter-spacing: 1px; }
+    .kv-key { color: #6c757d; min-width: 110px; }
     .kv-val { color: #e0eaff; font-weight: 600; text-align: right; word-break: break-all; }
-    .json-box {
-        background: rgba(0,0,0,0.45);
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 12px;
-        padding: 1rem;
-        color: #a5d6ff;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.8rem;
-        white-space: pre-wrap;
-        word-break: break-word;
-        max-height: 320px;
-        overflow: auto;
-    }
     .chip {
         display: inline-flex;
         align-items: center;
@@ -49,129 +36,124 @@
     }
     .chip.online { border-color: rgba(32,201,151,0.6); color: #20c997; }
     .chip.offline { border-color: rgba(108,117,125,0.5); color: #6c757d; }
+    .tool-item {
+        padding: 0.6rem 0.9rem;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.35);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-left: 3px solid var(--neon-purple, #bc13fe);
+        transition: 0.2s;
+    }
+    .tool-item:hover { border-left-color: var(--neon-blue, #00f3ff); background: rgba(0,243,255,0.04); }
+    .res-item {
+        padding: 0.6rem 0.9rem;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.35);
+        border: 1px dashed rgba(255,193,7,0.25);
+    }
 </style>
 
 <div class="p-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 border-bottom border-secondary pb-3" style="border-color: rgba(255,255,255,0.1) !important;">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 border-bottom pb-3" style="border-color: rgba(255,255,255,0.1) !important;">
         <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="status-dot" style="width:10px; height:10px; background:var(--neon-blue); border-radius:50%; box-shadow:0 0 8px var(--neon-blue); animation: pulse 2s infinite;"></span>
-                <span class="text-secondary font-monospace small">CHI TIẾT MCP NODE</span>
-            </div>
-            <h4 class="fw-bold text-white mb-0 text-glow-info">
-                <i class="fa-solid fa-server me-2"></i> {{ server.device_id }}
+            <span class="text-secondary font-monospace small">Chi tiết MCP Node</span>
+            <h4 class="fw-bold text-white mb-0 mt-1" style="text-shadow: 0 0 10px rgba(0,243,255,0.4);">
+                <i class="fa-solid fa-server me-2 text-info"></i>{{ server.name|default:server.device_id }}
             </h4>
+            <div class="text-secondary font-monospace small mt-1">{{ server.device_id }}</div>
         </div>
         <div class="mt-3 mt-md-0">
             {% if server.is_online %}
-                <span class="chip online"><span class="spinner-grow spinner-grow-sm" style="width: 0.35rem; height: 0.35rem;"></span>ĐANG ONLINE</span>
+                <span class="chip online"><span class="spinner-grow spinner-grow-sm" style="width: 0.35rem; height: 0.35rem;"></span>Đang online</span>
             {% else %}
-                <span class="chip offline">NGOẠI TUYẾN</span>
+                <span class="chip offline"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i>Ngoại tuyến</span>
             {% endif %}
         </div>
     </div>
 
-    <div class="row g-4">
+    <!-- Thông tin + Stats -->
+    <div class="row g-3 mb-4">
         <div class="col-lg-5">
             <div class="cyber-card h-100">
-                <div class="card-header-custom d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0 fw-bold text-white font-monospace">THÔNG TIN NODE</h5>
-                    <span class="badge bg-transparent border border-secondary text-secondary font-monospace">/info</span>
+                <div class="card-header-custom">
+                    <h6 class="mb-0 fw-bold text-white font-monospace"><i class="bi bi-info-circle me-2 text-info"></i>Thông tin node</h6>
                 </div>
-                <div class="p-4">
-                    <div class="kv-item"><div class="kv-key">DEVICE_ID</div><div class="kv-val">{{ server.device_id }}</div></div>
-                    <div class="kv-item"><div class="kv-key">ENDPOINT</div><div class="kv-val">{{ server.endpoint }}</div></div>
-                    <div class="kv-item"><div class="kv-key">RESOURCES</div><div class="kv-val">{{ resources|length }}</div></div>
-                    <div class="kv-item"><div class="kv-key">TOOLS</div><div class="kv-val">{{ tools|length }}</div></div>
+                <div class="p-3">
+                    <div class="kv-item"><div class="kv-key">Endpoint</div><div class="kv-val text-info">{{ server.endpoint|default:"—" }}</div></div>
+                    <div class="kv-item"><div class="kv-key">Loại</div><div class="kv-val">{{ server.server_type|default:"local" }}</div></div>
                     <div class="kv-item">
-                        <div class="kv-key">LAST_SEEN</div>
-                        <div class="kv-val">{% if server.last_seen %}{{ server.last_seen|date:"Y-m-d H:i:s" }}{% else %}N/A{% endif %}</div>
+                        <div class="kv-key">Quyền truy cập</div>
+                        <div class="kv-val">
+                            {% if server.is_public %}<span class="text-warning">Công khai</span>{% else %}<span class="text-info">Riêng tư</span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="kv-item">
+                        <div class="kv-key">Lần cuối thấy</div>
+                        <div class="kv-val text-secondary fw-normal">{% if server.last_seen %}{{ server.last_seen|timesince }} trước{% else %}Chưa rõ{% endif %}</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-7">
-            <div class="cyber-card h-100">
-                <div class="card-header-custom d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0 fw-bold text-white font-monospace">NĂNG LỰC</h5>
-                    <span class="badge bg-transparent border border-info text-info font-monospace">/mcp/info</span>
+            <div class="row g-3 h-100">
+                <div class="col-6">
+                    <div class="cyber-card h-100 p-3 text-center d-flex flex-column align-items-center justify-content-center" style="border-left: 3px solid var(--neon-purple, #bc13fe);">
+                        <div style="font-size: 2.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #fff; text-shadow: 0 0 15px #bc13fe;">{{ tools|length }}</div>
+                        <div class="text-secondary small mt-1" style="letter-spacing: 1px;">Công cụ</div>
+                    </div>
                 </div>
-                <div class="p-4">
-                    <div class="json-box" id="capabilities-json">{{ capabilities }}</div>
+                <div class="col-6">
+                    <div class="cyber-card h-100 p-3 text-center d-flex flex-column align-items-center justify-content-center" style="border-left: 3px solid #ffc107;">
+                        <div style="font-size: 2.2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #fff; text-shadow: 0 0 15px #ffc107;">{{ resources|length }}</div>
+                        <div class="text-secondary small mt-1" style="letter-spacing: 1px;">Tài nguyên</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4 mt-1">
-        <div class="col-lg-6">
-            <div class="cyber-card h-100">
-                <div class="card-header-custom d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0 fw-bold text-white font-monospace">TOOLS</h5>
-                    <span class="badge bg-transparent border border-secondary text-secondary font-monospace">/mcp/tools</span>
-                </div>
-                <div class="p-4">
-                    {% if tools %}
-                        <div class="d-grid gap-2">
-                            {% for tool in tools %}
-                                <div class="p-3 rounded-3" style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.06);">
-                                    <div class="d-flex justify-content-between align-items-start gap-2">
-                                        <div>
-                                            <div class="text-white fw-bold font-monospace">{{ tool.name }}</div>
-                                            <div class="text-secondary small font-monospace">{{ tool.description }}</div>
-                                        </div>
-                                        <span class="badge bg-transparent border border-info text-info font-monospace">TOOL</span>
-                                    </div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="text-center py-5 opacity-75">
-                            <i class="fa-solid fa-wrench text-secondary opacity-25 display-4 mb-3 d-block"></i>
-                            <div class="text-secondary font-monospace">> Không phát hiện tool nào.</div>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
+    <!-- Tools -->
+    <div class="cyber-card mb-3">
+        <div class="card-header-custom d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 fw-bold text-white font-monospace"><i class="bi bi-wrench-adjustable me-2 text-info"></i>Công cụ ({{ tools|length }})</h6>
         </div>
+        <div class="p-3">
+            {% if tools %}
+                <div class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                    {% for tool in tools %}
+                        <div class="tool-item">
+                            <div class="text-white fw-bold font-monospace small">{{ tool.name }}</div>
+                            <div class="text-secondary mt-1" style="font-size: 0.78rem;">{{ tool.description }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4 text-secondary font-monospace small">> Không phát hiện công cụ nào.</div>
+            {% endif %}
+        </div>
+    </div>
 
-        <div class="col-lg-6">
-            <div class="cyber-card h-100">
-                <div class="card-header-custom d-flex align-items-center justify-content-between">
-                    <h5 class="mb-0 fw-bold text-white font-monospace">TÀI NGUYÊN</h5>
-                    <span class="badge bg-transparent border border-secondary text-secondary font-monospace">/mcp/resources</span>
-                </div>
-                <div class="p-4">
-                    {% if resources %}
-                        <div class="d-grid gap-2">
-                            {% for res in resources %}
-                                <div class="p-3 rounded-3" style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.06);">
-                                    <div class="text-white fw-bold font-monospace">{{ res.name }}</div>
-                                    <div class="text-secondary small font-monospace">{{ res.description }}</div>
-                                    <div class="text-info small font-monospace mt-2" style="word-break: break-all;">{{ res.uri }}</div>
-                                </div>
-                            {% endfor %}
+    <!-- Tài nguyên -->
+    <div class="cyber-card">
+        <div class="card-header-custom d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 fw-bold text-white font-monospace"><i class="bi bi-database me-2 text-warning"></i>Tài nguyên ({{ resources|length }})</h6>
+        </div>
+        <div class="p-3">
+            {% if resources %}
+                <div class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                    {% for res in resources %}
+                        <div class="res-item">
+                            <div class="text-warning fw-bold font-monospace small">{{ res.name }}</div>
+                            <div class="text-secondary mt-1" style="font-size: 0.78rem;">{{ res.description }}</div>
+                            <div class="text-info mt-1 font-monospace" style="font-size: 0.72rem; word-break: break-all;">{{ res.uri }}</div>
                         </div>
-                    {% else %}
-                        <div class="text-center py-5 opacity-75">
-                            <i class="fa-solid fa-database text-secondary opacity-25 display-4 mb-3 d-block"></i>
-                            <div class="text-secondary font-monospace">> Không có tài nguyên nào.</div>
-                        </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
-            </div>
+            {% else %}
+                <div class="text-center py-4 text-secondary font-monospace small">> Không có tài nguyên nào.</div>
+            {% endif %}
         </div>
     </div>
 </div>
-
-<script>
-    (function() {
-        const el = document.getElementById('capabilities-json');
-        if (!el) return;
-        try {
-            const parsed = JSON.parse(el.textContent);
-            el.textContent = JSON.stringify(parsed, null, 2);
-        } catch (e) {}
-    })();
-</script>

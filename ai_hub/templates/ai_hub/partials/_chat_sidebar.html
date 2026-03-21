@@ -1,0 +1,87 @@
+<div class="col-lg-4">
+
+    <!-- AI Configuration Status -->
+    <div class="cyber-card shadow-lg mb-4">
+        <div class="card-header-custom d-flex align-items-center">
+            <i class="fa-solid fa-sliders text-info me-2 text-glow-info"></i>
+            <h6 class="mb-0 fw-bold text-white font-monospace">Cấu hình AI</h6>
+        </div>
+        <div class="p-3">
+            <div id="ai-config-status" class="ai-status-card">
+                <div class="status-item">
+                    <span class="status-label">Cấu hình</span>
+                    <div class="d-flex align-items-center">
+                        <span class="status-value" id="config-name">Loading...</span>
+                        <div class="status-indicator status-offline" id="config-status"></div>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Nhận dạng giọng (STT)</span>
+                    <span class="status-value" id="stt-engine">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Đọc văn bản (TTS)</span>
+                    <span class="status-value" id="tts-engine">--</span>
+                </div>
+                <div class="status-item" id="tts-voice-item">
+                    <span class="status-label">Giọng đọc</span>
+                    <span class="status-value" id="tts-voice">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Mô hình AI</span>
+                    <span class="status-value" id="llm-model">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Ngôn ngữ trả lời</span>
+                    <span class="status-value" id="response-language">--</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Nhiệt độ</span>
+                    <span class="status-value" id="llm-temperature">--</span>
+                </div>
+            </div>
+            <div class="mt-3 text-center d-flex gap-2 justify-content-center">
+                <a href="{% url 'ai_config_list' %}" class="btn btn-sm btn-neon rounded-pill px-3">
+                    <i class="fa-solid fa-cog me-1"></i>Quản lý cấu hình
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Capabilities / Modules -->
+    <div class="cyber-card shadow-lg mb-4">
+        <div class="card-header-custom py-2 px-3 d-flex justify-content-between align-items-center">
+            <span class="text-white font-monospace small"><i class="fa-solid fa-microchip me-2"></i>CHỨC NĂNG</span>
+            <a href="{% url 'mcp_public_tools' %}" class="btn btn-sm btn-link text-info p-0 font-monospace" style="font-size: 0.7rem; text-decoration: none;">
+                <i class="fa-solid fa-plus-circle me-1"></i>THÊM
+            </a>
+        </div>
+        <div class="p-3">
+            <div class="d-flex flex-wrap gap-2 font-monospace" id="capabilities-container">
+                <div class="text-secondary" style="font-size:0.75rem;">>_ Đang tải...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Knowledge Base -->
+    <div class="cyber-card shadow-lg mb-4">
+        <div class="card-header-custom py-2 px-3 d-flex justify-content-between align-items-center">
+            <span class="text-white font-monospace small"><i class="fa-solid fa-database me-2 text-info"></i>KHO TRI THỨC</span>
+            <a href="{% url 'mcp_public_tools' %}" class="btn btn-sm btn-link text-info p-0 font-monospace" style="font-size: 0.7rem; text-decoration: none;">
+                <i class="fa-solid fa-plus-circle me-1"></i>THÊM
+            </a>
+        </div>
+        <div class="p-3" id="kb-panel-body">
+            <div class="text-secondary font-monospace" style="font-size:0.75rem;" id="kb-loading">>_ Đang tải...</div>
+            <div id="kb-list-container" style="display:none;"></div>
+            <div id="kb-empty-state" style="display:none;" class="text-center py-2">
+                <i class="fa-solid fa-book-open text-secondary mb-1" style="font-size:1.5rem; opacity:0.3;"></i>
+                <p class="text-secondary font-monospace mb-1" style="font-size:0.72rem;">>_ Chưa có kho tri thức nào</p>
+                <a href="{% url 'mcp_public_tools' %}" class="btn btn-sm btn-cmd rounded-pill px-3 py-1 mt-1" style="font-size:0.72rem;">
+                    <i class="fa-solid fa-plus me-1"></i>Thêm ngay
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -121,7 +121,7 @@
         <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px; border-radius: 15px; background: rgba(0, 243, 255, 0.1); border: 1px solid var(--neon-blue);">
             <i class="bi bi-cpu-fill text-info fs-1"></i>
         </div>
-        <h1 class="display-5 fw-bold text-white mb-2">FIRMWARE_FLASH_CENTER</h1>
+        <h1 class="display-5 fw-bold text-white mb-2">Trung tâm nạp firmware</h1>
         <p class="text-secondary font-monospace">>_ Chế độ nạp phần mềm hệ thống cho các thiết bị ngoại vi.</p>
     </div>
 
@@ -129,7 +129,7 @@
         <div class="col-auto">
             <div class="filter-container">
                 <button class="device-filter active" data-device="all">
-                    <i class="bi bi-cpu me-2"></i>ALL_UNITS
+                    <i class="bi bi-cpu me-2"></i>Tất cả thiết bị
                 </button>
                 {% for device_type, device_label in DEVICE_CHOICES %}
                 <button class="device-filter" data-device="{{ device_type }}">
@@ -173,7 +173,7 @@
                     
                     <div class="pt-3 border-top border-secondary" style="border-color: rgba(255,255,255,0.05) !important;">
                         <a href="{% url 'firmware_detail' firmware.id %}" class="btn flash-btn">
-                            <i class="bi bi-lightning-charge-fill me-2"></i>Flash Now
+                            <i class="bi bi-lightning-charge-fill me-2"></i>Nạp firmware
                         </a>
                     </div>
                 </div>
@@ -181,7 +181,7 @@
                 <div class="card-footer bg-transparent border-0 px-4 pb-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-secondary font-monospace"><i class="bi bi-calendar3 me-2"></i>{{ firmware.created_at|date:"d M Y" }}</small>
-                        <i class="bi bi-shield-check text-success" title="Verified Firmware"></i>
+                        <i class="bi bi-shield-check text-success" title="Firmware đã xác minh"></i>
                     </div>
                 </div>
             </div>
@@ -190,7 +190,7 @@
         <div class="col-12">
             <div class="text-center py-5 cyber-card">
                 <i class="bi bi-slash-circle display-1 text-secondary opacity-25"></i>
-                <h4 class="mt-4 text-white font-monospace">DATA_NOT_FOUND</h4>
+                <h4 class="mt-4 text-white font-monospace">Chưa có dữ liệu</h4>
                 <p class="text-secondary">Hiện chưa có bản firmware nào khả dụng trong cơ sở dữ liệu.</p>
             </div>
         </div>

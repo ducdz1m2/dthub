@@ -20,10 +20,14 @@ class AiHubConfig(AppConfig):
         try:
             from .mcp_client import initialize_mcp_client
             # Initialize in background without delay to avoid blocking startup
+            # Also delay to avoid database access during app initialization
             import threading
+            import time
             
             def delayed_init():
                 try:
+                    # Wait for Django to fully initialize before accessing database
+                    time.sleep(2)
                     initialize_mcp_client()
                 except Exception as e:
                     # Fail silently if initialization fails

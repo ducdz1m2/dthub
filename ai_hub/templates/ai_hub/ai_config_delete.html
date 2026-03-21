@@ -1,278 +1,66 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}DTHub | Xóa AI Configuration{% endblock %}
-
 {% block content %}
 <style>
-    /* Cyber Card Style */
-    .cyber-card {
-        background: linear-gradient(135deg, rgba(10, 15, 30, 0.7), rgba(5, 9, 20, 0.9));
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 16px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .cyber-card:hover { 
-        box-shadow: 0 0 25px rgba(0, 243, 255, 0.1); 
-    }
-    
-    .card-header-custom {
-        background: rgba(0, 243, 255, 0.05);
-        border-bottom: 1px solid rgba(0, 243, 255, 0.2);
-        padding: 1.25rem 1.5rem;
-        border-radius: 16px 16px 0 0;
-    }
-
-    /* Alert Styles */
-    .alert-danger {
-        background: rgba(220, 53, 69, 0.1);
-        border: 1px solid #dc3545;
-        color: #ff6b6b;
-        border-radius: 12px;
-    }
-    
-    .alert-warning {
-        background: rgba(255, 193, 7, 0.1);
-        border: 1px solid #ffc107;
-        color: #ffc107;
-        border-radius: 12px;
-    }
-
-    /* Button Styles */
-    .btn-danger {
-        background: linear-gradient(135deg, #dc3545, #c82333);
-        border: none;
-        color: white;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        transition: 0.3s;
-    }
-    
-    .btn-danger:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 0 20px rgba(220, 53, 69, 0.4);
-        color: white;
-    }
-    
-    .btn-secondary {
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
-        transition: 0.3s;
-    }
-    
-    .btn-secondary:hover {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-    }
-
-    /* Config Details */
-    .config-detail {
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .detail-label {
-        color: var(--neon-blue);
-        font-weight: 600;
-        font-size: 0.8rem;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-    }
-    
-    .detail-value {
-        color: white;
-        font-weight: 500;
-    }
-    
-    .provider-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.8rem;
-        font-weight: bold;
-        color: white;
-    }
-    
-    .provider-ollama { background: #6d75e0; }
-    .provider-openai { background: #10a37f; }
-    .provider-gemini { background: #4285f4; }
-    .provider-claude { background: #d97757; }
+.cyber-card { background:linear-gradient(135deg,rgba(10,15,30,.8),rgba(5,9,20,.95)); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.06); border-radius:16px; }
+.info-chip { background:rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.07); border-radius:8px; padding:.6rem .9rem; }
+.chip-lbl { font-size:.62rem; color:#6c757d; letter-spacing:.5px; text-transform:uppercase; font-family:monospace; }
+.chip-val { font-size:.85rem; color:#e2e8f0; font-weight:600; }
+.act-btn { display:inline-flex; align-items:center; gap:.35rem; padding:.4rem .9rem; border-radius:8px; font-size:.82rem; font-weight:600; border:1px solid; text-decoration:none; transition:.2s; background:transparent; cursor:pointer; }
+.act-cancel { border-color:rgba(255,255,255,.2); color:#a0aec0; }
+.act-cancel:hover { border-color:rgba(255,255,255,.4); color:#fff; }
+.act-del { border-color:rgba(220,53,69,.6); color:#dc3545; background:rgba(220,53,69,.08); }
+.act-del:hover { background:rgba(220,53,69,.18); box-shadow:0 0 15px rgba(220,53,69,.2); }
 </style>
 
-<div class="container mt-4 mb-5">
-    
-    <!-- Header -->
-    <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
-        <div class="d-flex align-items-center justify-content-center me-3" style="width: 55px; height: 55px; border-radius: 12px; background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; box-shadow: 0 0 15px rgba(220,53,69,0.2);">
-            <i class="fa-solid fa-trash text-danger fs-3"></i>
+<div class="container mt-4 mb-5" style="max-width:580px">
+    <div class="d-flex align-items-center mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="width:44px;height:44px;border-radius:10px;background:rgba(220,53,69,.1);border:1px solid rgba(220,53,69,.3);display:flex;align-items:center;justify-content:center;margin-right:1rem;flex-shrink:0;">
+            <i class="fa-solid fa-trash text-danger"></i>
         </div>
         <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="status-dot" style="width:8px; height:8px; background:#dc3545; border-radius:50%; box-shadow:0 0 8px #dc3545; animation: pulse 2s infinite;"></span>
-                <span class="text-secondary font-monospace small">DELETE_CONFIRMATION</span>
-            </div>
-            <h2 class="fw-bold text-white mb-0" style="letter-spacing: 1px;">Xóa AI Configuration</h2>
-        </div>
-        <div class="ms-auto">
-            <a href="{% url 'ai_config_list' %}" class="btn btn-secondary">
-                <i class="fa-solid fa-arrow-left me-2"></i>Quay Lại
-            </a>
+            <span class="text-secondary font-monospace d-block" style="font-size:.7rem;">DELETE_CONFIRMATION</span>
+            <h4 class="mb-0 text-white fw-bold">Xóa AI Configuration</h4>
         </div>
     </div>
-    
-    <!-- Warning Alert -->
-    <div class="alert alert-danger mb-4">
-        <div class="d-flex align-items-center">
-            <i class="fa-solid fa-exclamation-triangle me-3 fs-4"></i>
-            <div>
-                <h6 class="mb-1">CẢNH BÁO: HÀNH ĐỘNG KHÔNG THỂ HOÀN TÁC</h6>
-                <p class="mb-0">Bạn có chắc chắn muốn xóa AI Configuration này? Hành động này không thể hoàn tác.</p>
-            </div>
+
+    <div class="p-3 rounded-3 mb-4" style="background:rgba(220,53,69,.08);border:1px solid rgba(220,53,69,.3);">
+        <div class="d-flex align-items-center gap-2 text-danger">
+            <i class="fa-solid fa-triangle-exclamation flex-shrink-0"></i>
+            <span style="font-size:.9rem;">Bạn có chắc muốn xóa <strong>"{{ config.name }}"</strong>? Hành động này không thể hoàn tác.</span>
         </div>
     </div>
-    
-    <!-- Configuration Details -->
-    <div class="cyber-card mb-4">
-        <div class="card-header-custom">
-            <i class="fa-solid fa-cogs text-danger me-2 fs-5"></i>
-            <h5 class="mb-0 fw-bold text-white font-monospace">CONFIGURATION_TO_DELETE</h5>
-        </div>
-        
-        <div class="p-4">
-            <div class="row align-items-center mb-4">
-                <div class="col-md-8">
-                    <div class="d-flex align-items-center">
-                        <div class="provider-icon provider-{{ config.llm_provider }} me-3">
-                            {{ config.llm_provider|upper|slice:":1" }}
-                        </div>
-                        <div>
-                            <h4 class="mb-1 fw-bold text-white">{{ config.name }}</h4>
-                            <small class="text-secondary font-monospace">
-                                {% if config.user %}{{ config.user.username }}{% else %}Global{% endif %}
-                                {% if config.is_default %}• <span class="text-warning">MẶC ĐỊNH</span>{% endif %}
-                            </small>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 text-end">
-                    {% if config.is_default %}
-                        <span class="badge bg-warning text-dark px-3 py-2">
-                            <i class="fa-solid fa-star me-1"></i>MẶC ĐỊNH
-                        </span>
-                    {% endif %}
-                    {% if not config.is_active %}
-                        <span class="badge bg-secondary px-3 py-2">
-                            <i class="fa-solid fa-pause me-1"></i>INACTIVE
-                        </span>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">STT Engine</div>
-                        <div class="detail-value">{{ config.get_stt_engine_display }}</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">LLM Provider</div>
-                        <div class="detail-value">{{ config.get_llm_provider_display }}</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">TTS Engine</div>
-                        <div class="detail-value">{{ config.get_tts_engine_display }}</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">Model</div>
-                        <div class="detail-value">{{ config.llm_model }}</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">Language</div>
-                        <div class="detail-value">{{ config.get_stt_language_display }}</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">Voice</div>
-                        <div class="detail-value">{{ config.tts_voice }}</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">Temperature</div>
-                        <div class="detail-value">{{ config.llm_temperature }}</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">Max Tokens</div>
-                        <div class="detail-value">{{ config.llm_max_tokens }}</div>
-                    </div>
-                </div>
-            </div>
-            
-            {% if config.custom_stt_endpoint %}
-                <div class="mt-3 pt-3 border-top border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
-                    <div class="config-detail">
-                        <div class="detail-label mb-1">Custom STT Server</div>
-                        <div class="detail-value">{{ config.custom_stt_endpoint }}:{{ config.custom_stt_port }}</div>
-                    </div>
-                </div>
-            {% endif %}
-            
-            <div class="mt-3 pt-3 border-top border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="config-detail">
-                            <div class="detail-label mb-1">Created</div>
-                            <div class="detail-value">{{ config.created_at|date:"d/m/Y H:i" }}</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="config-detail">
-                            <div class="detail-label mb-1">Last Updated</div>
-                            <div class="detail-value">{{ config.updated_at|date:"d/m/Y H:i" }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
+
     {% if config.is_default %}
-        <div class="alert alert-warning mb-4">
-            <i class="fa-solid fa-exclamation-triangle me-2"></i>
-            <strong>Lưu ý:</strong> Đây là cấu hình mặc định. Sau khi xóa, bạn cần đặt một cấu hình khác làm mặc định.
+    <div class="p-3 rounded-3 mb-4" style="background:rgba(255,193,7,.07);border:1px solid rgba(255,193,7,.3);">
+        <div class="d-flex align-items-center gap-2 text-warning">
+            <i class="fa-solid fa-star flex-shrink-0"></i>
+            <span style="font-size:.85rem;">Đây là cấu hình mặc định. Sau khi xóa, hãy đặt cấu hình khác làm mặc định.</span>
         </div>
+    </div>
     {% endif %}
-    
-    <!-- Delete Form -->
+
+    <div class="cyber-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="fw-bold text-white">{{ config.name }}</span>
+            {% if config.is_default %}<span style="font-size:.65rem;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(255,193,7,.5);color:#ffc107;background:rgba(255,193,7,.08);">MẶC ĐỊNH</span>{% endif %}
+            {% if not config.is_active %}<span style="font-size:.65rem;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(108,117,125,.4);color:#6c757d;background:rgba(108,117,125,.08);">INACTIVE</span>{% endif %}
+            <small class="text-secondary font-monospace ms-1">— {% if config.user %}{{ config.user.username }}{% else %}Global{% endif %}</small>
+        </div>
+        <div class="row g-2">
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">STT</div><div class="chip-val text-warning">{{ config.stt_config.get_engine_display|default:"—" }}</div></div></div>
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">LLM Model</div><div class="chip-val text-info">{{ config.llm_config.model|default:"—" }}</div></div></div>
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">TTS</div><div class="chip-val text-success">{{ config.tts_config.get_engine_display|default:"—" }}</div></div></div>
+            <div class="col-6"><div class="info-chip"><div class="chip-lbl">Ngôn ngữ</div><div class="chip-val">{{ config.llm_config.get_response_language_display|default:"—" }}</div></div></div>
+        </div>
+    </div>
+
     <form method="post">
         {% csrf_token %}
-        
         <div class="d-flex justify-content-between">
-            <a href="{% url 'ai_config_list' %}" class="btn btn-secondary btn-lg">
-                <i class="fa-solid fa-times me-2"></i>Hủy
-            </a>
-            <button type="submit" class="btn btn-danger btn-lg">
-                <i class="fa-solid fa-trash me-2"></i>Xóa Vĩnh Viễn
-            </button>
+            <a href="{% url 'ai_config_list' %}" class="act-btn act-cancel"><i class="fa-solid fa-times"></i>Hủy</a>
+            <button type="submit" class="act-btn act-del"><i class="fa-solid fa-trash"></i>Xóa vĩnh viễn</button>
         </div>
     </form>
 </div>

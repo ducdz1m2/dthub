@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Firmware Analytics | DTHub{% endblock %}
+{% block title %}Thống kê Firmware | DTHub{% endblock %}
 
 {% block content %}
 <style>
@@ -87,15 +87,15 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <span class="status-dot" style="width:10px; height:10px; background:var(--neon-blue); border-radius:50%; box-shadow:0 0 8px var(--neon-blue); animation: pulse 2s infinite;"></span>
-                <span class="text-secondary font-monospace small">TELEMETRY_DASHBOARD</span>
+                <span class="text-secondary font-monospace small">Bảng theo dõi hệ thống</span>
             </div>
-            <h2 class="fw-bold text-white mb-0 text-glow-info"><i class="bi bi-graph-up-arrow me-2"></i> Firmware Analytics</h2>
+            <h2 class="fw-bold text-white mb-0 text-glow-info"><i class="bi bi-graph-up-arrow me-2"></i> Thống kê Firmware</h2>
             <p class="text-secondary font-monospace mt-2 mb-0">>_ Phân tích dữ liệu nạp và mật độ phân bổ thiết bị lõi.</p>
         </div>
         
         <div class="mt-4 mt-md-0">
             <a href="{% url 'firmware_manage' %}" class="btn btn-cyber-outline rounded-pill text-decoration-none d-inline-flex align-items-center">
-                <i class="bi bi-arrow-return-left me-2"></i> RETURN_TO_MASTER
+                <i class="bi bi-arrow-return-left me-2"></i> Quay lại quản lý
             </a>
         </div>
     </div>
@@ -106,7 +106,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-number text-glow-info">{{ total_firmwares }}</div>
-                        <div class="stat-label">TOTAL_FIRMWARES</div>
+                        <div class="stat-label">Tổng firmware</div>
                     </div>
                     <i class="bi bi-cpu display-6 text-info opacity-50"></i>
                 </div>
@@ -117,7 +117,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-number text-glow-success">{{ active_firmwares }}</div>
-                        <div class="stat-label">ACTIVE_NODES</div>
+                        <div class="stat-label">Đang hoạt động</div>
                     </div>
                     <i class="bi bi-check-circle display-6 text-success opacity-50"></i>
                 </div>
@@ -128,7 +128,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-number text-glow-purple">{{ total_flashes }}</div>
-                        <div class="stat-label">TOTAL_FLASH_EXEC</div>
+                        <div class="stat-label">Tổng lần nạp</div>
                     </div>
                     <i class="bi bi-lightning-charge display-6 opacity-50" style="color: var(--neon-purple);"></i>
                 </div>
@@ -139,7 +139,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-number text-glow-warning">{{ success_rate|floatformat:1 }}<span style="font-size: 1.2rem;">%</span></div>
-                        <div class="stat-label">SUCCESS_RATIO</div>
+                        <div class="stat-label">Tỉ lệ thành công</div>
                     </div>
                     <i class="bi bi-bullseye display-6 text-warning opacity-50"></i>
                 </div>
@@ -151,7 +151,7 @@
         <div class="col-lg-5">
             <div class="cyber-card p-4 h-100">
                 <h6 class="text-white font-monospace mb-4 pb-3 border-bottom border-secondary d-flex justify-content-between" style="border-color: rgba(255,255,255,0.1) !important;">
-                    <span><i class="bi bi-pie-chart text-info me-2"></i>ARCHITECTURE_DISTRIBUTION</span>
+                    <span><i class="bi bi-pie-chart text-info me-2"></i>Phân bổ theo loại thiết bị</span>
                 </h6>
                 
                 <div class="pe-2 mt-2">
@@ -159,7 +159,7 @@
                     <div class="mb-4">
                         <div class="d-flex justify-content-between text-secondary font-monospace small mb-2">
                             <span class="text-light">{{ device.name }}</span>
-                            <span>{{ device.count }} UNITS (<span class="text-info">{{ device.percentage|floatformat:1 }}%</span>)</span>
+                            <span>{{ device.count }} thiết bị (<span class="text-info">{{ device.percentage|floatformat:1 }}%</span>)</span>
                         </div>
                         <div class="progress-cyber">
                             <div class="progress-bar-cyber h-100" data-percentage="{{ device.percentage|floatformat:0 }}" style="width: 0%;"></div>
@@ -168,7 +168,7 @@
                     {% empty %}
                     <div class="text-center py-4 text-secondary font-monospace">
                         <i class="bi bi-inbox display-4 opacity-25 d-block mb-3"></i>
-                        > NO_DATA_AVAILABLE
+                        > Chưa có dữ liệu.
                     </div>
                     {% endfor %}
                 </div>
@@ -178,17 +178,17 @@
         <div class="col-lg-7">
             <div class="cyber-card p-4 h-100">
                 <h6 class="text-white font-monospace mb-4 pb-3 border-bottom border-secondary" style="border-color: rgba(255,255,255,0.1) !important;">
-                    <i class="bi bi-terminal-split text-warning me-2"></i>RECENT_FLASH_LOGS
+                    <i class="bi bi-terminal-split text-warning me-2"></i>Nhật ký nạp gần đây
                 </h6>
                 
                 <div class="table-responsive">
                     <table class="cyber-table">
                         <thead>
                             <tr>
-                                <th>Target_Firmware</th>
-                                <th>Client_IP</th>
-                                <th>Status</th>
-                                <th class="text-end">Timestamp</th>
+                                <th>Firmware</th>
+                                <th>IP người dùng</th>
+                                <th>Trạng thái</th>
+                                <th class="text-end">Thời gian</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -202,9 +202,9 @@
                                 </td>
                                 <td>
                                     {% if session.success %}
-                                        <span class="badge-cyber success">SUCCESS</span>
+                                        <span class="badge-cyber success">Thành công</span>
                                     {% else %}
-                                        <span class="badge-cyber danger">FAILED</span>
+                                        <span class="badge-cyber danger">Thất bại</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-end text-secondary">
@@ -214,7 +214,7 @@
                             {% empty %}
                             <tr>
                                 <td colspan="4" class="text-center py-4 text-secondary">
-                                    > _Log is empty. No recent sessions found.
+                                    > Nhật ký trống. Chưa có phiên nạp nào.
                                 </td>
                             </tr>
                             {% endfor %}

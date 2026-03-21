@@ -17,7 +17,8 @@ class MCPServer(models.Model):
     # Loại server
     server_type = models.CharField(max_length=20, choices=[
         ('private', 'Private Server'),
-        ('public', 'Public Server')
+        ('public', 'Public Server'),
+        ('local', 'Local Server (Auto-scanned)')
     ], default='private', verbose_name="Loại Server")
     
     # Chủ sở hữu (chỉ cho private server)
@@ -251,88 +252,273 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.session.session_id} - {self.tool_used}"
 
-class AIConfiguration(models.Model):
-    """Model để lưu cấu hình AI cho chatbot (đơn giản hóa)"""
-    name = models.CharField(max_length=100, verbose_name="Tên cấu hình")
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE,
-        null=True, blank=True,
-        help_text="Để trống cho cấu hình mặc định"
-    )
-    is_default = models.BooleanField(default=False, verbose_name="Mặc định")
-    is_active = models.BooleanField(default=True, verbose_name="Hoạt động")
+class STTConfiguration(models.Model):
+    """Cấu hình Speech-to-Text riêng biệt"""
+    name = models.CharField(max_length=100, verbose_name="Tên cấu hình STT")
     
-    # STT Configuration
-    STT_ENGINE_CHOICES = [
-        ('vosk', 'Vosk (Offline - Siêu nhẹ)'),
-        ('whisper', 'OpenAI Whisper (Local - Thông minh)'),
+    ENGINE_CHOICES = [
+        ('whisper', 'Faster-Whisper (Local)'),
         ('custom', 'Custom STT API (Tùy chỉnh)'),
     ]
-    stt_engine = models.CharField(
+    engine = models.CharField(
         max_length=20, 
-        choices=STT_ENGINE_CHOICES, 
-        default='vosk', 
+        choices=ENGINE_CHOICES, 
+        default='whisper', 
         verbose_name="Speech-to-Text Engine"
     )
-    stt_custom_url = models.CharField(
+    
+    LANGUAGE_CHOICES = [
+        ('vi-VN', 'Tiếng Việt'),
+        ('en-US', 'Tiếng Anh'),
+        ('ja-JP', 'Tiếng Nhật'),
+        ('ko-KR', 'Tiếng Hàn'),
+        ('zh-CN', 'Tiếng Trung'),
+    ]
+    language = models.CharField(
+        max_length=10, 
+        choices=LANGUAGE_CHOICES, 
+        default='vi-VN', 
+        verbose_name="Ngôn ngữ nhận diện"
+    )
+    
+    custom_url = models.CharField(
         max_length=255, 
         blank=True, null=True, 
         verbose_name="Custom STT API URL",
         help_text="Ví dụ: http://localhost:5000/stt"
     )
     
-    stt_language = models.CharField(max_length=10, choices=[
-        ('vi-VN', 'Tiếng Việt'),
-        ('en-US', 'Tiếng Anh'),
-        ('ja-JP', 'Tiếng Nhật'),
-    ], default='vi-VN', verbose_name="Ngôn ngữ STT")
+    # Cấu hình nâng cao
+    model_size = models.CharField(
+        max_length=20,
+        choices=[
+            ('tiny', 'Tiny (Nhanh nhất)'),
+            ('base', 'Base (Cân bằng)'),
+            ('small', 'Small (Chính xác)'),
+            ('medium', 'Medium (Rất chính xác)'),
+        ],
+        default='base',
+        verbose_name="Kích thước model"
+    )
     
-    # LLM Configuration (chỉ Ollama)
-    llm_model = models.CharField(max_length=100, default='qwen2.5:1.5b', verbose_name="Model AI")
-    llm_temperature = models.FloatField(default=0.1, verbose_name="Độ sáng tạo (0-2)")
-    llm_max_tokens = models.IntegerField(default=250, verbose_name="Độ dài trả lời tối đa")
+    is_active = models.BooleanField(default=True, verbose_name="Hoạt động")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
-    # Ngôn ngữ phản hồi mong muốn
-    response_language = models.CharField(max_length=10, choices=[
+    class Meta:
+        verbose_name = "STT Configuration"
+        verbose_name_plural = "STT Configurations"
+        ordering = ['-is_active', 'name']
+    
+    def __str__(self):
+        return f"STT: {self.name} ({self.get_engine_display()})"
+
+
+class LLMConfiguration(models.Model):
+    """Cấu hình Language Model riêng biệt - Qwen2.5 Series"""
+    name = models.CharField(max_length=100, verbose_name="Tên cấu hình LLM")
+    
+    MODEL_CHOICES = [
+        ('qwen2.5:0.5b', 'Qwen2.5 0.5B (Siêu nhẹ - Nhanh nhất)'),
+        ('qwen2.5:1.5b', 'Qwen2.5 1.5B (Nhẹ - Cân bằng)'),
+        ('qwen2.5:3b', 'Qwen2.5 3B (Thông minh)'),
+        ('qwen2.5:7b', 'Qwen2.5 7B (Cao cấp)'),
+        ('qwen2.5:14b', 'Qwen2.5 14B (Chuyên nghiệp)'),
+    ]
+    model = models.CharField(
+        max_length=50, 
+        choices=MODEL_CHOICES, 
+        default='qwen2.5:1.5b', 
+        verbose_name="Model AI (Qwen2.5 Series)"
+    )
+    
+    temperature = models.FloatField(
+        default=0.1, 
+        verbose_name="Độ sáng tạo (0-2)",
+        help_text="0: Rất bảo thủ, 2: Rất sáng tạo"
+    )
+    
+    max_tokens = models.IntegerField(
+        default=1024, 
+        verbose_name="Độ dài trả lời tối đa",
+        help_text="Số token tối đa trong một phản hồi"
+    )
+    
+    LANGUAGE_CHOICES = [
         ('vi', 'Tiếng Việt'),
         ('en', 'Tiếng Anh'),
         ('ja', 'Tiếng Nhật'),
-    ], default='vi', verbose_name="Ngôn ngữ phản hồi")
+        ('ko', 'Tiếng Hàn'),
+        ('zh', 'Tiếng Trung'),
+    ]
+    response_language = models.CharField(
+        max_length=10, 
+        choices=LANGUAGE_CHOICES, 
+        default='vi', 
+        verbose_name="Ngôn ngữ phản hồi"
+    )
     
-    # TTS Configuration
-    TTS_ENGINE_CHOICES = [
-        ('local', 'System TTS (Offline - Siêu nhẹ)'),
+    # System prompt cho từng ngôn ngữ
+    system_prompt = models.TextField(
+        blank=True,
+        verbose_name="System Prompt",
+        help_text="Hướng dẫn cho AI về cách phản hồi"
+    )
+
+    router_model = models.CharField(
+        max_length=50,
+        default='qwen2.5:0.5b',
+        verbose_name="Model Router",
+        help_text="Model nhỏ/nhanh dùng cho AI Router để phân tích intent",
+    )
+
+    router_timeout = models.IntegerField(
+        default=3,
+        verbose_name="Router Timeout (giây)",
+        help_text="Thời gian tối đa chờ AI Router phản hồi trước khi fallback",
+    )
+
+    is_active = models.BooleanField(default=True, verbose_name="Hoạt động")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "LLM Configuration"
+        verbose_name_plural = "LLM Configurations"
+        ordering = ['-is_active', 'name']
+    
+    def __str__(self):
+        return f"LLM: {self.name} ({self.model})"
+    
+    def save(self, *args, **kwargs):
+        if not self.system_prompt:
+            # Set default system prompt based on language
+            default_prompts = {
+                'vi': 'Bạn là một trợ lý AI thông minh và hữu ích. Hãy trả lời bằng Tiếng Việt một cách tự nhiên và thân thiện.',
+                'en': 'You are an intelligent and helpful AI assistant. Please respond in English naturally and friendly.',
+                'ja': 'あなたは知的で有用なAIアシスタントです。日本語で自然に、親切に回答してください。',
+                'ko': '당신은 지능적이고 유용한 AI 어시스턴트입니다. 한국어로 자연스럽고 친절하게 답변해주세요.',
+                'zh': '你是一个智能且有用的AI助手。请用中文自然友好地回答。'
+            }
+            self.system_prompt = default_prompts.get(self.response_language, self.system_prompt)
+        super().save(*args, **kwargs)
+
+
+class TTSConfiguration(models.Model):
+    """Cấu hình Text-to-Speech riêng biệt"""
+    name = models.CharField(max_length=100, verbose_name="Tên cấu hình TTS")
+    
+    ENGINE_CHOICES = [
+        ('piper', 'Piper TTS / sherpa-onnx (Local)'),
         ('custom', 'Custom TTS API (Tùy chỉnh)'),
     ]
-    tts_engine = models.CharField(
+    engine = models.CharField(
         max_length=20,
-        choices=TTS_ENGINE_CHOICES,
-        default='local',
+        choices=ENGINE_CHOICES,
+        default='piper',
         verbose_name="Text-to-Speech Engine"
     )
-    tts_custom_url = models.CharField(
+    
+    LANGUAGE_CHOICES = [
+        ('vi', 'Tiếng Việt'),
+        ('en', 'Tiếng Anh'),
+        ('ja', 'Tiếng Nhật'),
+        ('ko', 'Tiếng Hàn'),
+        ('zh', 'Tiếng Trung'),
+    ]
+    language = models.CharField(
+        max_length=10, 
+        choices=LANGUAGE_CHOICES, 
+        default='vi', 
+        verbose_name="Ngôn ngữ đọc"
+    )
+    
+    custom_url = models.CharField(
         max_length=255,
         blank=True, null=True,
         verbose_name="Custom TTS API URL",
         help_text="Ví dụ: http://localhost:5000/tts"
     )
     
-    TTS_VOICE_CHOICES = [
-        ('vi', 'Tiếng Việt'),
-        ('en', 'Tiếng Anh'),
-        ('ja', 'Tiếng Nhật'),
-    ]
-    tts_voice = models.CharField(
-        max_length=10, 
-        choices=TTS_VOICE_CHOICES, 
-        default='vi', 
-        verbose_name="Ngôn ngữ đọc"
+    # Cấu hình giọng nói
+    voice_id = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Voice ID",
+        help_text="ID của giọng đọc (để trống để dùng mặc định)"
     )
-    tts_speed = models.FloatField(default=1.0, verbose_name="Tốc độ đọc")
     
-    # Custom STT Server Configuration (legacy)
-    custom_stt_port = models.IntegerField(default=8000, verbose_name="Port STT Server (Legacy)")
+    speed = models.FloatField(
+        default=1.0, 
+        verbose_name="Tốc độ đọc",
+        help_text="0.5: Chậm, 1.0: Bình thường, 2.0: Nhanh"
+    )
+    
+    pitch = models.FloatField(
+        default=1.0,
+        verbose_name="Tông giọng",
+        help_text="0.5: Trầm, 1.0: Bình thường, 2.0: Cao"
+    )
+    
+    volume = models.FloatField(
+        default=1.0,
+        verbose_name="Âm lượng",
+        help_text="0.1: Yếu, 1.0: Bình thường, 2.0: To"
+    )
+    
+    is_active = models.BooleanField(default=True, verbose_name="Hoạt động")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "TTS Configuration"
+        verbose_name_plural = "TTS Configurations"
+        ordering = ['-is_active', 'name']
+    
+    def __str__(self):
+        return f"TTS: {self.name} ({self.get_engine_display()})"
+
+
+class AIConfiguration(models.Model):
+    """Cấu hình AI tổng hợp - kết hợp 3 phần STT, LLM, TTS"""
+    name = models.CharField(max_length=100, verbose_name="Tên cấu hình AI")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        help_text="Để trống cho cấu hình mặc định"
+    )
+    
+    # Liên kết đến các cấu hình riêng biệt
+    stt_config = models.ForeignKey(
+        STTConfiguration,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Cấu hình STT"
+    )
+    
+    llm_config = models.ForeignKey(
+        LLMConfiguration,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Cấu hình LLM"
+    )
+    
+    tts_config = models.ForeignKey(
+        TTSConfiguration,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name="Cấu hình TTS"
+    )
+    
+    is_default = models.BooleanField(default=False, verbose_name="Mặc định")
+    is_active = models.BooleanField(default=True, verbose_name="Hoạt động")
+    
+    description = models.TextField(
+        blank=True,
+        verbose_name="Mô tả",
+        help_text="Mô tả về cấu hình AI này"
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -343,7 +529,7 @@ class AIConfiguration(models.Model):
         ordering = ['-is_default', 'name']
     
     def __str__(self):
-        return f"{self.name} ({'Default' if self.is_default else 'Custom'})"
+        return f"AI: {self.name} ({'Default' if self.is_default else 'Custom'})"
     
     def save(self, *args, **kwargs):
         # Chỉ có 1 cấu hình mặc định cho mỗi user
@@ -353,6 +539,14 @@ class AIConfiguration(models.Model):
                 is_default=True
             ).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
+    
+    def get_active_configs(self):
+        """Lấy các cấu hình đang hoạt động"""
+        return {
+            'stt': self.stt_config if self.stt_config and self.stt_config.is_active else None,
+            'llm': self.llm_config if self.llm_config and self.llm_config.is_active else None,
+            'tts': self.tts_config if self.tts_config and self.tts_config.is_active else None,
+        }
 
 
 class MCPTool(models.Model):
@@ -369,8 +563,18 @@ class MCPTool(models.Model):
     description = models.TextField(verbose_name="Mô tả")
     tool_type = models.CharField(max_length=20, choices=TOOL_TYPE_CHOICES, default='builtin', verbose_name="Loại tool")
     
-    # Connection to MCP Server
+    # Connection to MCP Server (legacy — kept for compatibility)
     server = models.ForeignKey(MCPServer, on_delete=models.CASCADE, null=True, blank=True, related_name='tools')
+
+    # Server thực sự cung cấp tool này (NULL = tool nội bộ/ảo, không nên hiện cho user)
+    source_server = models.ForeignKey(
+        MCPServer,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='discovered_tools',
+        verbose_name='Nguồn server',
+        help_text='Server thực sự cung cấp tool này. Null = tool nội bộ (ảo).',
+    )
     mcp_schema = models.JSONField(default=dict, blank=True, verbose_name="MCP Schema", help_text="Full JSON schema for the tool (params, descriptions)")
     
     # Module và function để import (cho built-in tools)
@@ -434,6 +638,42 @@ class MCPTool(models.Model):
         }
 
 
+class UserDocument(models.Model):
+    """Tài liệu người dùng upload để dùng với RAG."""
+    STATUS_CHOICES = [
+        ('pending', 'Đang xử lý'),
+        ('success', 'Thành công'),
+        ('failed', 'Thất bại'),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='documents',
+    )
+    filename = models.CharField(max_length=255, verbose_name="Tên file")
+    file = models.FileField(
+        upload_to='rag_documents/%Y/%m/',
+        null=True, blank=True,
+        verbose_name="File gốc",
+    )
+    file_type = models.CharField(max_length=10, verbose_name="Loại file")
+    file_size = models.IntegerField(verbose_name="Kích thước (bytes)")
+    chunk_count = models.IntegerField(default=0, verbose_name="Số chunks")
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default='pending', verbose_name="Trạng thái"
+    )
+    error_message = models.TextField(blank=True, verbose_name="Lỗi")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "User Document"
+        verbose_name_plural = "User Documents"
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.user.username} — {self.filename} ({self.status})"
+
+
 class UserMCPTool(models.Model):
     """Quan hệ user - tool (user chỉ dùng được tools đã được gán)"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mcp_tools')
@@ -449,3 +689,45 @@ class UserMCPTool(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.tool.display_name}"
+
+
+class KnowledgeBase(models.Model):
+    """Bộ tri thức RAG — admin tạo, user có thể thêm vào chat của mình."""
+    name = models.CharField(max_length=200, verbose_name="Tên bộ tri thức")
+    description = models.TextField(verbose_name="Mô tả")
+    namespace = models.CharField(max_length=100, unique=True, verbose_name="RAG Namespace",
+                                  help_text="Namespace trong RAG service (vd: kb_history, kb_physics)")
+    icon = models.CharField(max_length=50, default='fa-book', verbose_name="Icon class")
+    color_class = models.CharField(max_length=50, default='border-info text-info', verbose_name="CSS color class")
+    category = models.CharField(max_length=50, default='General', verbose_name="Danh mục")
+    is_public = models.BooleanField(default=True, verbose_name="Công khai (User có thể thêm)")
+    is_system = models.BooleanField(default=False, verbose_name="Hệ thống (Tự động áp dụng cho mọi user)")
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                    verbose_name="Tạo bởi")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Knowledge Base"
+        verbose_name_plural = "Knowledge Bases"
+        ordering = ['-is_system', 'category', 'name']
+
+    def __str__(self):
+        return f"{self.name} [{self.namespace}]"
+
+
+class UserKnowledgeBase(models.Model):
+    """Quan hệ user - knowledge base."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='knowledge_bases')
+    kb = models.ForeignKey(KnowledgeBase, on_delete=models.CASCADE, related_name='user_assignments')
+    is_active = models.BooleanField(default=True)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "User Knowledge Base"
+        verbose_name_plural = "User Knowledge Bases"
+        unique_together = ['user', 'kb']
+        ordering = ['-added_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.kb.name}"

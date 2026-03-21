@@ -1,191 +1,355 @@
 {% extends "base.html" %}
-{% block title %}MCP Tools Public - DTHub AI{% endblock %}
+{% block title %}Bộ công cụ AI - DTHub{% endblock %}
 {% block content %}
 
 <div class="container py-4">
+
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
         <div>
-            <h2 class="fw-bold text-white font-monospace">
-                <i class="fa-solid fa-toolbox text-info me-2"></i>Trung tâm Công cụ AI
+            <h2 class="fw-bold text-white font-monospace mb-0">
+                <i class="fa-solid fa-toolbox text-info me-2"></i>Bộ công cụ AI
             </h2>
-            <p class="text-secondary mb-0 font-monospace small">>_ Browse, add, and manage your AI tools collection</p>
+            <p class="text-secondary mb-0 font-monospace small">>_ Kích hoạt công cụ và bộ tri thức cho trợ lý</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="{% url 'ai_chat' %}" class="btn btn-outline-purple font-monospace" style="color: var(--neon-purple); border-color: var(--neon-purple);">
-                <i class="fa-solid fa-robot me-2"></i>Back to Chat
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'ai_chat' %}" class="btn btn-sm btn-outline-secondary font-monospace" title="Quay lại chat">
+                <i class="fa-solid fa-robot me-1"></i>Chat
             </a>
             <div class="dropdown">
-                <button class="btn btn-outline-info font-monospace dropdown-toggle" type="button" id="addMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fa-solid fa-plus-circle me-2"></i>Thêm mới
+                <button class="btn btn-sm btn-outline-info font-monospace dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Thêm mới">
+                    <i class="fa-solid fa-plus"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end cyber-dropdown shadow-lg" aria-labelledby="addMenu">
-                    <li>
-                        <a class="dropdown-item py-2" href="{% url 'device_management' %}">
-                            <i class="fa-solid fa-microchip text-info me-2"></i>Thêm thiết bị (ESP32)
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item py-2" href="{% url 'create_mcp_server' %}">
-                            <i class="fa-solid fa-server text-purple me-2" style="color: var(--neon-purple);"></i>Kết nối Node riêng
-                        </a>
-                    </li>
+                <ul class="dropdown-menu dropdown-menu-end cyber-dropdown shadow-lg">
+                    <li><a class="dropdown-item py-2" href="{% url 'device_management' %}">
+                        <i class="fa-solid fa-microchip text-info me-2"></i>Thêm thiết bị ESP32
+                    </a></li>
+                    <li><a class="dropdown-item py-2" href="{% url 'create_mcp_server' %}">
+                        <i class="fa-solid fa-server me-2" style="color:var(--neon-purple)"></i>Kết nối Node riêng
+                    </a></li>
                 </ul>
             </div>
             {% if request.user.is_superuser %}
-            <a href="{% url 'mcp_dashboard' %}" class="btn btn-outline-secondary font-monospace">
-                <i class="fa-solid fa-gear me-2"></i>Admin Dashboard
+            <a href="{% url 'kb_list' %}" class="btn btn-sm btn-outline-warning font-monospace" title="Quản lý Knowledge Base">
+                <i class="fa-solid fa-database me-1"></i>KB
+            </a>
+            <a href="{% url 'mcp_dashboard' %}" class="btn btn-sm btn-outline-secondary font-monospace" title="MCP Admin">
+                <i class="fa-solid fa-gear"></i>
             </a>
             {% endif %}
         </div>
     </div>
 
-    <!-- Stats -->
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="cyber-card p-3">
-                <div class="d-flex align-items-center">
-                    <i class="fa-solid fa-cubes text-info fs-3 me-3"></i>
-                    <div>
-                        <div class="text-secondary small font-monospace">Tổng số công cụ</div>
-                        <div class="text-white fw-bold fs-4">{{ total_tools }}</div>
-                    </div>
-                </div>
+    <!-- Stats Chart -->
+    <div class="cyber-card p-3 mb-4">
+        <div class="row align-items-center g-0">
+            <div class="col-md-7" style="position:relative;height:90px;">
+                <canvas id="statsChart"></canvas>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="cyber-card p-3">
-                <div class="d-flex align-items-center">
-                    <i class="fa-solid fa-check-circle text-success fs-3 me-3"></i>
-                    <div>
-                        <div class="text-secondary small font-monospace">Đã kích hoạt</div>
-                        <div class="text-white fw-bold fs-4">{{ my_tools_count }}</div>
+            <div class="col-md-5 ps-md-4 pt-3 pt-md-0">
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="font-monospace small text-secondary"><span class="dot-info me-2"></span>Công cụ khả dụng</span>
+                        <span class="text-white fw-bold font-monospace">{{ total_tools }}</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="font-monospace small text-secondary"><span class="dot-success me-2"></span>Đã kích hoạt</span>
+                        <span class="text-success fw-bold font-monospace">{{ my_tools_count }}</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="font-monospace small text-secondary"><span class="dot-warning me-2"></span>Bộ tri thức</span>
+                        <span class="text-warning fw-bold font-monospace">{{ total_kbs }}</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="font-monospace small text-secondary"><span class="dot-purple me-2"></span>KB đã thêm</span>
+                        <span class="fw-bold font-monospace" style="color:var(--neon-purple)">{{ my_kbs_count }}</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tools by Category -->
-    {% for category, tools in categories.items %}
-    <div class="cyber-card mb-4 border-0 shadow-lg" style="background: rgba(15, 15, 25, 0.8);">
-        <div class="card-header-custom d-flex align-items-center justify-content-between py-3 px-4" 
-             style="background: linear-gradient(90deg, rgba(0, 243, 255, 0.1), transparent); border-left: 4px solid var(--neon-blue);">
-            <div class="d-flex align-items-center">
-                <i class="fa-solid fa-layer-group text-info me-3 fs-5"></i>
-                <h5 class="mb-0 fw-bold text-white font-monospace text-uppercase tracking-wider">{{ category }}</h5>
-            </div>
-            <span class="badge rounded-pill bg-dark border border-info text-info font-monospace px-3">{{ tools|length }} tools</span>
+    <!-- Search -->
+    <div class="cyber-card p-3 mb-4">
+        <div class="input-group">
+            <span class="input-group-text bg-transparent border-secondary text-info">
+                <i class="fa-solid fa-search"></i>
+            </span>
+            <input type="text" id="searchInput" class="form-control bg-transparent text-white border-secondary font-monospace"
+                   placeholder="Tìm kiếm công cụ hoặc bộ tri thức..." autocomplete="off">
         </div>
-        <div class="p-4">
-            <div class="row g-4">
-                {% for item in tools %}
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 mcp-tool-card {% if item.is_added %}added-border{% endif %}" 
-                         style="background: rgba(20, 20, 35, 0.6); border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="tool-icon-wrapper rounded-3 d-flex align-items-center justify-content-center me-3" 
-                                     style="width: 48px; height: 48px; background: rgba(0, 243, 255, 0.1); border: 1px solid rgba(0, 243, 255, 0.2);">
-                                    <i class="fa-solid {{ item.tool.icon|default:'fa-cube' }} {% if item.is_added %}text-success{% else %}text-info{% endif %} fs-4"></i>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist" style="border-bottom:1px solid rgba(0,243,255,0.2)">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active font-monospace" id="tools-tab" data-bs-toggle="tab" data-bs-target="#tools-panel" type="button">
+                <i class="fa-solid fa-wrench me-2"></i>Bộ công cụ
+                <span class="badge bg-info text-dark ms-2">{{ total_tools }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link font-monospace" id="kb-tab" data-bs-toggle="tab" data-bs-target="#kb-panel" type="button">
+                <i class="fa-solid fa-book me-2"></i>Bộ tri thức
+                <span class="badge bg-warning text-dark ms-2">{{ total_kbs }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="mainTabContent">
+
+        <!-- Tab: Tools -->
+        <div class="tab-pane fade show active" id="tools-panel" role="tabpanel">
+
+            {% for category, tools in tool_categories.items %}
+            <div class="cyber-card mb-4 border-0 shadow-lg category-block" style="background:rgba(15,15,25,0.8)">
+                <div class="card-header-custom d-flex align-items-center justify-content-between py-3 px-4"
+                     style="background:linear-gradient(90deg,rgba(0,243,255,0.08),transparent);border-left:3px solid var(--neon-blue)">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-layer-group text-info me-3"></i>
+                        <h6 class="mb-0 fw-bold text-white font-monospace text-uppercase">{{ category }}</h6>
+                    </div>
+                    <span class="badge bg-dark border border-info text-info font-monospace">{{ tools|length }}</span>
+                </div>
+                <div class="p-4">
+                    <div class="row g-3">
+                        {% for item in tools %}{% if item.tool.name != 'rag_search' %}
+                        <div class="col-md-6 col-lg-4 searchable-item" data-name="{{ item.tool.display_name|lower }}" data-desc="{{ item.tool.description|lower }}">
+                            <div class="card h-100 mcp-tool-card {% if item.is_added %}added-border{% endif %}"
+                                 style="background:rgba(20,20,35,0.6);border:1px solid rgba(255,255,255,0.05)">
+                                <div class="card-body p-3 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="rounded-3 d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                             style="width:40px;height:40px;background:rgba(0,243,255,0.08);border:1px solid rgba(0,243,255,0.15)">
+                                            <i class="fa-solid {{ item.tool.icon|default:'fa-cube' }} {% if item.is_added %}text-success{% else %}text-info{% endif %}"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="text-white fw-bold font-monospace small text-truncate">{{ item.tool.display_name }}</div>
+                                            <div class="text-secondary font-monospace" style="font-size:0.65rem">{{ item.tool.name }}</div>
+                                        </div>
+                                    </div>
+                                    <p class="text-secondary small mb-3 flex-grow-1" style="line-height:1.5;font-size:0.8rem">
+                                        {{ item.tool.description|default:"—"|truncatechars:90 }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle">
+                                        <span class="badge bg-transparent border border-secondary text-secondary font-monospace" style="font-size:0.6rem">{{ item.tool.tool_type|upper }}</span>
+                                        {% if item.is_added %}
+                                        {% if item.can_toggle %}
+                                        <form method="post" action="{% url 'mcp_tool_remove' item.tool.name %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill font-monospace" style="font-size:0.75rem">
+                                                <i class="fa-solid fa-minus me-1"></i>Gỡ
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <span class="badge bg-transparent border border-secondary text-secondary font-monospace" style="font-size:0.65rem"><i class="fa-solid fa-lock me-1"></i>Hệ thống</span>
+                                        {% endif %}
+                                        {% else %}
+                                        {% if item.can_toggle %}
+                                        <form method="post" action="{% url 'mcp_tool_add' item.tool.name %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-neon-blue px-2 rounded-pill font-monospace" style="font-size:0.75rem">
+                                                <i class="fa-solid fa-plus me-1"></i>Thêm
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <span class="badge bg-transparent border border-secondary text-secondary font-monospace" style="font-size:0.65rem"><i class="fa-solid fa-lock me-1"></i>Hệ thống</span>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <h6 class="text-white fw-bold mb-0 text-truncate">{{ item.tool.display_name }}</h6>
-                                    <small class="text-secondary font-monospace" style="font-size: 0.7rem;">ID: {{ item.tool.name }}</small>
-                                </div>
-                            </div>
-                            
-                            <p class="text-secondary small mb-4 flex-grow-1" style="line-height: 1.5; min-height: 3rem;">
-                                {{ item.tool.description|default:"No description available." }}
-                            </p>
-                            
-                            <div class="d-flex justify-content-between align-items-center mt-auto pt-3 border-top border-secondary-subtle">
-                                <div class="tool-tags">
-                                    <span class="badge bg-transparent border border-secondary text-secondary font-monospace" style="font-size: 0.65rem;">
-                                        {{ item.tool.tool_type|upper }}
-                                    </span>
-                                </div>
-                                
-                                {% if item.is_added %}
-                                <form method="post" action="{% url 'mcp_tool_remove' item.tool.name %}" class="tool-remove-form">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-outline-danger px-3 rounded-pill font-monospace">
-                                        <i class="fa-solid fa-trash-can me-2"></i>GỠ BỎ
-                                    </button>
-                                </form>
-                                {% else %}
-                                <form method="post" action="{% url 'mcp_tool_add' item.tool.name %}" class="tool-add-form">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-neon-blue px-3 rounded-pill font-monospace">
-                                        <i class="fa-solid fa-plus me-2"></i>KÍCH HOẠT
-                                    </button>
-                                </form>
-                                {% endif %}
                             </div>
                         </div>
+                        {% endif %}{% endfor %}
                     </div>
                 </div>
-                {% endfor %}
             </div>
+            {% empty %}
+            <div class="cyber-card p-5 text-center">
+                <i class="fa-solid fa-box-open text-secondary fs-1 mb-3"></i>
+                <h5 class="text-secondary font-monospace">Chưa có công cụ nào</h5>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Tab: Knowledge Bases -->
+        <div class="tab-pane fade" id="kb-panel" role="tabpanel">
+            {% for category, kbs in kb_categories.items %}
+            <div class="cyber-card mb-4 border-0 shadow-lg category-block" style="background:rgba(15,15,25,0.8)">
+                <div class="card-header-custom d-flex align-items-center justify-content-between py-3 px-4"
+                     style="background:linear-gradient(90deg,rgba(255,193,7,0.08),transparent);border-left:3px solid #ffc107">
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-folder-open text-warning me-3"></i>
+                        <h6 class="mb-0 fw-bold text-white font-monospace text-uppercase">{{ category }}</h6>
+                    </div>
+                    <span class="badge bg-dark border border-warning text-warning font-monospace">{{ kbs|length }}</span>
+                </div>
+                <div class="p-4">
+                    <div class="row g-3">
+                        {% for item in kbs %}
+                        <div class="col-md-6 col-lg-4 searchable-item" data-name="{{ item.kb.name|lower }}" data-desc="{{ item.kb.description|lower }}">
+                            <div class="card h-100 mcp-tool-card {% if item.is_added %}added-border-kb{% endif %}"
+                                 style="background:rgba(20,20,35,0.6);border:1px solid rgba(255,255,255,0.05)">
+                                <div class="card-body p-3 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="rounded-3 d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                                             style="width:40px;height:40px;background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.2)">
+                                            <i class="fa-solid {{ item.kb.icon|default:'fa-book' }} {% if item.is_added %}text-success{% else %}text-warning{% endif %}"></i>
+                                        </div>
+                                        <div class="overflow-hidden">
+                                            <div class="text-white fw-bold font-monospace small text-truncate">{{ item.kb.name }}</div>
+                                            <div class="text-secondary font-monospace" style="font-size:0.65rem">
+                                                ns:{{ item.kb.namespace }}
+                                                {% if item.kb.is_system %}<span class="badge bg-warning text-dark ms-1" style="font-size:0.55rem">SYS</span>{% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="text-secondary small mb-3 flex-grow-1" style="line-height:1.5;font-size:0.8rem">
+                                        {{ item.kb.description|default:"—"|truncatechars:90 }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary-subtle">
+                                        <span class="badge bg-transparent border border-warning text-warning font-monospace" style="font-size:0.6rem">KB</span>
+                                        {% if item.is_added %}
+                                        <form method="post" action="{% url 'kb_remove' item.kb.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill font-monospace" style="font-size:0.75rem">
+                                                <i class="fa-solid fa-minus me-1"></i>Gỡ
+                                            </button>
+                                        </form>
+                                        {% else %}
+                                        <form method="post" action="{% url 'kb_add' item.kb.id %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-neon-yellow px-2 rounded-pill font-monospace" style="font-size:0.75rem">
+                                                <i class="fa-solid fa-plus me-1"></i>Thêm
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="cyber-card p-5 text-center">
+                <i class="fa-solid fa-database text-secondary fs-1 mb-3"></i>
+                <h5 class="text-secondary font-monospace">Chưa có bộ tri thức nào</h5>
+                <p class="text-secondary small">Admin cần tạo Knowledge Base và upload tài liệu.</p>
+            </div>
+            {% endfor %}
         </div>
     </div>
-    {% empty %}
-    <div class="cyber-card p-5 text-center">
-        <i class="fa-solid fa-box-open text-secondary fs-1 mb-3"></i>
-        <h5 class="text-secondary font-monospace">No tools available</h5>
-    </div>
-    {% endfor %}
 </div>
 
 <style>
-.cyber-card {
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
+.cyber-card { background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.1); border-radius:12px; backdrop-filter:blur(10px); }
+.card-header-custom { border-bottom:1px solid rgba(255,255,255,0.08); border-radius:12px 12px 0 0; }
+.mcp-tool-card { border-radius:10px; transition:all 0.25s ease; }
+.mcp-tool-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,0.4); border-color:rgba(0,243,255,0.3) !important; }
+.added-border { border-color:rgba(40,167,69,0.35) !important; background:rgba(40,167,69,0.04) !important; }
+.added-border-kb { border-color:rgba(255,193,7,0.35) !important; background:rgba(255,193,7,0.04) !important; }
+.btn-neon-blue { background:transparent; color:var(--neon-blue); border:1px solid var(--neon-blue); transition:all 0.2s; }
+.btn-neon-blue:hover { background:var(--neon-blue); color:#000; }
+.btn-neon-yellow { background:transparent; color:#ffc107; border:1px solid #ffc107; transition:all 0.2s; }
+.btn-neon-yellow:hover { background:#ffc107; color:#000; }
+.nav-tabs .nav-link { color:#aaa; border:none; border-bottom:2px solid transparent; background:transparent; }
+.nav-tabs .nav-link.active { color:var(--neon-blue); border-bottom-color:var(--neon-blue); background:transparent; }
+.nav-tabs .nav-link:hover { color:#fff; }
+.cyber-dropdown { background:rgba(10,15,30,0.95); backdrop-filter:blur(10px); border:1px solid var(--neon-blue); border-radius:12px; }
+.cyber-dropdown .dropdown-item { color:#e0eaff; font-family:'JetBrains Mono',monospace; font-size:0.85rem; }
+.cyber-dropdown .dropdown-item:hover { background:rgba(0,243,255,0.1); color:var(--neon-blue); }
+.dot-info, .dot-success, .dot-warning, .dot-purple {
+    display:inline-block; width:8px; height:8px; border-radius:50%;
 }
-.card-header-custom {
-    background: rgba(0, 0, 0, 0.4);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 1rem 1.25rem;
-    border-radius: 12px 12px 0 0;
-}
-.mcp-tool-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-    border-color: var(--neon-blue) !important;
-}
-.added-border {
-    border-color: rgba(40, 167, 69, 0.3) !important;
-    background: rgba(40, 167, 69, 0.05) !important;
-}
-.btn-neon-blue {
-    background: transparent;
-    color: var(--neon-blue);
-    border: 1px solid var(--neon-blue);
-    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
-    transition: all 0.3s ease;
-}
-.btn-neon-blue:hover {
-    background: var(--neon-blue);
-    color: #000;
-    box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
-}
-.cyber-dropdown {
-    background: rgba(10, 15, 30, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--neon-blue);
-    border-radius: 12px;
-}
-.cyber-dropdown .dropdown-item {
-    color: #e0eaff;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    transition: 0.2s;
-}
-.cyber-dropdown .dropdown-item:hover {
-    background: rgba(0, 243, 255, 0.1);
-    color: var(--neon-blue);
-}
+.dot-info { background:var(--neon-blue,#00f3ff); }
+.dot-success { background:#28a745; }
+.dot-warning { background:#ffc107; }
+.dot-purple { background:var(--neon-purple,#b44fff); }
 </style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Stats chart
+(function() {
+    const ctx = document.getElementById('statsChart').getContext('2d');
+    const total = {{ total_tools }};
+    const active = {{ my_tools_count }};
+    const inactive = total - active;
+    const kbTotal = {{ total_kbs }};
+    const kbActive = {{ my_kbs_count }};
+    const kbInactive = kbTotal - kbActive;
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Công cụ', 'Bộ tri thức'],
+            datasets: [
+                {
+                    label: 'Đã kích hoạt',
+                    data: [active, kbActive],
+                    backgroundColor: ['rgba(0,243,255,0.7)', 'rgba(255,193,7,0.7)'],
+                    borderColor: ['rgba(0,243,255,1)', 'rgba(255,193,7,1)'],
+                    borderWidth: 1,
+                    borderRadius: 6,
+                },
+                {
+                    label: 'Chưa kích hoạt',
+                    data: [inactive, kbInactive],
+                    backgroundColor: ['rgba(0,243,255,0.15)', 'rgba(255,193,7,0.15)'],
+                    borderColor: ['rgba(0,243,255,0.3)', 'rgba(255,193,7,0.3)'],
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    labels: { color: '#aaa', font: { family: 'JetBrains Mono', size: 11 }, boxWidth: 12 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(10,15,30,0.95)',
+                    titleColor: '#00f3ff',
+                    bodyColor: '#ccc',
+                    borderColor: 'rgba(0,243,255,0.3)',
+                    borderWidth: 1,
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#666', font: { family: 'JetBrains Mono', size: 10 } }
+                },
+                y: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: { color: '#ccc', font: { family: 'JetBrains Mono', size: 11 } }
+                }
+            }
+        }
+    });
+})();
+
+// Search
+document.getElementById('searchInput').addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.searchable-item').forEach(function(el) {
+        const match = !q || (el.dataset.name||'').includes(q) || (el.dataset.desc||'').includes(q);
+        el.style.display = match ? '' : 'none';
+    });
+    document.querySelectorAll('.category-block').forEach(function(block) {
+        const visible = block.querySelectorAll('.searchable-item:not([style*="display: none"])').length;
+        block.style.display = visible ? '' : 'none';
+    });
+});
+</script>
 {% endblock %}

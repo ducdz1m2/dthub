@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load socialaccount %}
+{% load social_helper %}
 
 {% block title %}
   Xác thực Hệ thống | DTHub
@@ -109,9 +110,17 @@
 
                     <div class="divider my-4">Hoặc kết nối qua</div>
                     
+                    {% google_login_available as google_available %}
+                    {% if google_available %}
                     <a href="{% provider_login_url 'google' %}" class="btn w-100 py-2 mb-4 d-flex align-items-center justify-content-center gap-2 text-white" style="background: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.4); transition: 0.3s;" onmouseover="this.style.background='rgba(220, 53, 69, 0.8)'" onmouseout="this.style.background='rgba(220, 53, 69, 0.1)'">
                         <i class="fa-brands fa-google fs-5"></i> <span class="fw-bold">Google Workspace</span>
                     </a>
+                    {% else %}
+                    <div class="alert alert-warning text-center mb-4">
+                        <i class="fa-solid fa-exclamation-triangle me-2"></i>
+                        Đăng nhập Google đang được cấu hình
+                    </div>
+                    {% endif %}
 
                     <hr style="border-color: rgba(255,255,255,0.1);" class="mb-4" />
                     

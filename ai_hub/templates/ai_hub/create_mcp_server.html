@@ -201,24 +201,6 @@
                             </div>
                         </div>
                         
-                        <div class="mb-4">
-                            <label class="form-label"><i class="fa-solid fa-network-wired text-secondary me-1"></i>{{ form.server_type.label }} *</label>
-                            {{ form.server_type }}
-                            <div class="form-text">
-                                {% if is_admin %}
-                                    >_ <strong>PRIVATE:</strong> Mạng kín | <strong>PUBLIC:</strong> Mạng mở (Tất cả user đều có thể gọi lệnh)
-                                {% else %}
-                                    >_ Khởi tạo mạng Private (Yêu cầu Token xác thực khi kết nối)
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label"><i class="fa-solid fa-cubes text-secondary me-1"></i>{{ form.builtin_kind.label }}</label>
-                            {{ form.builtin_kind }}
-                            <div class="form-text">>_ Nếu chọn node tích hợp, hệ thống tự tạo endpoint để dùng ngay (không cần chạy server riêng).</div>
-                        </div>
-                        
                         <div class="mb-4 domain-field" id="domain-field">
                             <label class="form-label text-info"><i class="fa-solid fa-globe text-secondary me-1"></i>{{ form.domain.label }} *</label>
                             {{ form.domain }}
@@ -227,7 +209,7 @@
                                     <i class="fa-solid fa-triangle-exclamation me-1"></i>{{ form.domain.errors|striptags }}
                                 </div>
                             {% endif %}
-                            <div class="form-text text-info">>_ Endpoint kết nối (VD: http://127.0.0.1:9101 hoặc mcp.yourdomain.com)</div>
+                            <div class="form-text text-info">>_ Endpoint kết nối (VD: http://localhost:8001 hoặc mcp.yourdomain.com)</div>
                         </div>
                         
                         <div class="row">
@@ -245,6 +227,15 @@
                                     {{ form.description }}
                                     <div class="form-text">>_ Ghi chú phân quyền/chức năng</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label text-secondary font-monospace small" for="{{ form.is_active.id_for_label }}">
+                                    <i class="fa-solid fa-power-off me-1"></i>KÍCH HOẠT NODE NGAY
+                                </label>
                             </div>
                         </div>
                         
@@ -290,55 +281,6 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const serverTypeSelect = document.querySelector('#id_server_type');
-    const domainField = document.querySelector('#domain-field');
-    const domainInput = domainField.querySelector('input');
-    const builtinKindSelect = document.querySelector('#id_builtin_kind');
-    
-    function toggleDomainField() {
-        domainField.classList.remove('hidden');
-        domainField.classList.add('visible');
-        if (!domainInput) return;
-        if (serverTypeSelect && serverTypeSelect.value === 'public') {
-            domainInput.style.borderColor = "var(--neon-blue)";
-            domainInput.style.boxShadow = "0 0 10px rgba(0, 243, 255, 0.1)";
-        } else {
-            domainInput.style.borderColor = "rgba(255, 255, 255, 0.1)";
-            domainInput.style.boxShadow = "none";
-        }
-    }
-
-    function updateBuiltinDomain() {
-        if (!builtinKindSelect || !domainInput) return;
-        const kind = (builtinKindSelect.value || '').trim();
-        if (!kind) {
-            domainInput.readOnly = false;
-            return;
-        }
-        const deviceIdInput = document.querySelector('#id_device_id');
-        const deviceId = (deviceIdInput?.value || '').trim();
-        if (!deviceId) {
-            domainInput.value = '';
-            domainInput.readOnly = true;
-            return;
-        }
-        domainInput.value = `${window.location.origin}/ai/mcp/builtin/${kind}/${encodeURIComponent(deviceId)}`;
-        domainInput.readOnly = true;
-    }
-    
-    if(serverTypeSelect) {
-        serverTypeSelect.addEventListener('change', toggleDomainField);
-        toggleDomainField(); // Khởi chạy lúc load
-    }
-    if (builtinKindSelect) {
-        builtinKindSelect.addEventListener('change', updateBuiltinDomain);
-        updateBuiltinDomain();
-    }
-    const deviceIdInput = document.querySelector('#id_device_id');
-    if (deviceIdInput) {
-        deviceIdInput.addEventListener('input', updateBuiltinDomain);
-    }
-    
     // Validate focus & blur
     const form = document.querySelector('#mcp-server-form');
     const inputs = form.querySelectorAll('input, select, textarea');

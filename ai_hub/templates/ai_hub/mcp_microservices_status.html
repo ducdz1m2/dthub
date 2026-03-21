@@ -1,0 +1,305 @@
+{% extends "ai_hub/base.html" %}
+{% load static %}
+
+{% block title %}MCP Microservices Status{% endblock %}
+
+{% block extra_css %}
+<style>
+.server-card {
+    border-left: 4px solid #007bff;
+    transition: all 0.3s ease;
+}
+.server-card.connected {
+    border-left-color: #28a745;
+}
+.server-card.disconnected {
+    border-left-color: #dc3545;
+}
+.tool-badge {
+    font-size: 0.8em;
+    margin: 2px;
+}
+.connect-btn {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-server"></i> MCP Microservices Status</h2>
+                <button class="btn btn-primary connect-btn" onclick="connectServers()">
+                    <i class="fas fa-plug"></i> Connect All Servers
+                </button>
+            </div>
+
+            {% if server_info.error %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Lỗi kết nối:</strong> {{ server_info.error }}
+                    <div class="mt-2">
+                        <small>Vui lòng đảm bảo MCP servers đang chạy (start_servers.bat)</small>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Server Status Overview -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-primary">{{ server_info.connected_servers|length }}</h3>
+                            <p class="mb-0">Servers Connected</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-success">{{ server_info.total_tools }}</h3>
+                            <p class="mb-0">Total Tools</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-info">5</h3>
+                            <p class="mb-0">Total Servers</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-warning" id="refresh-time">--</h3>
+                            <p class="mb-0">Last Refresh</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Server Status -->
+            <div class="row">
+                {% for server_id, server_data in server_info.connected_servers.items %}
+                <div class="col-md-6 mb-3">
+                    <div class="card server-card connected">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-server"></i> 
+                                {{ server_data.name }}
+                            </h5>
+                            <span class="badge bg-success">Connected</span>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Server ID:</strong> {{ server_id }}</p>
+                            <p><strong>Status:</strong> {{ server_data.status }}</p>
+                            <p><strong>Tools Available:</strong> {{ server_data.tool_count }}</p>
+                            
+                            {% if server_info.available_tools.server_id %}
+                                <div class="mt-3">
+                                    <h6>Available Tools:</h6>
+                                    <div>
+                                        {% for tool in server_info.available_tools.server_id %}
+                                        <span class="badge bg-info tool-badge" title="{{ tool.description }}">
+                                            {{ tool.name }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-outline-primary" onclick="testServer('{{ server_id }}')">
+                                    <i class="fas fa-play"></i> Test Server
+                                </button>
+                                <button class="btn btn-sm btn-outline-info" onclick="showTools('{{ server_id }}')">
+                                    <i class="fas fa-tools"></i> View Tools
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                        <h5>No MCP Servers Connected</h5>
+                        <p>Click "Connect All Servers" to establish connections with running MCP microservices.</p>
+                        <p class="mb-0">Make sure servers are running using start_servers.bat</p>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Disconnected Servers -->
+                {% for server_type in 'stt,tts,llm,rag,device'|split:',' %}
+                    {% if server_type not in server_info.connected_servers %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card server-card disconnected">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-server"></i> 
+                                        MCP {{ server_type|upper }} Server
+                                    </h5>
+                                    <span class="badge bg-danger">Disconnected</span>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Server ID:</strong> {{ server_type }}</p>
+                                    <p><strong>Status:</strong> Not connected</p>
+                                    <p><strong>Tools:</strong> Not available</p>
+                                    <div class="mt-3">
+                                        <button class="btn btn-sm btn-outline-warning" disabled>
+                                            <i class="fas fa-exclamation-triangle"></i> Server Offline
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Tools Overview -->
+            {% if server_info.total_tools > 0 %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-tools"></i> Available Tools Overview</h5>
+                        </div>
+                        <div class="card-body">
+                            {% for server_id, tools in server_info.available_tools.items %}
+                                <div class="mb-3">
+                                    <h6>{{ server_info.connected_servers.server_id.name }}:</h6>
+                                    <div>
+                                        {% for tool in tools %}
+                                        <span class="badge bg-secondary tool-badge" 
+                                              title="{{ tool.description }}"
+                                              onclick="showToolDetails('{{ server_id }}', '{{ tool.name }}')">
+                                            {{ tool.name }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Tool Details Modal -->
+<div class="modal fade" id="toolModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tool Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="toolDetails"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="testToolBtn">Test Tool</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentTool = null;
+
+function connectServers() {
+    const btn = document.querySelector('.connect-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+    
+    fetch('/ai/mcp/connect/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Connection failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Connection error: ' + error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plug"></i> Connect All Servers';
+    });
+}
+
+function testServer(serverId) {
+    console.log('Testing server:', serverId);
+    // Implement server testing logic
+    alert('Testing ' + serverId + ' server...');
+}
+
+function showTools(serverId) {
+    console.log('Showing tools for:', serverId);
+    // Implement tools display logic
+    alert('Showing tools for ' + serverId + '...');
+}
+
+function showToolDetails(serverId, toolName) {
+    currentTool = { serverId, toolName };
+    
+    // Get tool details (you would need to implement this API)
+    document.getElementById('toolDetails').innerHTML = `
+        <p><strong>Server:</strong> ${serverId}</p>
+        <p><strong>Tool:</strong> ${toolName}</p>
+        <p><strong>Description:</strong> Tool description would appear here</p>
+        <p><strong>Schema:</strong> <pre>Tool schema would appear here</pre></p>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('toolModal')).show();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Auto refresh every 30 seconds
+setInterval(() => {
+    document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
+}, 30000);
+
+// Set initial time
+document.getElementById('refresh-time').textContent = new Date().toLocaleTimeString();
+</script>
+{% endblock %}

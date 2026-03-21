@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+{% block title %}Quản lý Knowledge Base - DTHub{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold text-white font-monospace mb-0">
+                <i class="fa-solid fa-database text-warning me-2"></i>Quản lý Knowledge Base
+            </h2>
+            <p class="text-secondary mb-0 font-monospace small">>_ Tạo bộ tri thức, upload tài liệu, quản lý namespace RAG</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'mcp_public_tools' %}" class="btn btn-sm btn-outline-secondary font-monospace">
+                <i class="fa-solid fa-arrow-left me-1"></i>Công cụ
+            </a>
+            <a href="{% url 'kb_create' %}" class="btn btn-sm btn-warning font-monospace">
+                <i class="fa-solid fa-plus me-1"></i>Tạo KB
+            </a>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show font-monospace small" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- RAG Service Status -->
+    <div class="cyber-card p-3 mb-4 d-flex align-items-center justify-content-between" style="border-color:rgba(255,193,7,0.2)">
+        <div class="d-flex align-items-center gap-3">
+            <div id="rag-status-dot" style="width:10px;height:10px;border-radius:50%;background:#666;flex-shrink:0"></div>
+            <span class="font-monospace small text-secondary">RAG Service</span>
+            <code class="text-info font-monospace" style="font-size:0.75rem">localhost:8001</code>
+            <span id="rag-status-text" class="font-monospace small text-secondary">Đang kiểm tra...</span>
+        </div>
+        <span class="font-monospace small text-secondary">{{ kbs|length }} KB · <span id="total-docs-count">—</span> tài liệu</span>
+    </div>
+
+    {% if kbs %}
+    {% for kb in kbs %}
+    <div class="cyber-card mb-4" id="kb-card-{{ kb.id }}">
+
+        <!-- KB Header -->
+        <div class="d-flex align-items-center justify-content-between px-4 py-3"
+             style="border-bottom:1px solid rgba(255,193,7,0.15);background:rgba(255,193,7,0.04);border-radius:12px 12px 0 0">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid {{ kb.icon|default:'fa-book' }} text-warning fs-5"></i>
+                <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <h5 class="text-white fw-bold font-monospace mb-0">{{ kb.name }}</h5>
+                        {% if kb.is_system %}<span class="badge bg-warning text-dark" style="font-size:0.6rem">SYSTEM</span>{% endif %}
+                        {% if kb.is_public %}<span class="badge bg-success" style="font-size:0.6rem">PUBLIC</span>
+                        {% else %}<span class="badge bg-secondary" style="font-size:0.6rem">PRIVATE</span>{% endif %}
+                    </div>
+                    <div class="font-monospace mt-1" style="font-size:0.72rem">
+                        <span class="text-secondary">ns:</span> <code class="text-info">{{ kb.namespace }}</code>
+                        <span class="text-secondary ms-2">·</span>
+                        <span class="text-secondary ms-2">{{ kb.category }}</span>
+                        <span class="text-secondary ms-2">·</span>
+                        <span class="text-secondary ms-2"><i class="fa-solid fa-users me-1"></i>{{ kb.user_count }} user</span>
+                        <span class="text-secondary ms-2">·</span>
+                        <span class="text-secondary ms-2"><i class="fa-solid fa-file-lines me-1"></i><span class="doc-count-{{ kb.id }}">...</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-shrink-0">
+                <button class="btn btn-sm btn-warning font-monospace" onclick="openUpload({{ kb.id }}, '{{ kb.name|escapejs }}')">
+                    <i class="fa-solid fa-upload me-1"></i>Upload
+                </button>
+                <a href="{% url 'kb_edit' kb.id %}" class="btn btn-sm btn-outline-secondary font-monospace">
+                    <i class="fa-solid fa-pen"></i>
+                </a>
+                <form method="post" action="{% url 'kb_delete' kb.id %}"
+                      onsubmit="return confirm('Xóa KB \'{{ kb.name|escapejs }}\' và toàn bộ dữ liệu RAG?\nThao tác không thể hoàn tác!')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger font-monospace">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if kb.description %}
+        <div class="px-4 py-2" style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <p class="text-secondary small font-monospace mb-0" style="font-size:0.8rem">
+                <i class="fa-solid fa-robot text-warning me-1" style="font-size:0.7rem"></i>
+                <span id="kb-desc-{{ kb.id }}">{{ kb.description }}</span>
+            </p>
+        </div>
+        {% else %}
+        <div class="px-4 py-2" style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <p class="text-secondary small font-monospace mb-0" style="font-size:0.8rem">
+                <i class="fa-solid fa-robot text-secondary me-1" style="font-size:0.7rem"></i>
+                <span id="kb-desc-{{ kb.id }}" class="text-secondary fst-italic">Chưa có mô tả — upload tài liệu để tự động tóm tắt</span>
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Documents -->
+        <div class="p-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <span class="text-secondary font-monospace small">
+                    <i class="fa-solid fa-file-lines text-warning me-2"></i>Tài liệu trong namespace
+                </span>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-info font-monospace" onclick="loadDocs({{ kb.id }})">
+                        <i class="fa-solid fa-rotate me-1"></i>Làm mới
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger font-monospace"
+                            onclick="clearNamespace({{ kb.id }}, '{{ kb.name|escapejs }}')"
+                            title="Xóa toàn bộ tài liệu trong namespace này">
+                        <i class="fa-solid fa-trash-can me-1"></i>Xóa tất cả
+                    </button>
+                </div>
+            </div>
+            <div id="docs-{{ kb.id }}" class="docs-container">
+                <div class="text-center py-2">
+                    <span class="text-secondary font-monospace small">
+                        <i class="fa-solid fa-spinner fa-spin me-1"></i>Đang tải...
+                    </span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <div class="cyber-card p-5 text-center">
+        <i class="fa-solid fa-database text-secondary fs-1 mb-3 d-block"></i>
+        <h5 class="text-secondary font-monospace">Chưa có Knowledge Base nào</h5>
+        <a href="{% url 'kb_create' %}" class="btn btn-warning mt-3 font-monospace">
+            <i class="fa-solid fa-plus me-2"></i>Tạo KB đầu tiên
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+
+<style>
+.cyber-card { background:rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.1); border-radius:12px; }
+.doc-item {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:7px 12px; border-radius:8px; margin-bottom:5px;
+    background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05);
+    transition:background 0.15s;
+}
+.doc-item:hover { background:rgba(255,193,7,0.05); border-color:rgba(255,193,7,0.2); }
+</style>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background:#0f0f19;border:1px solid rgba(255,193,7,0.3)">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-white font-monospace">
+                    <i class="fa-solid fa-upload text-warning me-2"></i>Upload tài liệu
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-secondary font-monospace small mb-3">
+                    KB: <span id="uploadKbName" class="text-warning fw-bold"></span>
+                </p>
+                <div class="mb-3">
+                    <label class="form-label text-secondary font-monospace small">
+                        Chọn file <span class="text-secondary">(PDF, TXT, DOCX, MD — tối đa 20MB)</span>
+                    </label>
+                    <input type="file" id="uploadFile"
+                           class="form-control bg-transparent text-white border-secondary font-monospace"
+                           accept=".pdf,.txt,.docx,.md">
+                </div>
+                <div id="uploadProgress" style="display:none">
+                    <div class="progress mb-2" style="height:3px">
+                        <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated w-100"></div>
+                    </div>
+                    <p class="text-secondary font-monospace small text-center mb-0">
+                        Đang upload và index... <span class="text-warning">(lần đầu có thể mất 1–2 phút)</span>
+                    </p>
+                </div>
+                <div id="uploadResult"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary font-monospace" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-sm btn-warning font-monospace" id="uploadBtn" onclick="doUpload()">
+                    <i class="fa-solid fa-upload me-1"></i>Upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentKbId = null;
+const csrfToken = '{{ csrf_token }}';
+let totalDocs = 0;
+
+// ── RAG service health check ──────────────────────────────────────────────
+fetch('/ai/kb/1/documents/', { method: 'GET' })
+    .then(function() {
+        // Nếu không lỗi network thì service đang chạy
+    })
+    .catch(function() {});
+
+// Kiểm tra qua health endpoint của RAG service (qua Django proxy không có sẵn,
+// nên dùng cách gián tiếp: gọi documents của KB đầu tiên)
+(function checkRagHealth() {
+    const dot = document.getElementById('rag-status-dot');
+    const txt = document.getElementById('rag-status-text');
+    {% if kbs %}
+    fetch('/ai/kb/{{ kbs.0.id }}/documents/')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success !== undefined) {
+                dot.style.background = '#28a745';
+                dot.style.boxShadow = '0 0 6px #28a745';
+                txt.textContent = 'Online';
+                txt.className = 'font-monospace small text-success';
+            }
+        })
+        .catch(function() {
+            dot.style.background = '#dc3545';
+            txt.textContent = 'Offline — RAG service chưa khởi động';
+            txt.className = 'font-monospace small text-danger';
+        });
+    {% else %}
+    dot.style.background = '#666';
+    txt.textContent = 'Chưa có KB nào';
+    {% endif %}
+})();
+
+// ── Upload ────────────────────────────────────────────────────────────────
+function openUpload(kbId, kbName) {
+    currentKbId = kbId;
+    document.getElementById('uploadKbName').textContent = kbName;
+    document.getElementById('uploadFile').value = '';
+    document.getElementById('uploadResult').innerHTML = '';
+    document.getElementById('uploadProgress').style.display = 'none';
+    document.getElementById('uploadBtn').disabled = false;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('uploadModal')).show();
+}
+
+function doUpload() {
+    const file = document.getElementById('uploadFile').files[0];
+    if (!file) { alert('Chọn file trước!'); return; }
+    const fd = new FormData();
+    fd.append('file', file);
+    document.getElementById('uploadProgress').style.display = 'block';
+    document.getElementById('uploadResult').innerHTML = '';
+    document.getElementById('uploadBtn').disabled = true;
+
+    fetch('/ai/kb/' + currentKbId + '/upload/', {
+        method: 'POST', headers: {'X-CSRFToken': csrfToken}, body: fd
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('uploadBtn').disabled = false;
+        if (data.success) {
+            document.getElementById('uploadResult').innerHTML =
+                '<div class="alert alert-success font-monospace small mb-0 py-2">' +
+                '<i class="fa-solid fa-check me-1"></i><strong>' + escHtml(data.filename) + '</strong>' +
+                (data.skipped ? ' — đã tồn tại, bỏ qua' : ' — ' + data.chunks + ' chunks') +
+                ' · ns: <code>' + escHtml(data.namespace) + '</code>' +
+                (data.skipped ? '' : ' <span class="text-warning ms-2"><i class="fa-solid fa-spinner fa-spin me-1"></i>Đang tóm tắt...</span>') +
+                '</div>';
+            loadDocs(currentKbId);
+            // Poll description sau khi upload (LLM tóm tắt background ~10-30s)
+            if (!data.skipped) pollDescription(currentKbId);
+        } else {
+            document.getElementById('uploadResult').innerHTML =
+                '<div class="alert alert-danger font-monospace small mb-0 py-2">' +
+                '<i class="fa-solid fa-xmark me-1"></i>' + escHtml(data.error) + '</div>';
+        }
+    })
+    .catch(function(e) {
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('uploadBtn').disabled = false;
+        document.getElementById('uploadResult').innerHTML =
+            '<div class="alert alert-danger font-monospace small mb-0 py-2">Lỗi kết nối: ' + e + '</div>';
+    });
+}
+
+// ── Load docs ─────────────────────────────────────────────────────────────
+function loadDocs(kbId) {
+    const container = document.getElementById('docs-' + kbId);
+    container.innerHTML = '<div class="text-center py-2"><span class="text-secondary font-monospace small">' +
+        '<i class="fa-solid fa-spinner fa-spin me-1"></i>Đang tải...</span></div>';
+
+    fetch('/ai/kb/' + kbId + '/documents/')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        // Cập nhật RAG status nếu thành công
+        const dot = document.getElementById('rag-status-dot');
+        const txt = document.getElementById('rag-status-text');
+        if (data.success !== undefined) {
+            dot.style.background = '#28a745';
+            dot.style.boxShadow = '0 0 6px #28a745';
+            txt.textContent = 'Online';
+            txt.className = 'font-monospace small text-success';
+        }
+
+        if (!data.success) {
+            container.innerHTML = '<div class="text-center py-2"><span class="text-danger font-monospace small">' +
+                '<i class="fa-solid fa-triangle-exclamation me-1"></i>' + escHtml(data.error) + '</span></div>';
+            document.querySelector('.doc-count-' + kbId).textContent = '—';
+            return;
+        }
+        const docs = data.documents || [];
+        document.querySelector('.doc-count-' + kbId).textContent = docs.length + ' file';
+
+        // Cập nhật tổng số docs
+        updateTotalDocs();
+
+        if (!docs.length) {
+            container.innerHTML = '<div class="text-center py-3"><span class="text-secondary font-monospace small">' +
+                '<i class="fa-solid fa-inbox me-1"></i>Chưa có tài liệu nào — bấm Upload để thêm</span></div>';
+            return;
+        }
+        let html = '';
+        docs.forEach(function(filename) {
+            const ext = filename.split('.').pop().toUpperCase();
+            const extColor = {'PDF':'text-danger','DOCX':'text-info','TXT':'text-secondary','MD':'text-warning'}[ext] || 'text-secondary';
+            html += '<div class="doc-item">' +
+                '<div class="d-flex align-items-center gap-2">' +
+                '<span class="badge bg-transparent border border-secondary font-monospace ' + extColor + '" style="font-size:0.6rem;min-width:36px">' + ext + '</span>' +
+                '<span class="text-white font-monospace small">' + escHtml(filename) + '</span>' +
+                '</div>' +
+                '<button class="btn btn-sm btn-outline-danger font-monospace py-0 px-2" ' +
+                'onclick="deleteDoc(' + kbId + ', \'' + escHtml(filename).replace(/'/g, "\\'") + '\')" ' +
+                'style="font-size:0.7rem">' +
+                '<i class="fa-solid fa-trash"></i></button>' +
+                '</div>';
+        });
+        container.innerHTML = html;
+    })
+    .catch(function() {
+        container.innerHTML = '<div class="text-center py-2"><span class="text-danger font-monospace small">' +
+            '<i class="fa-solid fa-plug-circle-xmark me-1"></i>RAG service offline</span></div>';
+        document.querySelector('.doc-count-' + kbId).textContent = '—';
+        const dot = document.getElementById('rag-status-dot');
+        const txt = document.getElementById('rag-status-text');
+        dot.style.background = '#dc3545';
+        txt.textContent = 'Offline';
+        txt.className = 'font-monospace small text-danger';
+    });
+}
+
+function updateTotalDocs() {
+    let total = 0;
+    document.querySelectorAll('[class^="doc-count-"]').forEach(function(el) {
+        const n = parseInt(el.textContent);
+        if (!isNaN(n)) total += n;
+    });
+    document.getElementById('total-docs-count').textContent = total;
+}
+
+// ── Delete doc ────────────────────────────────────────────────────────────
+function deleteDoc(kbId, filename) {
+    if (!confirm('Xóa file "' + filename + '"?\nIndex sẽ được rebuild tự động.')) return;
+    const fd = new FormData();
+    fd.append('filename', filename);
+    fetch('/ai/kb/' + kbId + '/documents/delete/', {
+        method: 'POST', headers: {'X-CSRFToken': csrfToken}, body: fd
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) { loadDocs(kbId); }
+        else { alert('Lỗi: ' + data.error); }
+    });
+}
+
+// ── Clear namespace ───────────────────────────────────────────────────────
+function clearNamespace(kbId, kbName) {
+    if (!confirm('Xóa TOÀN BỘ tài liệu trong "' + kbName + '"?\nThao tác không thể hoàn tác!')) return;
+    fetch('/ai/kb/' + kbId + '/clear/', {
+        method: 'POST', headers: {'X-CSRFToken': csrfToken}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) { loadDocs(kbId); }
+        else { alert('Lỗi: ' + data.error); }
+    });
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Poll description sau auto-summarize ───────────────────────────────────
+function pollDescription(kbId, attempt) {
+    attempt = attempt || 0;
+    if (attempt > 12) return; // tối đa ~60s
+    setTimeout(function() {
+        fetch('/ai/kb/' + kbId + '/info/')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.description) {
+                const el = document.getElementById('kb-desc-' + kbId);
+                if (el) {
+                    el.textContent = data.description;
+                    el.classList.remove('fst-italic', 'text-secondary');
+                    el.classList.add('text-secondary');
+                    // Cập nhật icon thành màu warning
+                    const icon = el.previousElementSibling;
+                    if (icon) icon.className = 'fa-solid fa-robot text-warning me-1';
+                }
+                // Xóa spinner trong uploadResult nếu còn
+                const res = document.getElementById('uploadResult');
+                if (res) res.querySelector && res.querySelector('.fa-spin') &&
+                    res.querySelector('.fa-spin').parentElement.remove();
+            } else {
+                pollDescription(kbId, attempt + 1);
+            }
+        })
+        .catch(function() { pollDescription(kbId, attempt + 1); });
+    }, 5000); // poll mỗi 5s
+}
+
+// Auto-load khi trang mở
+document.addEventListener('DOMContentLoaded', function() {
+    {% for kb in kbs %}loadDocs({{ kb.id }});{% endfor %}
+});
+</script>
+{% endblock %}

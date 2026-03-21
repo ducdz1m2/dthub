@@ -10,7 +10,6 @@ import time
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from .models import MCPServer as MCPServerModel
-from .utils.ngrok_manager import ngrok_manager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,38 +29,51 @@ class MCPServer:
         self.last_error: Optional[str] = None
         
     def get_info(self) -> Dict[str, Any]:
-        """Get device info via HTTP"""
+        """Get device info — thử /info rồi /health"""
         try:
             self.last_error = None
             headers = {}
             if self.auth_token:
                 headers['Authorization'] = f'Bearer {self.auth_token}'
-            response = requests.get(f"{self.endpoint}/info", headers=headers, timeout=5)
-            if response.status_code == 200:
-                return response.json()
-            self.last_error = f"HTTP {response.status_code} from /info"
+                headers['X-Token'] = self.auth_token
+            for path in ['/info', '/health', '/metadata']:
+                try:
+                    response = requests.get(f"{self.endpoint}{path}", headers=headers, timeout=5)
+                    if response.status_code == 200:
+                        return response.json()
+                except Exception:
+                    continue
+            self.last_error = f"HTTP 404 from /info"
         except Exception as e:
             logger.error(f"Failed to get info from {self.device_id}: {e}")
             self.last_error = str(e)
         return {}
     
     def get_mcp_info(self) -> Dict[str, Any]:
-        """Get MCP server capabilities"""
+        """Get MCP server capabilities — thử /metadata trước (FastAPI), fallback /mcp/info (ESP8266)"""
         try:
             self.last_error = None
             headers = {}
             if self.auth_token:
                 headers['Authorization'] = f'Bearer {self.auth_token}'
-            response = requests.get(f"{self.endpoint}/mcp/info", headers=headers, timeout=5)
-            if response.status_code == 200:
+                headers['X-Token'] = self.auth_token
+
+            # Thử /metadata trước (chuẩn FastAPI mới)
+            for path in ['/metadata', '/mcp/info']:
                 try:
-                    self.capabilities = response.json() or {}
+                    response = requests.get(f"{self.endpoint}{path}", headers=headers, timeout=5)
+                    if response.status_code == 200:
+                        try:
+                            self.capabilities = response.json() or {}
+                        except Exception:
+                            self.capabilities = {}
+                        self.is_online = True
+                        self.last_seen = datetime.now()
+                        return self.capabilities
                 except Exception:
-                    self.capabilities = {}
-                self.is_online = True
-                self.last_seen = datetime.now()
-                return self.capabilities
-            self.last_error = f"HTTP {response.status_code} from /mcp/info"
+                    continue
+
+            self.last_error = f"HTTP 404 from /metadata and /mcp/info"
         except Exception as e:
             logger.error(f"Failed to get MCP info from {self.device_id}: {e}")
             self.last_error = str(e)
@@ -139,29 +151,6 @@ class MCPClient:
         self.discovery_lock = threading.Lock()
         
     
-    def register_server(self, device_id: str, local_ip: str, local_port: int = 80, auth_token: str = None) -> bool:
-        """Register a new MCP server with ngrok tunnel"""
-        # Create ngrok tunnel
-        public_url = ngrok_manager.create_tunnel(device_id, local_port, local_ip)
-        
-        if public_url:
-            server = MCPServer(device_id, public_url, auth_token)
-            
-            # REAL MODE: Test connection and get capabilities
-            capabilities = server.get_mcp_info()
-            if server.is_online:
-                self.servers[device_id] = server
-                logger.info(f"Registered MCP server: {device_id} at {public_url}")
-                return True
-            else:
-                # If connection fails, close tunnel
-                ngrok_manager.close_tunnel(device_id)
-                logger.error(f"Failed to register MCP server: {device_id} - connection failed")
-        else:
-            logger.error(f"Failed to register MCP server: {device_id} - tunnel creation failed")
-            
-        return False
-
     def register_server_endpoint(self, device_id: str, endpoint: str, auth_token: str = None, test_connection: bool = True) -> bool:
         endpoint = (endpoint or "").strip().rstrip("/")
         if not endpoint:
@@ -184,8 +173,6 @@ class MCPClient:
         """Unregister an MCP server"""
         if device_id in self.servers:
             del self.servers[device_id]
-            # Close ngrok tunnel
-            ngrok_manager.close_tunnel(device_id)
             logger.info(f"Unregistered MCP server: {device_id}")
     
     def get_server(self, device_id: str) -> Optional[MCPServer]:
@@ -218,7 +205,8 @@ class MCPClient:
                     if server.device_id not in self.servers:
                         endpoint = server.get_endpoint
                         if endpoint:
-                            self.register_server_endpoint(server.device_id, endpoint, server.auth_token, test_connection=True)
+                            # Không test connection khi discover — tránh block startup
+                            self.register_server_endpoint(server.device_id, endpoint, server.auth_token, test_connection=False)
                             discovered.append(server.device_id)
             except Exception as e:
                 logger.error(f"Error in discover_servers: {e}")
@@ -316,6 +304,9 @@ class MCPDiscoveryClient:
             except Exception as e:
                 return {"status": "error", "message": f"Không thể kết nối đến server: {str(e)}"}
 
+            if response.status_code == 401:
+                return {"status": "error", "message": "Server yêu cầu xác thực — kiểm tra lại auth_token trong cấu hình server"}
+
             if response.status_code != 200:
                 return {"status": "error", "message": f"Server trả về lỗi {response.status_code}"}
             
@@ -329,19 +320,25 @@ class MCPDiscoveryClient:
                 tool_id = tool_info.get('name')
                 if not tool_id: continue
                 
-                # Tạo hoặc cập nhật MCPTool
+                # Tạo hoặc cập nhật MCPTool — gắn source_server để phân biệt tool thực vs tool ảo
                 tool, created = MCPTool.objects.update_or_create(
-                    name=f"{server.device_id}_{tool_id}", # Unique name
+                    name=f"{server.device_id}_{tool_id}",
                     defaults={
                         'display_name': tool_info.get('display_name', tool_id),
                         'description': tool_info.get('description', ''),
                         'tool_type': 'external_api',
                         'server': server,
+                        'source_server': server,  # <-- đánh dấu tool đến từ server thực
                         'api_endpoint': f"{endpoint}/execute",
                         'api_method': 'POST',
                         'mcp_schema': tool_info.get('parameters', tool_info.get('schema', {})),
                         'is_enabled': True,
-                        'category': data.get('server_name', 'External MCP')
+                        'is_public': server.is_public,  # public nếu server là public
+                        'is_visible': True,
+                        'category': data.get('server_name', 'External MCP'),
+                        'keywords': tool_info.get('keywords', []),
+                        'icon': tool_info.get('icon', 'fa-plug'),
+                        'color_class': tool_info.get('color_class', 'border-info text-info'),
                     }
                 )
                 synced_count += 1

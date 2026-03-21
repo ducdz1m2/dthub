@@ -1,0 +1,62 @@
+{% load static %}
+<div class="col-lg-8">
+    <div class="cyber-card h-100 shadow-lg d-flex flex-column">
+        <div class="p-4 flex-grow-1">
+
+            <div id="chat-messages" class="chat-container custom-scrollbar mb-4">
+                <div class="text-center my-5 py-5 empty-state">
+                    <div class="d-inline-flex align-items-center justify-content-center mb-4 position-relative" style="width: 90px; height: 90px;">
+                        <div class="position-absolute w-100 h-100 rounded-circle border border-info opacity-25" style="animation: spin 4s linear infinite;"></div>
+                        <div class="position-absolute w-75 h-75 rounded-circle border border-primary opacity-50" style="animation: spin 3s linear infinite reverse;"></div>
+                        <i class="fa-solid fa-network-wired text-info" style="font-size: 2.5rem; filter: drop-shadow(0 0 10px var(--neon-blue));"></i>
+                    </div>
+                    <h5 class="fw-bold text-white mb-2 text-glow-info">Giao thức kết nối thành công</h5>
+                    <p class="text-secondary font-monospace small">>_ Lõi AI DTHub đã sẵn sàng nhận lệnh từ bạn.</p>
+                </div>
+            </div>
+
+            <div class="chat-input-group d-flex align-items-center">
+                <span class="ps-3 text-info font-monospace">>_</span>
+                <input type="text" id="chat-input" class="form-control chat-input"
+                       placeholder="Nhập câu hỏi, tài liệu hoặc lệnh thiết bị..."
+                       onkeypress="if(event.key === 'Enter') sendMessage()">
+                <button id="mic-btn" class="btn mic-btn ms-1" onclick="toggleMic()" title="Giữ để ghi âm">
+                    <i class="fa-solid fa-microphone" id="mic-icon"></i>
+                </button>
+                <button class="btn btn-neon send-btn ms-1 d-flex align-items-center" onclick="sendMessage()">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-2 px-1">
+                <span class="text-secondary font-monospace ms-auto" style="font-size: 0.72rem;" id="stt-status-label"></span>
+            </div>
+
+            <!-- RAG Document Panel -->
+            <div class="mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.07);">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-database text-info" style="font-size:0.85rem;"></i>
+                        <span class="fw-bold text-white font-monospace" style="font-size:0.85rem;">Kho Tài Liệu RAG</span>
+                        <span class="badge bg-transparent border border-info text-info rounded-pill px-2 font-monospace" style="font-size:0.65rem;" id="rag-doc-count">0</span>
+                    </div>
+                    <label class="btn btn-cmd rounded-pill px-3 py-1 mb-0" style="font-size:0.78rem; cursor:pointer;">
+                        <i class="fa-solid fa-upload me-1"></i>Upload
+                        <input type="file" id="rag-file-input" accept=".pdf,.txt,.docx,.md" style="display:none" onchange="uploadRagDoc(this)">
+                    </label>
+                    <button id="rag-reindex-btn" class="btn btn-cmd rounded-pill px-3 py-1" style="font-size:0.78rem;"
+                            onclick="reindexRagDocs()" title="Re-ingest lại tất cả tài liệu">
+                        <i class="fa-solid fa-rotate me-1"></i>Cập nhật
+                    </button>
+                </div>
+                <div id="rag-upload-status" class="mb-3 px-3 py-2 rounded font-monospace"
+                     style="font-size:0.78rem; display:none; background:rgba(0,243,255,0.05); border:1px solid rgba(0,243,255,0.15);"></div>
+                <div id="rag-empty-state" class="text-center py-4" style="display:none;">
+                    <i class="fa-solid fa-file-circle-plus text-secondary mb-2" style="font-size:2rem; opacity:0.3;"></i>
+                    <p class="text-secondary font-monospace mb-0" style="font-size:0.75rem;">>_ Chưa có tài liệu — upload PDF, TXT, DOCX hoặc MD</p>
+                </div>
+                <div class="row g-2" id="rag-doc-grid"></div>
+            </div>
+
+        </div>
+    </div>
+</div>

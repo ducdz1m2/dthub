@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}DTHub | Tạo Cấu hình AI{% endblock %}
+{% block content %}
+<style>
+.cyber-card { background:linear-gradient(135deg,rgba(10,15,30,.8),rgba(5,9,20,.95)); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.06); border-radius:16px; }
+.form-label { color:rgba(0,243,255,.8); font-weight:600; font-size:.85rem; margin-bottom:.4rem; }
+.form-control,.form-select { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); color:white; border-radius:8px; transition:.25s; }
+.form-control:focus,.form-select:focus { background:rgba(0,0,0,.7); border-color:var(--neon-blue); box-shadow:0 0 12px rgba(0,243,255,.15); color:white; }
+.form-control::placeholder { color:rgba(255,255,255,.3); }
+.form-check-input { background-color:rgba(0,0,0,.5); border-color:rgba(255,255,255,.2); }
+.form-check-input:checked { background-color:var(--neon-blue); border-color:var(--neon-blue); }
+.act-btn { display:inline-flex; align-items:center; gap:.35rem; padding:.45rem 1rem; border-radius:8px; font-size:.85rem; font-weight:600; border:1px solid; text-decoration:none; transition:.2s; background:transparent; cursor:pointer; }
+.act-btn:hover { transform:translateY(-1px); }
+.act-cancel { border-color:rgba(255,255,255,.2); color:#a0aec0; }
+.act-cancel:hover { border-color:rgba(255,255,255,.4); color:#fff; }
+.act-save { border-color:rgba(0,243,255,.6); color:#00f3ff; background:rgba(0,243,255,.08); }
+.act-save:hover { background:rgba(0,243,255,.18); box-shadow:0 0 15px rgba(0,243,255,.2); color:#00f3ff; }
+.info-box { background:rgba(0,243,255,.05); border:1px solid rgba(0,243,255,.15); border-radius:10px; padding:.9rem 1.1rem; }
+</style>
+
+<div class="container mt-4 mb-5" style="max-width:560px">
+    <div class="d-flex align-items-center mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="width:44px;height:44px;border-radius:10px;background:rgba(0,243,255,.1);border:1px solid rgba(0,243,255,.3);display:flex;align-items:center;justify-content:center;margin-right:1rem;flex-shrink:0;">
+            <i class="fa-solid fa-plus text-info"></i>
+        </div>
+        <div class="flex-grow-1">
+            <span class="text-secondary font-monospace d-block" style="font-size:.7rem;">AI_CONFIG_CREATE</span>
+            <h4 class="mb-0 text-white fw-bold">Tạo Cấu hình AI mới</h4>
+        </div>
+        <a href="{% url 'ai_config_list' %}" class="act-btn act-cancel"><i class="fa-solid fa-arrow-left"></i>Quay lại</a>
+    </div>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }} alert-dismissible fade show mb-3 rounded-3">{{ m }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}{% endif %}
+
+    <div class="info-box mb-4">
+        <div class="d-flex gap-2 align-items-start">
+            <i class="fa-solid fa-circle-info text-info mt-1 flex-shrink-0"></i>
+            <div style="font-size:.85rem; color:#a0aec0; line-height:1.6;">
+                Cấu hình mới sẽ được <strong class="text-white">sao chép từ cấu hình mặc định</strong> hiện tại. Sau khi tạo, bạn có thể chỉnh sửa chi tiết STT, LLM, TTS theo nhu cầu riêng mà không ảnh hưởng đến cấu hình gốc.
+            </div>
+        </div>
+    </div>
+
+    <div class="cyber-card p-4">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="form-label">Tên cấu hình</label>
+                <input type="text" name="name" class="form-control" value="{{ default_name }}" placeholder="VD: Cấu hình AI Tiếng Anh" required>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Mô tả <span class="text-secondary fw-normal">(tuỳ chọn)</span></label>
+                <textarea name="description" class="form-control" rows="2" placeholder="Mô tả ngắn về cấu hình này..."></textarea>
+            </div>
+            {% if is_superuser %}
+            <div class="d-flex align-items-center gap-2 p-3 rounded-3 mb-4" style="background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.06);">
+                <input type="checkbox" name="is_default" class="form-check-input" id="isDefault">
+                <label class="form-check-label text-white ms-1 mb-0" for="isDefault">
+                    Đặt làm cấu hình <strong>Global</strong> (áp dụng cho tất cả user)
+                </label>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'ai_config_list' %}" class="act-btn act-cancel"><i class="fa-solid fa-times"></i>Hủy</a>
+                <button type="submit" class="act-btn act-save"><i class="fa-solid fa-arrow-right"></i>Tạo và chỉnh sửa</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

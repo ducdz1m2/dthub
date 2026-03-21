@@ -89,7 +89,7 @@
 <div class="container mt-5 mb-5 relative z-1">
     <nav aria-label="breadcrumb" class="mb-4 cyber-breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'firmware_home' %}"><i class="bi bi-cpu me-1"></i> FIRMWARE_LIB</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'firmware_home' %}"><i class="bi bi-cpu me-1"></i> Thư viện Firmware</a></li>
             <li class="breadcrumb-item active text-secondary" aria-current="page">{{ firmware.name|upper }}</li>
         </ol>
     </nav>
@@ -100,25 +100,25 @@
                 <div class="info-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h4 class="mb-0 text-white fw-bold text-glow-info">
-                            <i class="bi bi-info-circle-fill me-2"></i>SPECIFICATIONS
+                            <i class="bi bi-info-circle-fill me-2"></i>Thông số kỹ thuật
                         </h4>
-                        <span class="badge bg-transparent border border-info text-info font-monospace">VER_{{ firmware.version }}</span>
+                        <span class="badge bg-transparent border border-info text-info font-monospace">Phiên bản {{ firmware.version }}</span>
                     </div>
                 </div>
                 <div class="p-4">
                     <div class="tech-grid mb-4">
                         <div>
-                            <div class="tech-label">TARGET_HARDWARE</div>
+                            <div class="tech-label">Phần cứng mục tiêu</div>
                             <div class="tech-value text-info">{{ firmware.get_device_type_display }}</div>
                         </div>
                         <div>
-                            <div class="tech-label">DEPLOYMENT_STATUS</div>
-                            <div class="tech-value text-success">READY_FOR_FLASH</div>
+                            <div class="tech-label">Trạng thái</div>
+                            <div class="tech-value text-success">Sẵn sàng nạp</div>
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <div class="tech-label mb-2">MANIFEST_DESCRIPTION</div>
+                        <div class="tech-label mb-2">Mô tả</div>
                         <div class="p-3 rounded bg-black-50 text-secondary small font-monospace" style="border: 1px solid rgba(255,255,255,0.05);">
                             {{ firmware.description|linebreaks }}
                         </div>
@@ -126,19 +126,19 @@
 
                     {% if firmware.hardware_image %}
                     <div class="mb-4">
-                        <div class="tech-label mb-2">CIRCUIT_DIAGRAM</div>
+                        <div class="tech-label mb-2">Sơ đồ mạch</div>
                         <div class="position-relative overflow-hidden rounded-3 border border-secondary" style="background: #000;">
                             <img src="{{ firmware.hardware_image.url }}" alt="Circuit" class="img-fluid opacity-75">
                             <div class="position-absolute bottom-0 w-100 p-2 text-center bg-dark bg-opacity-75">
-                                <small class="text-info font-monospace"><i class="bi bi-shield-exclamation me-1"></i> VERIFY PIN_OUTS BEFORE FLASHING</small>
+                                <small class="text-info font-monospace"><i class="bi bi-shield-exclamation me-1"></i> Kiểm tra chân kết nối trước khi nạp</small>
                             </div>
                         </div>
                     </div>
                     {% endif %}
                     
                     <div class="d-flex justify-content-between text-secondary font-monospace" style="font-size: 0.7rem;">
-                        <span>CREATED: {{ firmware.created_at|date:"Y.m.d H:i" }}</span>
-                        <span>HASH_SHA256: VALIDATED</span>
+                        <span>Tạo lúc: {{ firmware.created_at|date:"Y.m.d H:i" }}</span>
+                        <span>SHA256: Đã xác minh</span>
                     </div>
                 </div>
             </div>
@@ -148,12 +148,12 @@
             <div class="terminal-card h-100">
                 <div class="info-header" style="background: rgba(32, 201, 151, 0.05); border-bottom-color: rgba(32, 201, 151, 0.2);">
                     <h4 class="mb-0 text-white fw-bold text-glow-success">
-                        <i class="bi bi-lightning-charge-fill me-2"></i>FLASHING_CORE
+                        <i class="bi bi-lightning-charge-fill me-2"></i>Nạp Firmware
                     </h4>
                 </div>
                 <div class="p-4">
                     <div class="cyber-alert mb-4">
-                        <h6 class="text-info font-monospace"><i class="bi bi-terminal me-2"></i>PRE-FLIGHT_CHECK:</h6>
+                        <h6 class="text-info font-monospace"><i class="bi bi-terminal me-2"></i>Kiểm tra trước khi nạp:</h6>
                         <ul class="mb-0 text-secondary font-monospace small">
                             <li>1. Kết nối {{ firmware.get_device_type_display }} qua USB.</li>
                             <li>2. Cấp quyền Web Serial khi trình duyệt yêu cầu.</li>
@@ -163,17 +163,17 @@
 
                     <div id="compatibility-check" class="alert bg-transparent border-danger text-danger font-monospace small mb-4">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        <span id="compatibility-text">Checking system compatibility...</span>
+                        <span id="compatibility-text">Đang kiểm tra tương thích hệ thống...</span>
                     </div>
 
                     <div class="flash-zone text-center mb-4 py-5">
                         <esp-web-install-button manifest="{% url 'get_manifest' firmware.id %}" id="install-button">
                             <button slot="activate" class="btn" id="flash-button">
-                                <i class="bi bi-cpu-fill me-2"></i> START_FLASHING
+                                <i class="bi bi-cpu-fill me-2"></i> Bắt đầu nạp
                             </button>
                             <div slot="unsupported" class="text-danger font-monospace">
                                 <i class="bi bi-x-octagon fs-1 d-block mb-3"></i>
-                                WEB_SERIAL_NOT_SUPPORTED
+                                Trình duyệt không hỗ trợ Web Serial
                                 <br><small class="text-secondary">Vui lòng sử dụng Chrome hoặc Edge</small>
                             </div>
                         </esp-web-install-button>
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if ('serial' in navigator) {
         document.getElementById('compatibility-check').style.display = 'none';
     } else {
-        document.getElementById('compatibility-text').textContent = 'CORE_ERROR: Web Serial API missing.';
+        document.getElementById('compatibility-text').textContent = 'Lỗi: Web Serial API không được hỗ trợ.';
     }
 
     const installButton = document.getElementById('install-button');
@@ -219,21 +219,21 @@ document.addEventListener('DOMContentLoaded', function() {
             
             switch(state) {
                 case 'connecting':
-                    showProgress('ESTABLISHING_LINK...', 15);
+                    showProgress('Đang kết nối...', 15);
                     break;
                 case 'connected':
-                    showProgress('LINK_STABLE. READY.', 30);
+                    showProgress('Kết nối ổn định. Sẵn sàng.', 30);
                     break;
                 case 'flashing':
-                    showProgress('TRANSFERRING_DATA...', 65);
+                    showProgress('Đang truyền dữ liệu...', 65);
                     break;
                 case 'finished':
-                    showProgress('SUCCESS_TOTAL_SYNC', 100);
-                    showResult(true, 'FIRMWARE_INSTALLED_SUCCESSFULLY');
+                    showProgress('Hoàn tất', 100);
+                    showResult(true, 'Nạp firmware thành công!');
                     logFlashingSession(true);
                     break;
                 case 'error':
-                    showResult(false, 'TRANS_ERROR: ABORTED');
+                    showResult(false, 'Lỗi: Quá trình bị gián đoạn');
                     logFlashingSession(false, 'Flash failed');
                     break;
             }

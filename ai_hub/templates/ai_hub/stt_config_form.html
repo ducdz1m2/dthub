@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}DTHub | {{ title }}{% endblock %}
+{% block content %}
+<style>
+.cyber-card { background:linear-gradient(135deg,rgba(10,15,30,.8),rgba(5,9,20,.95)); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.06); border-radius:16px; }
+.form-section { background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:1.25rem; }
+.section-title { font-size:.7rem; color:#6c757d; letter-spacing:1px; text-transform:uppercase; font-family:monospace; margin-bottom:1rem; display:flex; align-items:center; gap:.5rem; }
+.section-title::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.06); }
+.form-label { color:rgba(0,243,255,.8); font-weight:600; font-size:.82rem; margin-bottom:.4rem; }
+.form-control,.form-select { background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.1); color:white; border-radius:8px; transition:.25s; }
+.form-control:focus,.form-select:focus { background:rgba(0,0,0,.7); border-color:var(--neon-blue); box-shadow:0 0 12px rgba(0,243,255,.15); color:white; }
+.form-control::placeholder { color:rgba(255,255,255,.3); }
+.form-check-input { background-color:rgba(0,0,0,.5); border-color:rgba(255,255,255,.2); }
+.form-check-input:checked { background-color:var(--neon-blue); border-color:var(--neon-blue); }
+.form-text { color:rgba(255,255,255,.35); font-size:.75rem; }
+select option { background:#0a0f1e; color:white; }
+.act-btn { display:inline-flex; align-items:center; gap:.35rem; padding:.4rem .9rem; border-radius:8px; font-size:.82rem; font-weight:600; border:1px solid; text-decoration:none; transition:.2s; background:transparent; cursor:pointer; }
+.act-btn:hover { transform:translateY(-1px); }
+.act-cancel { border-color:rgba(255,255,255,.2); color:#a0aec0; }
+.act-cancel:hover { border-color:rgba(255,255,255,.4); color:#fff; }
+.act-save { border-color:rgba(255,193,7,.6); color:#ffc107; background:rgba(255,193,7,.08); }
+.act-save:hover { background:rgba(255,193,7,.15); color:#ffc107; box-shadow:0 0 15px rgba(255,193,7,.15); }
+</style>
+
+<div class="container mt-4 mb-5" style="max-width:680px">
+    <div class="d-flex align-items-center mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,.08)">
+        <div style="width:44px;height:44px;border-radius:10px;background:rgba(255,193,7,.1);border:1px solid rgba(255,193,7,.3);display:flex;align-items:center;justify-content:center;margin-right:1rem;flex-shrink:0;">
+            <i class="fa-solid fa-microphone text-warning"></i>
+        </div>
+        <div class="flex-grow-1">
+            <span class="text-secondary font-monospace d-block" style="font-size:.7rem;">STT_CONFIG_EDITOR</span>
+            <h4 class="mb-0 text-white fw-bold">{{ title }}</h4>
+        </div>
+        <a href="{% url 'stt_config_list' %}" class="act-btn act-cancel"><i class="fa-solid fa-arrow-left"></i>Quay lại</a>
+    </div>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags }} alert-dismissible fade show mb-3 rounded-3">{{ m }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>{% endfor %}{% endif %}
+
+    <div class="cyber-card p-4">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-section mb-3">
+                <div class="section-title"><i class="fa-solid fa-microphone text-warning"></i>Cấu hình STT</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.name.label }}</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.engine.label }}</label>
+                        {{ form.engine }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.language.label }}</label>
+                        {{ form.language }}
+                    </div>
+                    <div class="col-md-6" id="model-size-row">
+                        <label class="form-label">{{ form.model_size.label }}</label>
+                        {{ form.model_size }}
+                    </div>
+                    <div class="col-12" id="custom-url-row" style="display:none">
+                        <label class="form-label">{{ form.custom_url.label }}</label>
+                        {{ form.custom_url }}
+                        <div class="form-text">VD: http://localhost:5000/stt — bắt buộc nếu dùng Custom API</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 p-3 rounded-3 mb-4" style="background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.06);">
+                {{ form.is_active }}
+                <label class="form-check-label text-white ms-1 mb-0">{{ form.is_active.label }}</label>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'stt_config_list' %}" class="act-btn act-cancel"><i class="fa-solid fa-times"></i>Hủy</a>
+                <button type="submit" class="act-btn act-save"><i class="fa-solid fa-save"></i>Lưu cấu hình</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const engine = document.querySelector('[name="engine"]');
+    const customRow = document.getElementById('custom-url-row');
+    const modelRow = document.getElementById('model-size-row');
+    function update() {
+        if (!engine) return;
+        if (customRow) customRow.style.display = engine.value === 'custom' ? '' : 'none';
+        if (modelRow) modelRow.style.display = engine.value === 'whisper' ? '' : 'none';
+    }
+    if (engine) { engine.addEventListener('change', update); update(); }
+});
+</script>
+{% endblock %}

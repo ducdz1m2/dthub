@@ -10,16 +10,46 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 import json
 import logging
+import asyncio
 from .models import MCPServer as MCPServerModel
 from .mcp_client import get_mcp_client, MCPServer, MCPDiscoveryClient
 import subprocess
 import tempfile
 import os
-import signal
 import time
+import signal
 import requests
 
 logger = logging.getLogger(__name__)
+
+import ipaddress
+import urllib.parse
+
+def _is_safe_endpoint(url: str) -> bool:
+    """
+    SSRF protection: chặn các URL trỏ vào metadata cloud, loopback, link-local.
+    Chỉ cho phép http/https. localhost và 127.x được phép (local MCP servers).
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False
+        host = parsed.hostname or ''
+        # Chặn cloud metadata endpoints
+        blocked_hosts = ['169.254.169.254', 'metadata.google.internal']
+        if host in blocked_hosts:
+            return False
+        # Chặn các dải IP nội bộ nguy hiểm (trừ localhost)
+        try:
+            ip = ipaddress.ip_address(host)
+            if ip.is_link_local or ip.is_multicast:
+                return False
+            # Cho phép loopback (localhost MCP servers)
+        except ValueError:
+            pass  # hostname, không phải IP — OK
+        return True
+    except Exception:
+        return False
 
 @login_required
 def mcp_server_editor(request, pk):
@@ -43,23 +73,21 @@ def mcp_server_editor(request, pk):
     }
     return render(request, 'ai_hub/mcp_server_editor.html', context)
 
-@csrf_exempt
 @require_http_methods(["POST"])
 @login_required
 def mcp_save_code(request, pk):
     """Lưu mã nguồn MCP Server"""
     if not request.user.is_superuser:
-        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
-        
+        return JsonResponse({'status': 'error', 'message': 'Permission denied'}, status=403)
+    
     server = get_object_or_404(MCPServerModel, pk=pk)
     try:
         data = json.loads(request.body)
         server.code_template = data.get('code', '')
-        server.is_local_managed = True
         server.save()
-        return JsonResponse({'status': 'success', 'message': 'Đã lưu mã nguồn thành công'})
+        return JsonResponse({'status': 'success'})
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -144,59 +172,87 @@ def mcp_sync_tools(request, pk):
         
     result = MCPDiscoveryClient.discover_tools(pk)
     if result['status'] == 'success':
-        # Thông báo thành công (có thể dùng messages framework)
         pass
     
     return redirect('mcp_server_detail', device_id=get_object_or_404(MCPServerModel, pk=pk).device_id)
+
+@require_http_methods(["POST"])
+@login_required
+def mcp_sync_by_device_id(request, device_id):
+    """Sync tools từ MCP Server theo device_id — dùng cho nút Đồng bộ tổng."""
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+    try:
+        server = MCPServerModel.objects.get(device_id=device_id, is_active=True)
+        result = MCPDiscoveryClient.discover_tools(server.pk)
+        return JsonResponse(result)
+    except MCPServerModel.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Server không tồn tại'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @login_required
 def mcp_dashboard(request):
     """MCP Server Dashboard - Chỉ Superuser mới được phép quản lý"""
     if not request.user.is_superuser:
         return redirect('mcp_public_tools')
-        
+
     try:
-        # Get MCP client and force discovery to get all servers
+        db_servers = MCPServerModel.objects.all().order_by('name')
         mcp_client = get_mcp_client()
-        
-        # Force discovery to load all servers from database
-        mcp_client.servers.clear()  # Clear cache
-        discovered = mcp_client.discover_servers()
-        
-        # Get all servers (both online and offline)
-        all_servers = mcp_client.get_all_servers()
-        online_servers = mcp_client.get_online_servers()
-        
-        # Create lookup for tools and resources for all servers
-        all_resources = {}
-        all_tools = {}
-        for server in all_servers:
-            all_resources[server.device_id] = server.resources
-            all_tools[server.device_id] = server.tools
-        
+
+        # Nếu cache rỗng (vừa restart), auto-discover từ DB rồi refresh tools trong background
+        if not mcp_client.servers:
+            try:
+                new_ids = mcp_client.discover_servers()
+                if new_ids:
+                    import threading
+                    def _bg_refresh():
+                        for did in new_ids:
+                            try:
+                                mcp_client.refresh_server_capabilities(did)
+                            except Exception:
+                                pass
+                    threading.Thread(target=_bg_refresh, daemon=True).start()
+            except Exception as e:
+                logger.warning(f"Auto-discover failed: {e}")
+
+        all_servers = []
+        for db_server in db_servers:
+            cached = mcp_client.servers.get(db_server.device_id)
+            if cached:
+                cached.db_is_active = db_server.is_active
+                all_servers.append(cached)
+            else:
+                s = MCPServer(db_server.device_id, db_server.get_endpoint or "", db_server.auth_token)
+                s.is_online = False
+                s.db_is_active = db_server.is_active
+                all_servers.append(s)
+
+        online_servers = [s for s in all_servers if s.is_online]
+        all_tools = {s.device_id: s.tools for s in all_servers}
+        all_resources = {s.device_id: s.resources for s in all_servers}
+
         context = {
             'servers': all_servers,
             'online_servers': online_servers,
             'resources': all_resources,
             'tools': all_tools,
-            'discovered_count': len(discovered),
+            'discovered_count': 0,
             'total_count': len(all_servers),
-            'online_count': len(online_servers)
+            'online_count': len(online_servers),
+            'total_tools_count': sum(len(t) for t in all_tools.values()),
+            'total_resources_count': sum(len(r) for r in all_resources.values()),
         }
-        
+
     except Exception as e:
         logger.error(f"Error loading MCP dashboard: {e}")
-        # Fallback to empty state
         context = {
-            'servers': [],
-            'online_servers': [],
-            'resources': {},
-            'tools': {},
-            'discovered_count': 0,
-            'total_count': 0,
-            'online_count': 0
+            'servers': [], 'online_servers': [], 'resources': {}, 'tools': {},
+            'discovered_count': 0, 'total_count': 0, 'online_count': 0,
+            'total_tools_count': 0, 'total_resources_count': 0,
         }
-    
+
     return render(request, 'ai_hub/mcp_dashboard.html', context)
 
 @login_required
@@ -204,28 +260,27 @@ def mcp_server_detail(request, device_id):
     """MCP Server Detail View - Superuser Only"""
     if not request.user.is_superuser:
         return redirect('mcp_public_tools')
-        
+
     mcp_client = get_mcp_client()
     server = mcp_client.get_server(device_id)
-    
+
     if not server:
-        mcp_client.discover_servers()
-        server = mcp_client.get_server(device_id)
-        if not server:
+        # Tạo từ DB, không test connection
+        db_server = MCPServerModel.objects.filter(device_id=device_id).first()
+        if not db_server:
             return JsonResponse({'error': 'Server not found'}, status=404)
-    
-    # Refresh server capabilities
-    mcp_client.refresh_server_capabilities(device_id)
-    
-    # Get Django model instance for DB fields like PK and source_code
+        server = MCPServer(db_server.device_id, db_server.get_endpoint or "", db_server.auth_token)
+        server.is_online = False
+        mcp_client.servers[device_id] = server
+
     server_model = MCPServerModel.objects.filter(device_id=device_id).first()
-    
+
     context = {
         'server': server,
         'server_model': server_model,
         'resources': server.resources,
         'tools': server.tools,
-        'capabilities': server.capabilities
+        'capabilities': server.capabilities,
     }
 
     if request.GET.get('partial') == '1':
@@ -297,7 +352,14 @@ def mcp_unregister_server(request, device_id):
 @require_http_methods(["POST"])
 @login_required
 def mcp_call_tool(request, device_id):
-    """Call a tool on an MCP server"""
+    """Call a tool on an MCP server — login required, superuser hoặc owner của server"""
+    if not request.user.is_superuser:
+        # Non-superuser chỉ được gọi tool trên server public hoặc server của chính họ
+        server_obj = MCPServerModel.objects.filter(device_id=device_id, is_active=True).first()
+        if not server_obj:
+            return JsonResponse({'error': 'Server not found'}, status=404)
+        if not server_obj.is_public and server_obj.owner != request.user:
+            return JsonResponse({'error': 'Forbidden'}, status=403)
     try:
         data = json.loads(request.body)
         tool_name = data.get('tool_name')
@@ -398,6 +460,7 @@ def mcp_refresh_server(request, device_id):
         logger.error(f"Error refreshing MCP server {device_id}: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
 @login_required
 def mcp_health_check(request):
     """Perform health check on all MCP servers - Superuser Only"""
@@ -423,25 +486,48 @@ def mcp_health_check(request):
         logger.error(f"Error performing MCP health check: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
+@csrf_exempt
+@require_http_methods(["POST"])
 @login_required
-def mcp_discover_servers(request):
-    """Discover new MCP servers - Superuser Only"""
+def mcp_toggle_server(request, device_id):
+    """Toggle is_active cho MCP server — Superuser Only"""
     if not request.user.is_superuser:
         return JsonResponse({'error': 'Forbidden'}, status=403)
-        
     try:
-        mcp_client = get_mcp_client()
-        discovered = mcp_client.discover_servers()
-        
+        server = get_object_or_404(MCPServerModel, device_id=device_id)
+        server.is_active = not server.is_active
+        server.save(update_fields=['is_active'])
+
+        # Nếu disable: xóa khỏi cache client
+        if not server.is_active:
+            mcp_client = get_mcp_client()
+            mcp_client.servers.pop(device_id, None)
+
+        return JsonResponse({'status': 'success', 'is_active': server.is_active})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def mcp_discover_servers(request):
+    """Quét mạng nội bộ tìm MCP server mới — chỉ chạy khi user bấm nút."""
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Forbidden'}, status=403)
+
+    try:
+        from .mcp_scanner import scan_and_register
+        found = scan_and_register(request.user)
+
         return JsonResponse({
             'status': 'success',
-            'discovered_servers': discovered,
-            'discovered_count': len(discovered),
+            'discovered_count': len(found),
+            'discovered_servers': [s.device_id for s in found],
+            'tools_synced': True,
             'timestamp': timezone.now().isoformat()
         })
-        
+
     except Exception as e:
-        logger.error(f"Error discovering MCP servers: {e}")
+        logger.error("Lỗi quét MCP server: %s", e)
         return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
@@ -498,129 +584,6 @@ def mcp_server_tools(request, device_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mcp_device_register(request):
-    """Register MCP server without authentication (for ESP8266 auto-registration)"""
-    try:
-        data = json.loads(request.body)
-        device_id = data.get('device_id')
-        ip_address = data.get('ip_address')
-        port = data.get('port', 80)
-        name = data.get('name', f'ESP8266 {device_id}')
-        device_type = data.get('device_type', 'hybrid')
-        
-        if not device_id or not ip_address:
-            return JsonResponse({'error': 'device_id and ip_address are required'}, status=400)
-        
-        # Update or create device
-        device, created = ESP32Device.objects.get_or_create(
-            device_id=device_id,
-            defaults={
-                'name': name,
-                'device_type': device_type,
-                'mqtt_topic': f'esp32/{device_id}/sensor_data',
-                'ip_address': ip_address,
-                'is_active': True
-            }
-        )
-        
-        if not created:
-            # Update existing device
-            device.ip_address = ip_address
-            device.name = name
-            device.device_type = device_type
-            device.last_seen = timezone.now()
-            device.is_active = True
-            device.save()
-        
-        return JsonResponse({
-            'status': 'success',
-            'message': f'MCP server {device_id} registered successfully',
-            'device_id': device_id,
-            'registered': True,
-            'timestamp': timezone.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Error registering MCP device: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mcp_device_heartbeat(request):
-    """Receive heartbeat from MCP server without authentication"""
-    try:
-        data = json.loads(request.body)
-        device_id = data.get('device_id')
-        ip_address = data.get('ip_address')
-        
-        if not device_id:
-            return JsonResponse({'error': 'device_id is required'}, status=400)
-        
-        # Update device
-        try:
-            device = ESP32Device.objects.get(device_id=device_id)
-            device.ip_address = ip_address
-            device.last_seen = timezone.now()
-            device.is_active = True
-            device.save()
-        except ESP32Device.DoesNotExist:
-            # Auto-register if not exists
-            return mcp_device_register(request)
-        
-        return JsonResponse({
-            'status': 'success',
-            'device_id': device_id,
-            'timestamp': timezone.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Error processing device heartbeat: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
-@login_required
-def mcp_heartbeat(request):
-    """Receive heartbeat from MCP server"""
-    try:
-        data = json.loads(request.body)
-        device_id = data.get('device_id')
-        ip_address = data.get('ip_address')
-        
-        if not device_id:
-            return JsonResponse({'error': 'device_id is required'}, status=400)
-        
-        # Update or create device
-        device, created = ESP32Device.objects.get_or_create(
-            device_id=device_id,
-            defaults={
-                'name': f'Auto-registered {device_id}',
-                'device_type': 'hybrid',
-                'mqtt_topic': f'esp32/{device_id}/sensor_data',
-                'ip_address': ip_address,
-                'is_active': True
-            }
-        )
-        
-        if not created:
-            # Update existing device
-            device.ip_address = ip_address
-            device.last_seen = timezone.now()
-            device.save()
-        
-        return JsonResponse({
-            'status': 'success',
-            'device_id': device_id,
-            'registered': True,
-            'timestamp': timezone.now().isoformat()
-        })
-        
-    except Exception as e:
-        logger.error(f"Error processing heartbeat: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-@csrf_exempt
-@require_http_methods(["POST"])
 @login_required
 def mcp_auto_register(request):
     """Auto-register MCP server - Superuser Only"""
@@ -639,6 +602,11 @@ def mcp_auto_register(request):
         
         if not device_id or not ip_address:
             return JsonResponse({'error': 'device_id and ip_address are required'}, status=400)
+
+        # SSRF protection: chỉ cho phép endpoint hợp lệ
+        endpoint = data.get('endpoint', f"http://{ip_address}:{port}")
+        if not _is_safe_endpoint(endpoint):
+            return JsonResponse({'error': 'Endpoint không hợp lệ hoặc bị chặn'}, status=400)
         
         # Create or update device
         device, created = ESP32Device.objects.get_or_create(
@@ -646,7 +614,6 @@ def mcp_auto_register(request):
             defaults={
                 'name': name,
                 'device_type': device_type,
-                'mqtt_topic': f'esp32/{device_id}/sensor_data',
                 'ip_address': ip_address,
                 'is_active': True
             }
@@ -661,7 +628,6 @@ def mcp_auto_register(request):
         
         # Initialize MCP client with this device
         mcp_client = get_mcp_client()
-        endpoint = data.get('endpoint', f"http://{ip_address}:{port}")
         if mcp_client.register_server_endpoint(device_id, endpoint, auth_token=None, test_connection=True):
             return JsonResponse({
                 'status': 'success',
@@ -685,7 +651,9 @@ def mcp_auto_register(request):
 @require_http_methods(["POST"])
 @login_required
 def mcp_batch_operation(request):
-    """Perform batch operations on multiple MCP servers"""
+    """Perform batch operations on multiple MCP servers — superuser only"""
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Forbidden'}, status=403)
     try:
         data = json.loads(request.body)
         operation = data.get('operation')

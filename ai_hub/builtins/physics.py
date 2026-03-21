@@ -39,7 +39,7 @@ def tools() -> List[Dict[str, Any]]:
         },
         {
             "name": "constants",
-            "description": "Trả về một số hằng số vật lý cơ bản (g, c, R).",
+            "description": "Tra cứu hằng số vật lý: gia tốc trọng trường g=9.81 m/s², tốc độ ánh sáng c=3×10⁸ m/s, hằng số khí R=8.314 J/mol·K. Dùng khi hỏi về g, c, R trong bài toán vật lý, cơ học, nhiệt động lực học. Ví dụ: g bằng bao nhiêu, tốc độ ánh sáng là gì, hằng số khí R.",
             "inputSchema": {"type": "object", "properties": {}},
         },
     ]
